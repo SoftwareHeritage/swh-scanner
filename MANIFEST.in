@@ -1,0 +1,5 @@
+include Makefile
+include requirements*.txt
+include version.txt
+include README.md
+recursive-include swh py.typed

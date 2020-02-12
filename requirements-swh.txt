@@ -1,0 +1,2 @@
+# Add here internal Software Heritage dependencies, one per line.
+swh.core

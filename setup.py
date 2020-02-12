@@ -39,13 +39,13 @@ def parse_requirements(name=None):
 # Full sample:
 #   https://forge.softwareheritage.org/diffusion/DCORE/browse/master/setup.py
 setup(
-    name='swh.<module-name>',  # example: swh.loader.pypi
-    description='Software Heritage <Module\'s intent>',
+    name='swh.scanner',
+    description='Software Heritage code scanner',
     long_description=long_description,
     long_description_content_type='text/markdown',
     author='Software Heritage developers',
     author_email='swh-devel@inria.fr',
-    url='https://forge.softwareheritage.org/diffusion/<module-git-code>',
+    url='https://forge.softwareheritage.org/diffusion/DTSCN/',
     packages=find_packages(),  # packages's modules
     install_requires=parse_requirements() + parse_requirements('swh'),
     tests_require=parse_requirements('test'),
@@ -55,7 +55,7 @@ setup(
     include_package_data=True,
     entry_points='''
         [swh.cli.subcommands]
-        <cli-name>=swh.<module>.cli:cli
+        scanner=swh.scanner.cli:scanner
     ''',
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -67,6 +67,6 @@ setup(
     project_urls={
         'Bug Reports': 'https://forge.softwareheritage.org/maniphest',
         'Funding': 'https://www.softwareheritage.org/donate',
-        'Source': 'https://forge.softwareheritage.org/source/swh-<module>',
+        'Source': 'https://forge.softwareheritage.org/source/swh-scanner',
     },
 )

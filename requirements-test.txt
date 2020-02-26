@@ -1,1 +1,3 @@
 pytest
+swh.core[testing-core]
+swh.model[testing]

@@ -3,11 +3,16 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import requests
 import os
-import json
 import itertools
+import asyncio
+import aiohttp
+from typing import List, Dict, Tuple, Generator, Iterator
 from pathlib import PosixPath
+
+from .logger import log_queries
+from .exceptions import APIError
+from .model import Tree
 
 from swh.model.cli import pid_of_file, pid_of_dir
 from swh.model.identifiers import (
@@ -16,33 +21,64 @@ from swh.model.identifiers import (
 )
 
 
-def pids_discovery(pids, host, port):
-    """
+async def pids_discovery(
+        pids: List[str], session: aiohttp.ClientSession, url: str,
+        ) -> Dict[str, Dict[str, bool]]:
+    """API Request to get information about the persistent identifiers given in
+    input.
+
     Args:
-        pids list(str): A list of persistent identifier
+        pids: a list of persistent identifier
+
     Returns:
         A dictionary with:
-        key(str): persistent identifier
-        value(dict):
-            value['known'] = True if pid is found
-            value['known'] = False if pid is not found
+        key: persistent identifier searched
+        value:
+            value['known'] = True if the pid is found
+            value['known'] = False if the pid is not found
+
     """
-    endpoint = 'http://%s:%s/api/1/known/' % (host, port)
-    req = requests.post(endpoint, json=pids)
-    resp = req.text
-    return json.loads(resp)
+    endpoint = url + '/api/1/known/'
+    chunk_size = 1000
+    requests = []
+
+    log_queries(len(pids))
+
+    def get_chunk(pids):
+        for i in range(0, len(pids), chunk_size):
+            yield pids[i:i + chunk_size]
+
+    async def make_request(pids):
+        async with session.post(endpoint, json=pids) as resp:
+            if resp.status != 200:
+                error_message = '%s with given values %s' % (
+                    resp.text, str(pids))
+                raise APIError(error_message)
+            return await resp.json()
+
+    if len(pids) > chunk_size:
+        for pids_chunk in get_chunk(pids):
+            requests.append(asyncio.create_task(
+                make_request(pids_chunk)))
+
+        res = await asyncio.gather(*requests)
+        # concatenate list of dictionaries
+        return dict(itertools.chain.from_iterable(e.items() for e in res))
+    else:
+        return await make_request(pids)
 
 
-def get_sub_paths(path):
-    """Find the persistent identifier of the paths and files under
-    a given path.
+def get_subpaths(
+        path: PosixPath) -> Generator[Tuple[PosixPath, str], None, None]:
+    """Find the persistent identifier of the directories and files under a
+    given path.
 
     Args:
-        path(PosixPath): the entry root
+        path: the root path
 
     Yields:
-        tuple(path, pid): pairs of path and the relative persistent
-        identifier
+        pairs of: path, the relative persistent identifier
+
     """
     def pid_of(path):
         if path.is_dir():
@@ -52,57 +88,59 @@ def get_sub_paths(path):
 
     dirpath, dnames, fnames = next(os.walk(path))
     for node in itertools.chain(dnames, fnames):
-        path = PosixPath(dirpath).joinpath(node)
-        yield (path, pid_of(path))
+        sub_path = PosixPath(dirpath).joinpath(node)
+        yield (sub_path, pid_of(sub_path))
 
 
-def parse_path(path, host, port):
-    """Check if the sub paths of the given path is present in the
+async def parse_path(
+        path: PosixPath, session: aiohttp.ClientSession, url: str
+        ) -> Iterator[Tuple[str, str, bool]]:
+    """Check if the sub paths of the given path are present in the
     archive or not.
+
     Args:
-        path(PosixPath): The source path
-        host(str): ip for the api request
-        port(str): port for the api request
-    Yields:
-        a tuple with the path found, the persistent identifier
-        relative to the path and a boolean: False if not found,
-        True if found.
-    """
-    pid_map = dict(get_sub_paths(path))
-    parsed_pids = pids_discovery(list(pid_map.values()), host, port)
+        path: the source path
+        url: url for the API request
 
-    for sub_path, pid in pid_map.items():
-        yield (sub_path, pid, parsed_pids[pid]['known'])
-
-
-def run(root, host, port):
-    """Scan the given root
-    Args:
-        path: the path to scan
-        host(str): ip for the api request
-        port(str): port for the api request
     Returns:
-        A set containing pairs of the path discovered and the
-        relative persistent identifier
-    """
-    def _scan(root, host, port, accum):
-        assert root not in accum
+        a map containing tuples with: a subpath of the given path,
+        the pid of the subpath and the result of the api call
 
-        next_paths = []
-        for path, pid, found in parse_path(root, host, port):
+    """
+    parsed_paths = dict(get_subpaths(path))
+    parsed_pids = await pids_discovery(
+        list(parsed_paths.values()), session, url)
+
+    def unpack(tup):
+        subpath, pid = tup
+        return (subpath, pid, parsed_pids[pid]['known'])
+
+    return map(unpack, parsed_paths.items())
+
+
+async def run(
+        root: PosixPath, url: str, source_tree: Tree) -> None:
+    """Start scanning from the given root.
+
+    It fill the source tree with the path discovered.
+
+    Args:
+        root: the root path to scan
+        url: url for the API request
+
+    """
+    async def _scan(root, session, url, source_tree):
+        for path, pid, found in await parse_path(root, session, url):
             obj_type = parse_persistent_identifier(pid).object_type
 
-            if obj_type == CONTENT and found:
-                accum.add((str(path), pid))
+            if obj_type == CONTENT:
+                source_tree.addNode(path, pid if found else None)
             elif obj_type == DIRECTORY:
                 if found:
-                    accum.add((str(path), pid))
+                    source_tree.addNode(path, pid)
                 else:
-                    next_paths.append(path)
+                    source_tree.addNode(path)
+                    await _scan(path, session, url, source_tree)
 
-        for new_path in next_paths:
-            accum = _scan(new_path, host, port, accum)
-
-        return accum
-
-    return _scan(root, host, port, set())
+    async with aiohttp.ClientSession() as session:
+        await _scan(root, session, url, source_tree)

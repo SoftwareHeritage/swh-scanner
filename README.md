@@ -1,5 +1,6 @@
-swh-py-template
-===============
+Software Heritage code scanner
+==============================
 
-Python module template, used as skeleton to create new modules.
-
+Source code scanner using the
+[Software Heritage](https://www.softwareheritage.org/) [archive](https://archive.softwareheritage.org/)
+as knowledge base.

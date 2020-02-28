@@ -21,7 +21,7 @@ def scanner(ctx):
 
 
 def parse_url(url):
-    if not url.startswith('http://') or not url.startswith('https://'):
+    if not url.startswith('https://'):
         url = 'https://' + url
     if not url.endswith('/'):
         url += '/'

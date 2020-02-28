@@ -29,7 +29,7 @@ def parse_url(url):
 
 @scanner.command(name='scan')
 @click.argument('path', required=True, type=click.Path(exists=True))
-@click.option('--api-url', default='archive.softwareheritage.org/api/1',
+@click.option('--api-url', default='https://archive.softwareheritage.org/api/1',
               metavar='API_URL', show_default=True,
               help="url for the api request")
 @click.pass_context

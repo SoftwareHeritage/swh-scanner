@@ -5,52 +5,43 @@
 
 import click
 import asyncio
-import os
 from pathlib import PosixPath
-from urllib.parse import urlparse
 
 from .scanner import run
-from .exceptions import InvalidPath
-from .logger import setup_logger, log_counters
 from .model import Tree
 
 from swh.core.cli import CONTEXT_SETTINGS
 
+@click.group(name='scanner', context_settings=CONTEXT_SETTINGS)
+@click.pass_context
+def scanner(ctx):
+    '''Software Heritage Scanner tools.'''
+    pass
+
 
 def parse_url(url):
-    if url.port == 80:
-        return 'https://' + url.hostname
-    else:
-        return url.geturl()
+    if not url.startswith('http://') or not url.startswith('https://'):
+        url = 'https://' + url
+    if not url.endswith('/'):
+        url += '/'
+    return url
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('path', required=True)
-@click.option('--host', '-h', default='localhost',
-              metavar='IP', show_default=True,
-              help="web api endpoint ip")
-@click.option('--port', '-p', default='',
-              metavar='PORT', show_default=True,
-              help="web api endpoint port")
-@click.option('--debug/--no-debug', default=True,
-              help="enable debug")
-@click.option('--verbose', '-v', is_flag=True, default=False,
-              help="show debug information")
-def scanner(path, host, port, debug, verbose):
-    """Software Heritage tool to scan the source code of a project"""
-    if not os.path.exists(path):
-        raise InvalidPath(path)
-
-    if debug:
-        setup_logger(bool(verbose))
-
-    url = parse_url(urlparse('https://%s:%s' % (host, port)))
-    source_tree = Tree(None, PosixPath(path))
+@scanner.command(name='scan')
+@click.argument('path', required=True, type=click.Path(exists=True))
+@click.option('--api-url', default='archive.softwareheritage.org/api/1',
+              metavar='API_URL', show_default=True,
+              help="url for the api request")
+@click.pass_context
+def scan(ctx, path, api_url):
+    """Scan a source code project to discover files and directories already
+    present in the archive"""
+    api_url = parse_url(api_url)
+    source_tree = Tree(PosixPath(path))
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(run(path, url, source_tree))
+    loop.run_until_complete(run(path, api_url, source_tree))
     source_tree.show()
-    log_counters()
 
 
 if __name__ == '__main__':
-    scanner()
+    scan()

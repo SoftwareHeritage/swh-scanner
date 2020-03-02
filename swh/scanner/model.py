@@ -51,13 +51,16 @@ class Tree:
 
         self.children[new_path].addNode(path, pid)
 
-    def show(self) -> None:
+    def show(self, format) -> None:
         """Print all the tree"""
-        isatty = sys.stdout.isatty()
+        if format == 'json':
+            print(self.getJsonTree())
+        elif format == 'text':
+            isatty = sys.stdout.isatty()
 
-        print(colorize(str(self.path), Color.blue) if isatty
-              else str(self.path))
-        self.printChildren(isatty)
+            print(colorize(str(self.path), Color.blue) if isatty
+                  else str(self.path))
+            self.printChildren(isatty)
 
     def printChildren(self, isatty: bool, inc: int = 0) -> None:
         for path, node in self.children.items():
@@ -82,3 +85,24 @@ class Tree:
                 print(colorize(rel_path, Color.green) if isatty else rel_path)
             else:
                 print(colorize(rel_path, Color.red) if isatty else rel_path)
+
+    def getJsonTree(self):
+        """Walk through the tree to discover content or directory that have
+        a persistent identifier. If a persistent identifier is found it saves
+        the path with the relative PID.
+
+        Returns:
+            child_tree: the tree with the content/directory found
+
+        """
+        child_tree = {}
+        for path, child_node in self.children.items():
+            rel_path = str(child_node.path.relative_to(self.path))
+            if child_node.pid:
+                child_tree[rel_path] = child_node.pid
+            else:
+                next_tree = child_node.getJsonChild()
+                if next_tree:
+                    child_tree[rel_path] = child_node.getJsonTree()
+
+        return child_tree

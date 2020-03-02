@@ -30,19 +30,25 @@ def parse_url(url):
 
 @scanner.command(name='scan')
 @click.argument('path', required=True, type=click.Path(exists=True))
-@click.option('--api-url',
+@click.option('-u', '--api-url',
               default='https://archive.softwareheritage.org/api/1',
               metavar='API_URL', show_default=True,
               help="url for the api request")
+@click.option('-f', '--format',
+              type=click.Choice(['text', 'json'], case_sensitive=False),
+              default='text',
+              help="select the output format")
 @click.pass_context
-def scan(ctx, path, api_url):
+def scan(ctx, path, api_url, format):
     """Scan a source code project to discover files and directories already
     present in the archive"""
+
     api_url = parse_url(api_url)
     source_tree = Tree(PosixPath(path))
     loop = asyncio.get_event_loop()
     loop.run_until_complete(run(path, api_url, source_tree))
-    source_tree.show()
+
+    source_tree.show(format)
 
 
 if __name__ == '__main__':

@@ -70,21 +70,18 @@ class Tree:
 
     def printNode(self, node: Any, isatty: bool, inc: int) -> None:
         rel_path = str(node.path.relative_to(self.path))
-        print('│   '*inc, end='')
-        if node.otype == DIRECTORY:
-            if node.pid:
-                print(colorize(rel_path, Color.blue) if isatty else rel_path,
-                      end='')
-            else:
-                print(colorize(rel_path, Color.red) if isatty else rel_path,
-                      end='')
-            print('/')
+        begin = '│   ' * inc
+        end = '/' if node.otype == DIRECTORY else ''
 
-        elif node.otype == CONTENT:
-            if node.pid:
-                print(colorize(rel_path, Color.green) if isatty else rel_path)
-            else:
-                print(colorize(rel_path, Color.red) if isatty else rel_path)
+        if isatty:
+            if not node.pid:
+                rel_path = colorize(rel_path, Color.red)
+            elif node.otype == DIRECTORY:
+                rel_path = colorize(rel_path, Color.blue)
+            elif node.otype == CONTENT:
+                rel_path = colorize(rel_path, Color.green)
+
+        print(f'{begin}{rel_path}{end}')
 
     def getJsonTree(self):
         """Walk through the tree to discover content or directory that have

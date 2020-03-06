@@ -82,7 +82,7 @@ def get_subpaths(
     def pid_of(path):
         if path.is_dir():
             return pid_of_dir(bytes(path))
-        elif path.is_file():
+        elif path.is_file() or path.is_symlink():
             return pid_of_file(bytes(path))
 
     dirpath, dnames, fnames = next(os.walk(path))

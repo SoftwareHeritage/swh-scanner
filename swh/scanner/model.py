@@ -98,8 +98,8 @@ class Tree:
             if child_node.pid:
                 child_tree[rel_path] = child_node.pid
             else:
-                next_tree = child_node.getJsonChild()
+                next_tree = child_node.getJsonTree()
                 if next_tree:
-                    child_tree[rel_path] = child_node.getJsonTree()
+                    child_tree[rel_path] = next_tree
 
         return child_tree

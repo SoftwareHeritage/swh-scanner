@@ -38,19 +38,38 @@ async def aiosession():
 
 
 @pytest.fixture(scope='session')
-def temp_paths(tmp_path_factory):
-    """Fixture to generate temporary paths"""
-    subpath = tmp_path_factory.getbasetemp()
+def temp_folder(tmp_path_factory):
+    """Fixture that generate a temporary folder with the following
+    structure:
+
+    root: {
+        subdir: {
+            filesample.txt
+        }
+        subdir2
+        subfile.txt
+    }
+    """
+    root = tmp_path_factory.getbasetemp()
     subdir = tmp_path_factory.mktemp('subdir')
     subdir2 = tmp_path_factory.mktemp('subdir2')
-    subfile = subpath.joinpath(PosixPath('./subfile.txt'))
+    subfile = root.joinpath(PosixPath('./subfile.txt'))
     subfile.touch()
+    filesample = subdir.joinpath(PosixPath('./filesample.txt'))
+    filesample.touch()
 
-    avail_path = [subdir, subdir2, subfile]
-    avail_pid = [pid_of_dir(bytes(subdir)), pid_of_dir(bytes(subdir2)),
-                 pid_of_file(bytes(subfile))]
+    avail_path = {
+        subdir: pid_of_dir(bytes(subdir)),
+        subdir2: pid_of_dir(bytes(subdir2)),
+        subfile: pid_of_file(bytes(subfile)),
+        filesample: pid_of_file(bytes(filesample))
+        }
 
-    return {'paths': avail_path, 'pids': avail_pid}
+    return {
+        'root': root,
+        'paths': avail_path,
+        'filesample': filesample
+    }
 
 
 @pytest.fixture(scope='session')
@@ -62,6 +81,7 @@ def app():
 
 @pytest.fixture
 def test_folder():
+    """Location of the "data" folder """
     tests_path = PosixPath(os.path.abspath(__file__)).parent
     tests_data_folder = tests_path.joinpath('data')
     assert tests_data_folder.exists()

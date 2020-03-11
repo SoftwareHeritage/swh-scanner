@@ -39,23 +39,25 @@ async def aiosession():
 
 @pytest.fixture(scope='session')
 def temp_folder(tmp_path_factory):
-    """Fixture that generate a temporary folder with the following
+    """Fixture that generates a temporary folder with the following
     structure:
 
-    root: {
-        subdir: {
-            filesample.txt
+    .. code-block:: python
+
+        root = {
+            subdir: {
+                filesample.txt
+            }
+            subdir2
+            subfile.txt
         }
-        subdir2
-        subfile.txt
-    }
     """
     root = tmp_path_factory.getbasetemp()
     subdir = tmp_path_factory.mktemp('subdir')
     subdir2 = tmp_path_factory.mktemp('subdir2')
-    subfile = root.joinpath(PosixPath('./subfile.txt'))
+    subfile = root / 'subfile.txt'
     subfile.touch()
-    filesample = subdir.joinpath(PosixPath('./filesample.txt'))
+    filesample = subdir / 'filesample.txt'
     filesample.touch()
 
     avail_path = {

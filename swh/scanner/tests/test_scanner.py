@@ -47,10 +47,13 @@ def test_scanner_raise_apierror_input_size_limit(
            pids_discovery(request, aiosession, api_url))
 
 
-def test_scanner_get_subpaths(tmp_path, temp_paths):
+def test_scanner_get_subpaths(temp_folder, tmp_path):
+    paths = temp_folder['paths'].keys()
+    pids = temp_folder['paths'].values()
+
     for subpath, pid in get_subpaths(tmp_path):
-        assert subpath in temp_paths['paths']
-        assert pid in temp_paths['pids']
+        assert subpath in paths
+        assert pid in pids
 
 
 @pytest.mark.options(debug=False)

@@ -35,6 +35,18 @@ def test_scanner_raise_apierror(mock_aioresponse, event_loop, aiosession):
            pids_discovery([], aiosession, 'http://example.org/api/'))
 
 
+def test_scanner_raise_apierror_input_size_limit(
+        event_loop, aiosession, live_server):
+
+    api_url = live_server.url() + '/'
+    request = ["swh:1:cnt:7c4c57ba9ff496ad179b8f65b1d286edbda34c9a"
+               for i in range(901)]  # /known/ is limited at 900
+
+    with pytest.raises(APIError):
+        event_loop.run_until_complete(
+           pids_discovery(request, aiosession, api_url))
+
+
 def test_scanner_get_subpaths(tmp_path, temp_paths):
     for subpath, pid in get_subpaths(tmp_path):
         assert subpath in temp_paths['paths']
@@ -47,7 +59,6 @@ def test_app(app):
 
 
 def test_scanner_result(live_server, event_loop, test_folder):
-    live_server.start()
     api_url = live_server.url() + '/'
 
     result_path = test_folder.joinpath(PosixPath('sample-folder-result.json'))

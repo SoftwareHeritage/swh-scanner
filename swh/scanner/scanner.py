@@ -10,7 +10,7 @@ import aiohttp
 from typing import List, Dict, Tuple, Iterator
 from pathlib import PosixPath
 
-from .exceptions import APIError
+from .exceptions import error_response
 from .model import Tree
 
 from swh.model.cli import pid_of_file, pid_of_dir
@@ -49,9 +49,7 @@ async def pids_discovery(
     async def make_request(pids):
         async with session.post(endpoint, json=pids) as resp:
             if resp.status != 200:
-                error_message = '%s with given values %s' % (
-                    resp.text, str(pids))
-                raise APIError(error_message)
+                error_response(resp.reason, resp.status, endpoint)
 
             return await resp.json()
 

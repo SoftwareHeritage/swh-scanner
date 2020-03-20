@@ -65,3 +65,25 @@ def test_get_json_tree_only_one_present(example_tree, temp_folder):
 
     assert len(tree_dict) == 1
     assert tree_dict['subdir0']['filesample.txt']
+
+
+def test_get_directories_info(example_tree, temp_folder):
+    root_path = temp_folder['root']
+    filesample_path = temp_folder['filesample']
+    filesample2_path = temp_folder['filesample2']
+    subdir_path = temp_folder['subdir'].relative_to(root_path)
+    subsubdir_path = temp_folder['subsubdir'].relative_to(root_path)
+
+    for path, pid in temp_folder['paths'].items():
+        if path == filesample_path or path == filesample2_path:
+            print(path)
+            example_tree.addNode(path, pid)
+        else:
+            example_tree.addNode(path)
+
+    tree_root = example_tree
+    directories = {tree_root.path: tree_root.count_contents()}
+    directories = tree_root.getDirectoriesInfo(directories, tree_root.path)
+
+    assert subsubdir_path not in directories
+    assert directories[subdir_path] == [2, 2]

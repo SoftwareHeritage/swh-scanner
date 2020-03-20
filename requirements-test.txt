@@ -2,6 +2,9 @@ pytest
 aioresponses
 pytest_asyncio
 pytest_flask
+plotly
+pandas
+numpy
 swh.core[testing-core]
 swh.model[testing]
 swh.storage[testing]

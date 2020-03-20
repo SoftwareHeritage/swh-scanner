@@ -74,6 +74,6 @@ def test_scanner_result(live_server, event_loop, test_folder):
     event_loop.run_until_complete(
         run(sample_folder, api_url, source_tree))
 
-    actual_result = source_tree.getJsonTree()
+    actual_result = source_tree.getTree()
 
     assert actual_result == expected_result

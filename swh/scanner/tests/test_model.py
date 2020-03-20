@@ -36,7 +36,7 @@ def test_get_json_tree_all_not_present(example_tree, temp_folder):
     for path, pid in temp_folder['paths'].items():
         example_tree.addNode(path)
 
-    json_tree = example_tree.getJsonTree()
+    json_tree = example_tree.getTree()
 
     assert len(json_tree) == 0
 
@@ -45,7 +45,7 @@ def test_get_json_tree_all_present(example_tree, temp_folder):
     for path, pid in temp_folder['paths'].items():
         example_tree.addNode(path, pid)
 
-    tree_dict = example_tree.getJsonTree()
+    tree_dict = example_tree.getTree()
 
     assert len(tree_dict) == 3
     # since subdir have a pid, it can't have a children path
@@ -61,7 +61,7 @@ def test_get_json_tree_only_one_present(example_tree, temp_folder):
         else:
             example_tree.addNode(path)
 
-    tree_dict = example_tree.getJsonTree()
+    tree_dict = example_tree.getTree()
 
     assert len(tree_dict) == 1
     assert tree_dict['subdir0']['filesample.txt']

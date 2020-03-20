@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 import sys
+import json
 from pathlib import PosixPath
 from typing import Any, Dict
 from enum import Enum
@@ -54,7 +55,7 @@ class Tree:
     def show(self, format) -> None:
         """Print all the tree"""
         if format == 'json':
-            print(self.getJsonTree())
+            print(json.dumps(self.getTree(), indent=4, sort_keys=True))
         elif format == 'text':
             isatty = sys.stdout.isatty()
 
@@ -83,7 +84,7 @@ class Tree:
 
         print(f'{begin}{rel_path}{end}')
 
-    def getJsonTree(self):
+    def getTree(self):
         """Walk through the tree to discover content or directory that have
         a persistent identifier. If a persistent identifier is found it saves
         the path with the relative PID.
@@ -98,7 +99,7 @@ class Tree:
             if child_node.pid:
                 child_tree[rel_path] = child_node.pid
             else:
-                next_tree = child_node.getJsonTree()
+                next_tree = child_node.getTree()
                 if next_tree:
                     child_tree[rel_path] = next_tree
 

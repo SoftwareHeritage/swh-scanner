@@ -35,7 +35,8 @@ def parse_url(url):
               metavar='API_URL', show_default=True,
               help="url for the api request")
 @click.option('-f', '--format',
-              type=click.Choice(['text', 'json'], case_sensitive=False),
+              type=click.Choice(['text', 'json', 'sunburst'],
+                                case_sensitive=False),
               default='text',
               help="select the output format")
 @click.pass_context

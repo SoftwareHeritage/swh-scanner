@@ -11,6 +11,7 @@ from pathlib import PosixPath
 from aioresponses import aioresponses  # type: ignore
 
 from swh.model.cli import pid_of_file, pid_of_dir
+from swh.scanner.model import Tree
 from .flask_api import create_app
 
 
@@ -85,11 +86,38 @@ def temp_folder(tmp_path_factory):
     }
 
 
-@pytest.fixture(scope='session')
-def app():
-    """Flask backend API (used by live_server)."""
-    app = create_app()
-    return app
+@pytest.fixture(scope='function')
+def example_tree(temp_folder):
+    """Fixture that generate a Tree with the root present in the
+    session fixture "temp_folder".
+    """
+    example_tree = Tree(temp_folder['root'])
+    assert example_tree.path == temp_folder['root']
+
+    return example_tree
+
+
+@pytest.fixture(scope='function')
+def example_dirs(example_tree, temp_folder):
+    """
+        Fixture that fill the fixture example_tree with the values contained in
+        the fixture temp_folder and returns the directories information of the
+        filled example_tree.
+
+    """
+    root = temp_folder['root']
+    filesample_path = temp_folder['filesample']
+    filesample2_path = temp_folder['filesample2']
+    subsubdir_path = temp_folder['subsubdir']
+    known_paths = [filesample_path, filesample2_path, subsubdir_path]
+
+    for path, pid in temp_folder['paths'].items():
+        if path in known_paths:
+            example_tree.addNode(path, pid)
+        else:
+            example_tree.addNode(path)
+
+    return example_tree.getDirectoriesInfo(root)
 
 
 @pytest.fixture
@@ -99,3 +127,10 @@ def test_folder():
     tests_data_folder = tests_path.joinpath('data')
     assert tests_data_folder.exists()
     return tests_data_folder
+
+
+@pytest.fixture(scope='session')
+def app():
+    """Flask backend API (used by live_server)."""
+    app = create_app()
+    return app

@@ -4,6 +4,10 @@
 # See top-level LICENSE file for more information
 
 
+class InvalidObjectType(TypeError):
+    pass
+
+
 class APIError(Exception):
     def __str__(self):
         return '"%s"' % self.args

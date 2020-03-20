@@ -3,21 +3,6 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import pytest
-
-from swh.scanner.model import Tree
-
-
-@pytest.fixture(scope='function')
-def example_tree(temp_folder):
-    """Fixture that generate a Tree with the root present in the
-    session fixture "temp_folder".
-    """
-    example_tree = Tree(temp_folder['root'])
-    assert example_tree.path == temp_folder['root']
-
-    return example_tree
-
 
 def test_tree_add_node(example_tree, temp_folder):
     avail_paths = temp_folder['paths'].keys()
@@ -76,14 +61,11 @@ def test_get_directories_info(example_tree, temp_folder):
 
     for path, pid in temp_folder['paths'].items():
         if path == filesample_path or path == filesample2_path:
-            print(path)
             example_tree.addNode(path, pid)
         else:
             example_tree.addNode(path)
 
-    tree_root = example_tree
-    directories = {tree_root.path: tree_root.count_contents()}
-    directories = tree_root.getDirectoriesInfo(directories, tree_root.path)
+    directories = example_tree.getDirectoriesInfo(example_tree.path)
 
     assert subsubdir_path not in directories
-    assert directories[subdir_path] == [2, 2]
+    assert directories[subdir_path] == (2, 2)

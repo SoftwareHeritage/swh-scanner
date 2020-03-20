@@ -7,10 +7,11 @@ from __future__ import annotations
 import sys
 import json
 from pathlib import PosixPath
-from typing import Any, Dict, List
+from typing import Any, Dict, Tuple
 from enum import Enum
 
 from .plot import sunburst
+from .exceptions import InvalidObjectType
 
 from swh.model.identifiers import (
     DIRECTORY, CONTENT
@@ -68,8 +69,7 @@ class Tree:
 
         elif format == 'sunburst':
             root = self.path
-            directories = {root: self.count_contents()}
-            directories = self.getDirectoriesInfo(directories, root)
+            directories = self.getDirectoriesInfo(root)
             sunburst(directories, root)
 
     def printChildren(self, isatty: bool, inc: int = 1) -> None:
@@ -114,47 +114,63 @@ class Tree:
 
         return child_tree
 
-    def getDirectoriesInfo(self, directories, root) -> Dict[PosixPath, List]:
-        """Get information about all directories stored inside the tree.
-
-        Returns:
-            A dictionary with the path as key and the contents information
-            as values.
-
+    def __getSubDirsInfo(self, root, directories):
+        """Fills the directories given in input with the contents information
+           stored inside the directory child, only if they have contents.
         """
         for path, child_node in self.children.items():
             if child_node.otype == DIRECTORY:
                 rel_path = path.relative_to(root)
                 contents_info = child_node.count_contents()
+                # checks the first element of the tuple
+                # (the number of contents in a directory)
+                # if it is equal to zero it means that there are no contents
+                # in that directory.
                 if not contents_info[0] == 0:
                     directories[rel_path] = contents_info
                 if child_node.has_dirs():
-                    child_node.getDirectoriesInfo(directories, root)
+                    child_node.__getSubDirsInfo(root, directories)
 
+    def getDirectoriesInfo(self, root: PosixPath
+                           ) -> Dict[PosixPath, Tuple[int, int]]:
+        """Get information about all directories under the given root.
+
+        Returns:
+            A dictionary with a directory path as key and the relative
+            contents information (the result of count_contents) as values.
+
+        """
+        directories = {root: self.count_contents()}
+        self.__getSubDirsInfo(root, directories)
         return directories
 
-    def count_contents(self) -> List[int]:
+    def count_contents(self) -> Tuple[int, int]:
         """Count how many contents are present inside a directory.
            If a directory has a pid returns as it has all the contents.
 
         Returns:
-            A list with the number of contents / discovered contents.
+            A tuple with the total number of the contents and the number
+            of contents known (the ones that have a persistent identifier).
 
         """
         contents = 0
         discovered = 0
 
-        # to identificate a directory with all files/directories present
-        if self.otype == DIRECTORY and self.pid:
-            return [1, 1]
+        if not self.otype == DIRECTORY:
+            raise InvalidObjectType('Can\'t calculate contents of the '
+                                    'object type: %s' % self.otype)
 
-        for _, child_node in self.children.items():
-            if child_node.otype == CONTENT:
-                contents += 1
-                if child_node.pid:
-                    discovered += 1
+        if self.pid:
+            # to identify a directory with all files/directories present
+            return (1, 1)
+        else:
+            for _, child_node in self.children.items():
+                if child_node.otype == CONTENT:
+                    contents += 1
+                    if child_node.pid:
+                        discovered += 1
 
-        return [contents, discovered]
+        return (contents, discovered)
 
     def has_dirs(self) -> bool:
         """Checks if node has directories

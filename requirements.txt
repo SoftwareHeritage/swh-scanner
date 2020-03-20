@@ -4,4 +4,7 @@
 vcversioner
 requests
 aiohttp
+plotly
+pandas
+numpy
 dulwich

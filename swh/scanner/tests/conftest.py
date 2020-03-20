@@ -46,7 +46,9 @@ def temp_folder(tmp_path_factory):
 
         root = {
             subdir: {
+                subsubdir
                 filesample.txt
+                filesample2.txt
             }
             subdir2
             subfile.txt
@@ -54,23 +56,32 @@ def temp_folder(tmp_path_factory):
     """
     root = tmp_path_factory.getbasetemp()
     subdir = tmp_path_factory.mktemp('subdir')
+    subsubdir = subdir.joinpath('subsubdir')
+    subsubdir.mkdir()
     subdir2 = tmp_path_factory.mktemp('subdir2')
     subfile = root / 'subfile.txt'
     subfile.touch()
     filesample = subdir / 'filesample.txt'
     filesample.touch()
+    filesample2 = subdir / 'filesample2.txt'
+    filesample2.touch()
 
     avail_path = {
         subdir: pid_of_dir(bytes(subdir)),
+        subsubdir: pid_of_dir(bytes(subsubdir)),
         subdir2: pid_of_dir(bytes(subdir2)),
         subfile: pid_of_file(bytes(subfile)),
-        filesample: pid_of_file(bytes(filesample))
+        filesample: pid_of_file(bytes(filesample)),
+        filesample2: pid_of_file(bytes(filesample2))
         }
 
     return {
         'root': root,
         'paths': avail_path,
-        'filesample': filesample
+        'filesample': filesample,
+        'filesample2': filesample2,
+        'subsubdir': subsubdir,
+        'subdir': subdir
     }
 
 

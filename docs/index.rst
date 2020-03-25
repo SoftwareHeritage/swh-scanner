@@ -1,9 +1,6 @@
 .. _swh-scanner:
 
-Software Heritage - code scanner
-================================
-
-Source code scanner using the Software Heritage archive as knowledge base.
+.. include:: README.rst
 
 
 .. toctree::

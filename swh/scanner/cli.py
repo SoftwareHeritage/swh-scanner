@@ -13,32 +13,38 @@ from .model import Tree
 from swh.core.cli import CONTEXT_SETTINGS
 
 
-@click.group(name='scanner', context_settings=CONTEXT_SETTINGS)
+@click.group(name="scanner", context_settings=CONTEXT_SETTINGS)
 @click.pass_context
 def scanner(ctx):
-    '''Software Heritage Scanner tools.'''
+    """Software Heritage Scanner tools."""
     pass
 
 
 def parse_url(url):
-    if not url.startswith('https://'):
-        url = 'https://' + url
-    if not url.endswith('/'):
-        url += '/'
+    if not url.startswith("https://"):
+        url = "https://" + url
+    if not url.endswith("/"):
+        url += "/"
     return url
 
 
-@scanner.command(name='scan')
-@click.argument('path', required=True, type=click.Path(exists=True))
-@click.option('-u', '--api-url',
-              default='https://archive.softwareheritage.org/api/1',
-              metavar='API_URL', show_default=True,
-              help="url for the api request")
-@click.option('-f', '--format',
-              type=click.Choice(['text', 'json', 'sunburst'],
-                                case_sensitive=False),
-              default='text',
-              help="select the output format")
+@scanner.command(name="scan")
+@click.argument("path", required=True, type=click.Path(exists=True))
+@click.option(
+    "-u",
+    "--api-url",
+    default="https://archive.softwareheritage.org/api/1",
+    metavar="API_URL",
+    show_default=True,
+    help="url for the api request",
+)
+@click.option(
+    "-f",
+    "--format",
+    type=click.Choice(["text", "json", "sunburst"], case_sensitive=False),
+    default="text",
+    help="select the output format",
+)
 @click.pass_context
 def scan(ctx, path, api_url, format):
     """Scan a source code project to discover files and directories already
@@ -52,5 +58,5 @@ def scan(ctx, path, api_url, format):
     source_tree.show(format)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     scan()

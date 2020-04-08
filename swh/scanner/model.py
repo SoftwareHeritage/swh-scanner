@@ -13,16 +13,14 @@ from enum import Enum
 from .plot import sunburst
 from .exceptions import InvalidObjectType
 
-from swh.model.identifiers import (
-    DIRECTORY, CONTENT
-)
+from swh.model.identifiers import DIRECTORY, CONTENT
 
 
 class Color(Enum):
-    blue = '\033[94m'
-    green = '\033[92m'
-    red = '\033[91m'
-    end = '\033[0m'
+    blue = "\033[94m"
+    green = "\033[92m"
+    red = "\033[91m"
+    end = "\033[0m"
 
 
 def colorize(text: str, color: Color):
@@ -32,11 +30,12 @@ def colorize(text: str, color: Color):
 class Tree:
     """Representation of a file system structure
     """
+
     def __init__(self, path: PosixPath, father: Tree = None):
         self.father = father
         self.path = path
         self.otype = DIRECTORY if path.is_dir() else CONTENT
-        self.pid = ''
+        self.pid = ""
         self.children: Dict[PosixPath, Tree] = {}
 
     def addNode(self, path: PosixPath, pid: str = None) -> None:
@@ -44,7 +43,7 @@ class Tree:
         """
         relative_path = path.relative_to(self.path)
 
-        if relative_path == PosixPath('.'):
+        if relative_path == PosixPath("."):
             if pid is not None:
                 self.pid = pid
             return
@@ -57,17 +56,16 @@ class Tree:
 
     def show(self, format) -> None:
         """Show tree in different formats"""
-        if format == 'json':
+        if format == "json":
             print(json.dumps(self.getTree(), indent=4, sort_keys=True))
 
-        elif format == 'text':
+        elif format == "text":
             isatty = sys.stdout.isatty()
 
-            print(colorize(str(self.path), Color.blue) if isatty
-                  else str(self.path))
+            print(colorize(str(self.path), Color.blue) if isatty else str(self.path))
             self.printChildren(isatty)
 
-        elif format == 'sunburst':
+        elif format == "sunburst":
             root = self.path
             directories = self.getDirectoriesInfo(root)
             sunburst(directories, root)
@@ -76,12 +74,12 @@ class Tree:
         for path, node in self.children.items():
             self.printNode(node, isatty, inc)
             if node.children:
-                node.printChildren(isatty, inc+1)
+                node.printChildren(isatty, inc + 1)
 
     def printNode(self, node: Any, isatty: bool, inc: int) -> None:
         rel_path = str(node.path.relative_to(self.path))
-        begin = '│   ' * inc
-        end = '/' if node.otype == DIRECTORY else ''
+        begin = "│   " * inc
+        end = "/" if node.otype == DIRECTORY else ""
 
         if isatty:
             if not node.pid:
@@ -91,7 +89,7 @@ class Tree:
             elif node.otype == CONTENT:
                 rel_path = colorize(rel_path, Color.green)
 
-        print(f'{begin}{rel_path}{end}')
+        print(f"{begin}{rel_path}{end}")
 
     def getTree(self):
         """Walk through the tree to discover content or directory that have
@@ -131,8 +129,7 @@ class Tree:
                 if child_node.has_dirs():
                     child_node.__getSubDirsInfo(root, directories)
 
-    def getDirectoriesInfo(self, root: PosixPath
-                           ) -> Dict[PosixPath, Tuple[int, int]]:
+    def getDirectoriesInfo(self, root: PosixPath) -> Dict[PosixPath, Tuple[int, int]]:
         """Get information about all directories under the given root.
 
         Returns:
@@ -157,8 +154,9 @@ class Tree:
         discovered = 0
 
         if not self.otype == DIRECTORY:
-            raise InvalidObjectType('Can\'t calculate contents of the '
-                                    'object type: %s' % self.otype)
+            raise InvalidObjectType(
+                "Can't calculate contents of the " "object type: %s" % self.otype
+            )
 
         if self.pid:
             # to identify a directory with all files/directories present

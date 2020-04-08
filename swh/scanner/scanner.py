@@ -14,15 +14,12 @@ from .exceptions import error_response
 from .model import Tree
 
 from swh.model.cli import pid_of_file, pid_of_dir
-from swh.model.identifiers import (
-        parse_persistent_identifier,
-        DIRECTORY, CONTENT
-)
+from swh.model.identifiers import parse_persistent_identifier, DIRECTORY, CONTENT
 
 
 async def pids_discovery(
-        pids: List[str], session: aiohttp.ClientSession, api_url: str,
-        ) -> Dict[str, Dict[str, bool]]:
+    pids: List[str], session: aiohttp.ClientSession, api_url: str,
+) -> Dict[str, Dict[str, bool]]:
     """API Request to get information about the persistent identifiers given in
     input.
 
@@ -38,13 +35,13 @@ async def pids_discovery(
             value['known'] = False if the pid is not found
 
     """
-    endpoint = api_url + 'known/'
+    endpoint = api_url + "known/"
     chunk_size = 1000
     requests = []
 
     def get_chunk(pids):
         for i in range(0, len(pids), chunk_size):
-            yield pids[i:i + chunk_size]
+            yield pids[i : i + chunk_size]
 
     async def make_request(pids):
         async with session.post(endpoint, json=pids) as resp:
@@ -55,8 +52,7 @@ async def pids_discovery(
 
     if len(pids) > chunk_size:
         for pids_chunk in get_chunk(pids):
-            requests.append(asyncio.create_task(
-                make_request(pids_chunk)))
+            requests.append(asyncio.create_task(make_request(pids_chunk)))
 
         res = await asyncio.gather(*requests)
         # concatenate list of dictionaries
@@ -65,8 +61,7 @@ async def pids_discovery(
         return await make_request(pids)
 
 
-def get_subpaths(
-        path: PosixPath) -> Iterator[Tuple[PosixPath, str]]:
+def get_subpaths(path: PosixPath) -> Iterator[Tuple[PosixPath, str]]:
     """Find the persistent identifier of the directories and files under a
     given path.
 
@@ -77,6 +72,7 @@ def get_subpaths(
         pairs of: path, the relative persistent identifier
 
     """
+
     def pid_of(path):
         if path.is_dir():
             return pid_of_dir(bytes(path))
@@ -90,8 +86,8 @@ def get_subpaths(
 
 
 async def parse_path(
-        path: PosixPath, session: aiohttp.ClientSession, api_url: str
-        ) -> Iterator[Tuple[str, str, bool]]:
+    path: PosixPath, session: aiohttp.ClientSession, api_url: str
+) -> Iterator[Tuple[str, str, bool]]:
     """Check if the sub paths of the given path are present in the
     archive or not.
 
@@ -105,18 +101,16 @@ async def parse_path(
 
     """
     parsed_paths = dict(get_subpaths(path))
-    parsed_pids = await pids_discovery(
-        list(parsed_paths.values()), session, api_url)
+    parsed_pids = await pids_discovery(list(parsed_paths.values()), session, api_url)
 
     def unpack(tup):
         subpath, pid = tup
-        return (subpath, pid, parsed_pids[pid]['known'])
+        return (subpath, pid, parsed_pids[pid]["known"])
 
     return map(unpack, parsed_paths.items())
 
 
-async def run(
-        root: PosixPath, api_url: str, source_tree: Tree) -> None:
+async def run(root: PosixPath, api_url: str, source_tree: Tree) -> None:
     """Start scanning from the given root.
 
     It fills the source tree with the path discovered.
@@ -126,6 +120,7 @@ async def run(
         api_url: url for the API request
 
     """
+
     async def _scan(root, session, api_url, source_tree):
         for path, pid, found in await parse_path(root, session, api_url):
             obj_type = parse_persistent_identifier(pid).object_type

@@ -13,43 +13,47 @@ from swh.scanner.scanner import pids_discovery, get_subpaths, run
 from swh.scanner.model import Tree
 from swh.scanner.exceptions import APIError
 
-aio_url = 'http://example.org/api/known/'
+aio_url = "http://example.org/api/known/"
 
 
 def test_scanner_correct_api_request(mock_aioresponse, event_loop, aiosession):
-    mock_aioresponse.post(aio_url, status=200, content_type='application/json',
-                          body=json.dumps(correct_api_response))
+    mock_aioresponse.post(
+        aio_url,
+        status=200,
+        content_type="application/json",
+        body=json.dumps(correct_api_response),
+    )
 
     actual_result = event_loop.run_until_complete(
-       pids_discovery([], aiosession, 'http://example.org/api/'))
+        pids_discovery([], aiosession, "http://example.org/api/")
+    )
 
     assert correct_api_response == actual_result
 
 
 def test_scanner_raise_apierror(mock_aioresponse, event_loop, aiosession):
-    mock_aioresponse.post(aio_url, content_type='application/json',
-                          status=413)
+    mock_aioresponse.post(aio_url, content_type="application/json", status=413)
 
     with pytest.raises(APIError):
         event_loop.run_until_complete(
-           pids_discovery([], aiosession, 'http://example.org/api/'))
+            pids_discovery([], aiosession, "http://example.org/api/")
+        )
 
 
-def test_scanner_raise_apierror_input_size_limit(
-        event_loop, aiosession, live_server):
+def test_scanner_raise_apierror_input_size_limit(event_loop, aiosession, live_server):
 
-    api_url = live_server.url() + '/'
-    request = ["swh:1:cnt:7c4c57ba9ff496ad179b8f65b1d286edbda34c9a"
-               for i in range(901)]  # /known/ is limited at 900
+    api_url = live_server.url() + "/"
+    request = [
+        "swh:1:cnt:7c4c57ba9ff496ad179b8f65b1d286edbda34c9a" for i in range(901)
+    ]  # /known/ is limited at 900
 
     with pytest.raises(APIError):
-        event_loop.run_until_complete(
-           pids_discovery(request, aiosession, api_url))
+        event_loop.run_until_complete(pids_discovery(request, aiosession, api_url))
 
 
 def test_scanner_get_subpaths(temp_folder, tmp_path):
-    paths = temp_folder['paths'].keys()
-    pids = temp_folder['paths'].values()
+    paths = temp_folder["paths"].keys()
+    pids = temp_folder["paths"].values()
 
     for subpath, pid in get_subpaths(tmp_path):
         assert subpath in paths
@@ -62,17 +66,16 @@ def test_app(app):
 
 
 def test_scanner_result(live_server, event_loop, test_folder):
-    api_url = live_server.url() + '/'
+    api_url = live_server.url() + "/"
 
-    result_path = test_folder.joinpath(PosixPath('sample-folder-result.json'))
-    with open(result_path, 'r') as json_file:
+    result_path = test_folder.joinpath(PosixPath("sample-folder-result.json"))
+    with open(result_path, "r") as json_file:
         expected_result = json.loads(json_file.read())
 
-    sample_folder = test_folder.joinpath(PosixPath('sample-folder'))
+    sample_folder = test_folder.joinpath(PosixPath("sample-folder"))
 
     source_tree = Tree(sample_folder)
-    event_loop.run_until_complete(
-        run(sample_folder, api_url, source_tree))
+    event_loop.run_until_complete(run(sample_folder, api_url, source_tree))
 
     actual_result = source_tree.getTree()
 

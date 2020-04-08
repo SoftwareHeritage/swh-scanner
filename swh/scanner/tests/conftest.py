@@ -38,7 +38,7 @@ async def aiosession():
     session.detach()
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def temp_folder(tmp_path_factory):
     """Fixture that generates a temporary folder with the following
     structure:
@@ -56,15 +56,15 @@ def temp_folder(tmp_path_factory):
         }
     """
     root = tmp_path_factory.getbasetemp()
-    subdir = tmp_path_factory.mktemp('subdir')
-    subsubdir = subdir.joinpath('subsubdir')
+    subdir = tmp_path_factory.mktemp("subdir")
+    subsubdir = subdir.joinpath("subsubdir")
     subsubdir.mkdir()
-    subdir2 = tmp_path_factory.mktemp('subdir2')
-    subfile = root / 'subfile.txt'
+    subdir2 = tmp_path_factory.mktemp("subdir2")
+    subfile = root / "subfile.txt"
     subfile.touch()
-    filesample = subdir / 'filesample.txt'
+    filesample = subdir / "filesample.txt"
     filesample.touch()
-    filesample2 = subdir / 'filesample2.txt'
+    filesample2 = subdir / "filesample2.txt"
     filesample2.touch()
 
     avail_path = {
@@ -73,31 +73,31 @@ def temp_folder(tmp_path_factory):
         subdir2: pid_of_dir(bytes(subdir2)),
         subfile: pid_of_file(bytes(subfile)),
         filesample: pid_of_file(bytes(filesample)),
-        filesample2: pid_of_file(bytes(filesample2))
-        }
+        filesample2: pid_of_file(bytes(filesample2)),
+    }
 
     return {
-        'root': root,
-        'paths': avail_path,
-        'filesample': filesample,
-        'filesample2': filesample2,
-        'subsubdir': subsubdir,
-        'subdir': subdir
+        "root": root,
+        "paths": avail_path,
+        "filesample": filesample,
+        "filesample2": filesample2,
+        "subsubdir": subsubdir,
+        "subdir": subdir,
     }
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def example_tree(temp_folder):
     """Fixture that generate a Tree with the root present in the
     session fixture "temp_folder".
     """
-    example_tree = Tree(temp_folder['root'])
-    assert example_tree.path == temp_folder['root']
+    example_tree = Tree(temp_folder["root"])
+    assert example_tree.path == temp_folder["root"]
 
     return example_tree
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def example_dirs(example_tree, temp_folder):
     """
         Fixture that fill the fixture example_tree with the values contained in
@@ -105,13 +105,13 @@ def example_dirs(example_tree, temp_folder):
         filled example_tree.
 
     """
-    root = temp_folder['root']
-    filesample_path = temp_folder['filesample']
-    filesample2_path = temp_folder['filesample2']
-    subsubdir_path = temp_folder['subsubdir']
+    root = temp_folder["root"]
+    filesample_path = temp_folder["filesample"]
+    filesample2_path = temp_folder["filesample2"]
+    subsubdir_path = temp_folder["subsubdir"]
     known_paths = [filesample_path, filesample2_path, subsubdir_path]
 
-    for path, pid in temp_folder['paths'].items():
+    for path, pid in temp_folder["paths"].items():
         if path in known_paths:
             example_tree.addNode(path, pid)
         else:
@@ -124,12 +124,12 @@ def example_dirs(example_tree, temp_folder):
 def test_folder():
     """Location of the "data" folder """
     tests_path = PosixPath(os.path.abspath(__file__)).parent
-    tests_data_folder = tests_path.joinpath('data')
+    tests_data_folder = tests_path.joinpath("data")
     assert tests_data_folder.exists()
     return tests_data_folder
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def app():
     """Flask backend API (used by live_server)."""
     app = create_app()

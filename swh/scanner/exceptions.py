@@ -14,5 +14,5 @@ class APIError(Exception):
 
 
 def error_response(reason: str, status_code: int, api_url: str):
-    error_msg = f'{status_code} {reason}: \'{api_url}\''
+    error_msg = f"{status_code} {reason}: '{api_url}'"
     raise APIError(error_msg)

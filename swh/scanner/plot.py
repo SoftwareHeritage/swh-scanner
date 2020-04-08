@@ -25,8 +25,11 @@ import numpy as np  # type: ignore
 
 
 def build_hierarchical_df(
-        dirs_dataframe: pd.DataFrame, levels: List[str],
-        metrics_columns: List[str], root_name: str) -> pd.DataFrame:
+    dirs_dataframe: pd.DataFrame,
+    levels: List[str],
+    metrics_columns: List[str],
+    root_name: str,
+) -> pd.DataFrame:
     """
         Build a hierarchy of levels for Sunburst or Treemap charts.
 
@@ -96,8 +99,8 @@ def build_hierarchical_df(
         the total number of contents.
 
     """
-    def compute_known_percentage(contents: pd.Series, known: pd.Series
-                                 ) -> pd.Series:
+
+    def compute_known_percentage(contents: pd.Series, known: pd.Series) -> pd.Series:
         """This function compute the percentage of known contents and generate
            the new known column with the percentage values.
 
@@ -115,7 +118,7 @@ def build_hierarchical_df(
 
         return pd.Series(np.array(known_values))
 
-    complete_df = pd.DataFrame(columns=['id', 'parent', 'contents', 'known'])
+    complete_df = pd.DataFrame(columns=["id", "parent", "contents", "known"])
     # revert the level order to start from the deepest
     levels = [level for level in reversed(levels)]
     contents_col = metrics_columns[0]
@@ -123,22 +126,21 @@ def build_hierarchical_df(
 
     df_tree_list = []
     for i, level in enumerate(levels):
-        df_tree = pd.DataFrame(columns=['id', 'parent', 'contents', 'known'])
+        df_tree = pd.DataFrame(columns=["id", "parent", "contents", "known"])
         dfg = dirs_dataframe.groupby(levels[i:]).sum()
         dfg = dfg.reset_index()
-        df_tree['id'] = dfg[level].copy()
+        df_tree["id"] = dfg[level].copy()
         if i < len(levels) - 1:
             # copy the parent directories (one level above)
-            df_tree['parent'] = dfg[levels[i+1]].copy()
+            df_tree["parent"] = dfg[levels[i + 1]].copy()
         else:
             # last level reached
-            df_tree['parent'] = root_name
+            df_tree["parent"] = root_name
 
         # copy the contents column
-        df_tree['contents'] = dfg[contents_col]
+        df_tree["contents"] = dfg[contents_col]
         # compute the percentage relative to the contents
-        df_tree['known'] = compute_known_percentage(
-            dfg[contents_col], dfg[known_col])
+        df_tree["known"] = compute_known_percentage(dfg[contents_col], dfg[known_col])
 
         df_tree_list.append(df_tree)
 
@@ -149,9 +151,9 @@ def build_hierarchical_df(
     total_known = dirs_dataframe[known_col].sum()
     total_avg = total_known / total_contents * 100
 
-    total = pd.Series(dict(id=root_name, parent='',
-                           contents=total_contents,
-                           known=total_avg))
+    total = pd.Series(
+        dict(id=root_name, parent="", contents=total_contents, known=total_avg)
+    )
 
     complete_df = complete_df.append(total, ignore_index=True)
 
@@ -176,9 +178,12 @@ def compute_max_depth(dirs_path: List[PosixPath], root: PosixPath) -> int:
     return max_depth
 
 
-def generate_df_from_dirs(dirs: Dict[PosixPath, Tuple[int, int]],
-                          columns: List[str], root: PosixPath, max_depth: int
-                          ) -> pd.DataFrame:
+def generate_df_from_dirs(
+    dirs: Dict[PosixPath, Tuple[int, int]],
+    columns: List[str],
+    root: PosixPath,
+    max_depth: int,
+) -> pd.DataFrame:
     """Generate a dataframe from the directories given in input.
 
     Example:
@@ -202,11 +207,12 @@ def generate_df_from_dirs(dirs: Dict[PosixPath, Tuple[int, int]],
         'var'  'var/log' 'var/log/telnet'  10        3
 
     """
-    def get_parents(path: PosixPath):
-        parts = path.parts[1:] if path.parts[0] == '/' else path.parts
 
-        for i in range(1, len(parts)+1):
-            yield '/'.join(parts[0:i])
+    def get_parents(path: PosixPath):
+        parts = path.parts[1:] if path.parts[0] == "/" else path.parts
+
+        for i in range(1, len(parts) + 1):
+            yield "/".join(parts[0:i])
 
     def get_dirs_array():
         for dir_path, contents_info in dirs.items():
@@ -214,51 +220,53 @@ def generate_df_from_dirs(dirs: Dict[PosixPath, Tuple[int, int]],
 
             if dir_path == root:
                 # ignore the root but store contents information
-                yield ['']*(max_depth) + list(contents_info)
+                yield [""] * (max_depth) + list(contents_info)
             else:
-                yield list(get_parents(dir_path)) + \
-                           ['']*empty_lvl + \
-                           list(contents_info)
+                yield list(get_parents(dir_path)) + [""] * empty_lvl + list(
+                    contents_info
+                )
 
-    df = pd.DataFrame(np.array(
-        [dir_array for dir_array in get_dirs_array()]), columns=columns)
+    df = pd.DataFrame(
+        np.array([dir_array for dir_array in get_dirs_array()]), columns=columns
+    )
 
-    df['contents'] = pd.to_numeric(df['contents'])
-    df['known'] = pd.to_numeric(df['known'])
+    df["contents"] = pd.to_numeric(df["contents"])
+    df["known"] = pd.to_numeric(df["known"])
 
     return df
 
 
-def sunburst(directories: Dict[PosixPath, Tuple[int, int]],
-             root: PosixPath) -> None:
+def sunburst(directories: Dict[PosixPath, Tuple[int, int]], root: PosixPath) -> None:
     """Show the sunburst chart from the directories given in input.
 
     """
     max_depth = compute_max_depth(list(directories.keys()), root)
-    metrics_columns = ['contents', 'known']
-    levels_columns = ['lev'+str(i) for i in range(max_depth)]
+    metrics_columns = ["contents", "known"]
+    levels_columns = ["lev" + str(i) for i in range(max_depth)]
 
     df_columns = levels_columns + metrics_columns
     dirs_df = generate_df_from_dirs(directories, df_columns, root, max_depth)
 
     hierarchical_df = build_hierarchical_df(
-        dirs_df, levels_columns, metrics_columns, str(root))
-    known_avg = dirs_df['known'].sum() / dirs_df['contents'].sum()
+        dirs_df, levels_columns, metrics_columns, str(root)
+    )
+    known_avg = dirs_df["known"].sum() / dirs_df["contents"].sum()
 
     fig = go.Figure()
-    fig.add_trace(go.Sunburst(
-        labels=hierarchical_df['id'],
-        parents=hierarchical_df['parent'],
-        values=hierarchical_df['contents'],
-        branchvalues='total',
-        marker=dict(
-            colors=hierarchical_df['known'],
-            colorscale='RdBu',
-            cmid=known_avg),
-        hovertemplate='''<b>%{label}</b>
+    fig.add_trace(
+        go.Sunburst(
+            labels=hierarchical_df["id"],
+            parents=hierarchical_df["parent"],
+            values=hierarchical_df["contents"],
+            branchvalues="total",
+            marker=dict(
+                colors=hierarchical_df["known"], colorscale="RdBu", cmid=known_avg
+            ),
+            hovertemplate="""<b>%{label}</b>
         <br>Files: %{value}
-        <br>Known: <b>%{color:.2f}%</b>''',
-        name=''
-        ))
+        <br>Known: <b>%{color:.2f}%</b>""",
+            name="",
+        )
+    )
 
-    offline.plot(fig, filename='sunburst.html')
+    offline.plot(fig, filename="sunburst.html")

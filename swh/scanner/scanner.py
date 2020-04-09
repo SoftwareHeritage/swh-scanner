@@ -7,14 +7,19 @@ import os
 import itertools
 import asyncio
 import aiohttp
-from typing import List, Dict, Tuple, Iterator
+from typing import List, Dict, Tuple, Iterator, Union, Set, Any
 from pathlib import PosixPath
 
 from .exceptions import error_response
 from .model import Tree
 
-from swh.model.cli import pid_of_file, pid_of_dir
-from swh.model.identifiers import parse_persistent_identifier, DIRECTORY, CONTENT
+from swh.model.from_disk import Directory, Content, accept_all_directories
+from swh.model.identifiers import (
+    persistent_identifier,
+    parse_persistent_identifier,
+    DIRECTORY,
+    CONTENT,
+)
 
 
 async def pids_discovery(
@@ -61,7 +66,26 @@ async def pids_discovery(
         return await make_request(pids)
 
 
-def get_subpaths(path: PosixPath) -> Iterator[Tuple[PosixPath, str]]:
+def directory_filter(path_name: Union[str, bytes], exclude_patterns: Set[Any]) -> bool:
+    """It checks if the path_name is matching with the patterns given in input.
+
+    It is also used as a `dir_filter` function when generating the directory
+    object from `swh.model.from_disk`
+
+    Returns:
+        False if the directory has to be ignored, True otherwise
+
+    """
+    path = PosixPath(path_name.decode() if isinstance(path_name, bytes) else path_name)
+    for sre_pattern in exclude_patterns:
+        if sre_pattern.match(str(path)):
+            return False
+    return True
+
+
+def get_subpaths(
+    path: PosixPath, exclude_patterns: Set[Any]
+) -> Iterator[Tuple[PosixPath, str]]:
     """Find the persistent identifier of the directories and files under a
     given path.
 
@@ -75,9 +99,22 @@ def get_subpaths(path: PosixPath) -> Iterator[Tuple[PosixPath, str]]:
 
     def pid_of(path):
         if path.is_dir():
-            return pid_of_dir(bytes(path))
-        elif path.is_file() or path.is_symlink():
-            return pid_of_file(bytes(path))
+            if exclude_patterns:
+
+                def dir_filter(dirpath, *args):
+                    return directory_filter(dirpath, exclude_patterns)
+
+            else:
+                dir_filter = accept_all_directories
+
+            obj = Directory.from_disk(
+                path=bytes(path), dir_filter=dir_filter
+            ).get_data()
+
+            return persistent_identifier(DIRECTORY, obj)
+        else:
+            obj = Content.from_file(path=bytes(path)).get_data()
+            return persistent_identifier(CONTENT, obj)
 
     dirpath, dnames, fnames = next(os.walk(path))
     for node in itertools.chain(dnames, fnames):
@@ -86,7 +123,10 @@ def get_subpaths(path: PosixPath) -> Iterator[Tuple[PosixPath, str]]:
 
 
 async def parse_path(
-    path: PosixPath, session: aiohttp.ClientSession, api_url: str
+    path: PosixPath,
+    session: aiohttp.ClientSession,
+    api_url: str,
+    exclude_patterns: Set[Any],
 ) -> Iterator[Tuple[str, str, bool]]:
     """Check if the sub paths of the given path are present in the
     archive or not.
@@ -100,7 +140,7 @@ async def parse_path(
         the pid of the subpath and the result of the api call
 
     """
-    parsed_paths = dict(get_subpaths(path))
+    parsed_paths = dict(get_subpaths(path, exclude_patterns))
     parsed_pids = await pids_discovery(list(parsed_paths.values()), session, api_url)
 
     def unpack(tup):
@@ -110,7 +150,9 @@ async def parse_path(
     return map(unpack, parsed_paths.items())
 
 
-async def run(root: PosixPath, api_url: str, source_tree: Tree) -> None:
+async def run(
+    root: PosixPath, api_url: str, source_tree: Tree, exclude_patterns: Set[Any]
+) -> None:
     """Start scanning from the given root.
 
     It fills the source tree with the path discovered.
@@ -121,18 +163,20 @@ async def run(root: PosixPath, api_url: str, source_tree: Tree) -> None:
 
     """
 
-    async def _scan(root, session, api_url, source_tree):
-        for path, pid, found in await parse_path(root, session, api_url):
+    async def _scan(root, session, api_url, source_tree, exclude_patterns):
+        for path, pid, found in await parse_path(
+            root, session, api_url, exclude_patterns
+        ):
             obj_type = parse_persistent_identifier(pid).object_type
 
             if obj_type == CONTENT:
                 source_tree.addNode(path, pid if found else None)
-            elif obj_type == DIRECTORY:
+            elif obj_type == DIRECTORY and directory_filter(path, exclude_patterns):
                 if found:
                     source_tree.addNode(path, pid)
                 else:
                     source_tree.addNode(path)
-                    await _scan(path, session, api_url, source_tree)
+                    await _scan(path, session, api_url, source_tree, exclude_patterns)
 
     async with aiohttp.ClientSession() as session:
-        await _scan(root, session, api_url, source_tree)
+        await _scan(root, session, api_url, source_tree, exclude_patterns)

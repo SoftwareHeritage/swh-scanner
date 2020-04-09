@@ -11,6 +11,7 @@ from .data import correct_api_response
 
 from swh.scanner.scanner import pids_discovery, get_subpaths, run
 from swh.scanner.model import Tree
+from swh.scanner.cli import extract_regex_objs
 from swh.scanner.exceptions import APIError
 
 aio_url = "http://example.org/api/known/"
@@ -51,13 +52,17 @@ def test_scanner_raise_apierror_input_size_limit(event_loop, aiosession, live_se
         event_loop.run_until_complete(pids_discovery(request, aiosession, api_url))
 
 
-def test_scanner_get_subpaths(temp_folder, tmp_path):
-    paths = temp_folder["paths"].keys()
-    pids = temp_folder["paths"].values()
+def test_scanner_get_subpaths(temp_folder):
+    root = temp_folder["root"]
 
-    for subpath, pid in get_subpaths(tmp_path):
-        assert subpath in paths
-        assert pid in pids
+    actual_result = []
+    for subpath, pid in get_subpaths(root, tuple()):
+        # also check if it's a symlink since pytest tmp_dir fixture create
+        # also a symlink to each directory inside the tmp_dir path
+        if subpath.is_dir() and not subpath.is_symlink():
+            actual_result.append((subpath, pid))
+
+    assert len(actual_result) == 2
 
 
 @pytest.mark.options(debug=False)
@@ -75,7 +80,32 @@ def test_scanner_result(live_server, event_loop, test_folder):
     sample_folder = test_folder.joinpath(PosixPath("sample-folder"))
 
     source_tree = Tree(sample_folder)
-    event_loop.run_until_complete(run(sample_folder, api_url, source_tree))
+    event_loop.run_until_complete(run(sample_folder, api_url, source_tree, tuple()))
+
+    actual_result = source_tree.getTree()
+
+    assert actual_result == expected_result
+
+
+def test_scanner_result_with_exclude_patterns(live_server, event_loop, test_folder):
+    api_url = live_server.url() + "/"
+
+    result_path = test_folder.joinpath(
+        PosixPath("sample-folder-result-no-toexclude.json")
+    )
+    with open(result_path, "r") as json_file:
+        expected_result = json.loads(json_file.read())
+
+    sample_folder = test_folder.joinpath(PosixPath("sample-folder"))
+    patterns = (str(sample_folder) + "/toexclude",)
+    exclude_pattern = {
+        reg_obj for reg_obj in extract_regex_objs(sample_folder, patterns)
+    }
+
+    source_tree = Tree(sample_folder)
+    event_loop.run_until_complete(
+        run(sample_folder, api_url, source_tree, exclude_pattern)
+    )
 
     actual_result = source_tree.getTree()
 

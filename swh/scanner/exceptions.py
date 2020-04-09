@@ -8,6 +8,10 @@ class InvalidObjectType(TypeError):
     pass
 
 
+class InvalidDirectoryPath(Exception):
+    pass
+
+
 class APIError(Exception):
     def __str__(self):
         return '"%s"' % self.args

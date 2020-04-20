@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (C) 2019  The Software Heritage developers
+# Copyright (C) 2019-2020  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -43,6 +43,7 @@ setup(
     description="Software Heritage code scanner",
     long_description=long_description,
     long_description_content_type="text/x-rst",
+    python_requires=">=3.7",
     author="Software Heritage developers",
     author_email="swh-devel@inria.fr",
     url="https://forge.softwareheritage.org/diffusion/DTSCN/",

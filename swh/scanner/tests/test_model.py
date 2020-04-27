@@ -8,7 +8,7 @@ def test_tree_add_node(example_tree, temp_folder):
     avail_paths = temp_folder["paths"].keys()
 
     for path, pid in temp_folder["paths"].items():
-        example_tree.addNode(path, pid)
+        example_tree.addNode(path, pid, False)
 
     for path, node in example_tree.children.items():
         assert path in avail_paths
@@ -17,39 +17,46 @@ def test_tree_add_node(example_tree, temp_folder):
                 assert subpath in avail_paths
 
 
-def test_get_json_tree_all_not_present(example_tree, temp_folder):
+def test_to_json_no_one_present(example_tree, temp_folder):
     for path, pid in temp_folder["paths"].items():
-        example_tree.addNode(path)
+        example_tree.addNode(path, pid, False)
 
-    json_tree = example_tree.getTree()
+    result = example_tree.toDict()
 
-    assert len(json_tree) == 0
+    assert len(result) == 6
+
+    for _, node_info in result.items():
+        assert node_info["known"] is False
 
 
 def test_get_json_tree_all_present(example_tree, temp_folder):
     for path, pid in temp_folder["paths"].items():
-        example_tree.addNode(path, pid)
+        example_tree.addNode(path, pid, True)
 
-    tree_dict = example_tree.getTree()
+    result = example_tree.toDict()
 
-    assert len(tree_dict) == 3
-    # since subdir have a pid, it can't have a children path
-    assert tree_dict["subdir0"] is not dict
+    assert len(result) == 6
+
+    for _, node_info in result.items():
+        assert node_info["known"] is True
 
 
 def test_get_json_tree_only_one_present(example_tree, temp_folder):
+    root = temp_folder["root"]
     filesample_path = temp_folder["filesample"]
 
     for path, pid in temp_folder["paths"].items():
-        if path == filesample_path:
-            example_tree.addNode(path, pid)
+        example_tree.addNode(path, pid, True if path == filesample_path else False)
+
+    result = example_tree.toDict()
+
+    assert len(result) == 6
+
+    for path, node_attr in result.items():
+        if path == str(root) + "/subdir0/filesample.txt":
+            assert node_attr["known"] is True
         else:
-            example_tree.addNode(path)
-
-    tree_dict = example_tree.getTree()
-
-    assert len(tree_dict) == 1
-    assert tree_dict["subdir0"]["filesample.txt"]
+            assert node_attr["known"] is False
 
 
 def test_get_directories_info(example_tree, temp_folder):
@@ -61,9 +68,9 @@ def test_get_directories_info(example_tree, temp_folder):
 
     for path, pid in temp_folder["paths"].items():
         if path == filesample_path or path == filesample2_path:
-            example_tree.addNode(path, pid)
+            example_tree.addNode(path, pid, True)
         else:
-            example_tree.addNode(path)
+            example_tree.addNode(path, pid, False)
 
     directories = example_tree.getDirectoriesInfo(example_tree.path)
 

@@ -164,18 +164,16 @@ async def run(
     """
 
     async def _scan(root, session, api_url, source_tree, exclude_patterns):
-        for path, pid, found in await parse_path(
+        for path, pid, known in await parse_path(
             root, session, api_url, exclude_patterns
         ):
             obj_type = parse_persistent_identifier(pid).object_type
 
             if obj_type == CONTENT:
-                source_tree.addNode(path, pid if found else None)
+                source_tree.addNode(path, pid, known)
             elif obj_type == DIRECTORY and directory_filter(path, exclude_patterns):
-                if found:
-                    source_tree.addNode(path, pid)
-                else:
-                    source_tree.addNode(path)
+                source_tree.addNode(path, pid, known)
+                if not known:
                     await _scan(path, session, api_url, source_tree, exclude_patterns)
 
     async with aiohttp.ClientSession() as session:

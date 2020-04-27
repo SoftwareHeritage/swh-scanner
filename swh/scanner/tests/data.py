@@ -10,9 +10,12 @@ correct_api_response = {
 }
 
 # present pids inside /data/sample-folder
-present_pids = [
+present_swhids = [
     "swh:1:cnt:7c4c57ba9ff496ad179b8f65b1d286edbda34c9a",  # quotes.md
     "swh:1:cnt:68769579c3eaadbe555379b9c3538e6628bae1eb",  # some-binary
     "swh:1:dir:9619a28687b2462efbb5be816bc1185b95753d93",  # barfoo2/
     "swh:1:dir:07d4d9ec5c406632d203dbd4631e7863612a0326",  # toexclude/
 ]
+
+
+to_exclude_swhid = "swh:1:dir:07d4d9ec5c406632d203dbd4631e7863612a0326"

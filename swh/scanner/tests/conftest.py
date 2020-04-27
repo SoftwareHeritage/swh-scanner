@@ -89,7 +89,7 @@ def temp_folder(tmp_path_factory):
 @pytest.fixture(scope="function")
 def example_tree(temp_folder):
     """Fixture that generate a Tree with the root present in the
-    session fixture "temp_folder".
+       session fixture "temp_folder".
     """
     example_tree = Tree(temp_folder["root"])
     assert example_tree.path == temp_folder["root"]
@@ -113,9 +113,9 @@ def example_dirs(example_tree, temp_folder):
 
     for path, pid in temp_folder["paths"].items():
         if path in known_paths:
-            example_tree.addNode(path, pid)
+            example_tree.addNode(path, pid, True)
         else:
-            example_tree.addNode(path)
+            example_tree.addNode(path, pid, False)
 
     return example_tree.getDirectoriesInfo(root)
 

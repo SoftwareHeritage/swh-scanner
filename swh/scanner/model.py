@@ -7,7 +7,7 @@ from __future__ import annotations
 import sys
 import json
 from pathlib import PosixPath
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Iterable
 from enum import Enum
 
 from .plot import sunburst
@@ -35,24 +35,25 @@ class Tree:
         self.father = father
         self.path = path
         self.otype = DIRECTORY if path.is_dir() else CONTENT
-        self.pid = ""
+        self.swhid = ""
+        self.known = False
         self.children: Dict[PosixPath, Tree] = {}
 
-    def addNode(self, path: PosixPath, pid: str = None) -> None:
+    def addNode(self, path: PosixPath, swhid: str, known: bool) -> None:
         """Recursively add a new path.
         """
         relative_path = path.relative_to(self.path)
 
         if relative_path == PosixPath("."):
-            if pid is not None:
-                self.pid = pid
+            self.swhid = swhid
+            self.known = known
             return
 
         new_path = self.path.joinpath(relative_path.parts[0])
         if new_path not in self.children:
             self.children[new_path] = Tree(new_path, self)
 
-        self.children[new_path].addNode(path, pid)
+        self.children[new_path].addNode(path, swhid, known)
 
     def show(self, format) -> None:
         """Show tree in different formats"""
@@ -82,7 +83,7 @@ class Tree:
         end = "/" if node.otype == DIRECTORY else ""
 
         if isatty:
-            if not node.pid:
+            if not node.known:
                 rel_path = colorize(rel_path, Color.red)
             elif node.otype == DIRECTORY:
                 rel_path = colorize(rel_path, Color.blue)
@@ -90,6 +91,71 @@ class Tree:
                 rel_path = colorize(rel_path, Color.green)
 
         print(f"{begin}{rel_path}{end}")
+
+    @property
+    def attributes(self):
+        """
+        Get the attributes of the current node grouped by the relative path.
+
+        Returns:
+            a dictionary containing a path as key and its known/unknown status and the
+            Software Heritage persistent identifier as values.
+
+        """
+        return {str(self.path): {"swhid": self.swhid, "known": self.known,}}
+
+    def toDict(self, dict_nodes={}) -> Dict[str, Dict[str, Dict]]:
+        """
+        Recursively groups the current child nodes inside a dictionary.
+
+        For example, if you have the following structure:
+
+        .. code-block:: none
+
+        root {
+            subdir: {
+                file.txt
+            }
+        }
+
+        The generated dictionary will be:
+
+        .. code-block:: none
+
+        {
+            "root": {
+                "swhid": "...",
+                "known": True/False
+            }
+            "root/subdir": {
+                "swhid": "...",
+                "known": True/False
+            }
+            "root/subdir/file.txt": {
+                "swhid": "...",
+                "known": True/False
+            }
+        }
+
+
+        """
+        for node_dict in self.iterate():
+            dict_nodes.update(node_dict)
+        return dict_nodes
+
+    def iterate(self) -> Iterable[Dict[str, Dict]]:
+        """
+        Recursively iterate through the children of the current node
+
+        Yields:
+            a dictionary containing a path with its known/unknown status and the
+            Software Heritage persistent identifier
+
+        """
+        for _, child_node in self.children.items():
+            yield child_node.attributes
+            if child_node.otype == DIRECTORY:
+                yield from child_node.iterate()
 
     def getTree(self):
         """Walk through the tree to discover content or directory that have
@@ -103,8 +169,8 @@ class Tree:
         child_tree = {}
         for path, child_node in self.children.items():
             rel_path = str(child_node.path.relative_to(self.path))
-            if child_node.pid:
-                child_tree[rel_path] = child_node.pid
+            if child_node.swhid:
+                child_tree[rel_path] = child_node.swhid
             else:
                 next_tree = child_node.getTree()
                 if next_tree:
@@ -158,14 +224,14 @@ class Tree:
                 "Can't calculate contents of the " "object type: %s" % self.otype
             )
 
-        if self.pid:
+        if self.known:
             # to identify a directory with all files/directories present
             return (1, 1)
         else:
             for _, child_node in self.children.items():
                 if child_node.otype == CONTENT:
                     contents += 1
-                    if child_node.pid:
+                    if child_node.known:
                         discovered += 1
 
         return (contents, discovered)

@@ -4,6 +4,7 @@
 vcversioner
 requests
 aiohttp
+ndjson
 plotly
 pandas
 numpy

@@ -10,9 +10,10 @@ from pathlib import PosixPath
 from typing import Any, Dict, Tuple, Iterable
 from enum import Enum
 
+import ndjson
+
 from .plot import sunburst
 from .exceptions import InvalidObjectType
-
 from swh.model.identifiers import DIRECTORY, CONTENT
 
 
@@ -59,6 +60,9 @@ class Tree:
         """Show tree in different formats"""
         if format == "json":
             print(json.dumps(self.toDict(), indent=4, sort_keys=True))
+
+        if format == "ndjson":
+            print(ndjson.dumps(dict_path for dict_path in self.iterate()))
 
         elif format == "text":
             isatty = sys.stdout.isatty()

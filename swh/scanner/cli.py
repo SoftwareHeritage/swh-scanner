@@ -76,7 +76,7 @@ def extract_regex_objs(root_path: PosixPath, patterns: Tuple[str]) -> object:
 @click.option(
     "-f",
     "--format",
-    type=click.Choice(["text", "json", "sunburst"], case_sensitive=False),
+    type=click.Choice(["text", "json", "ndjson", "sunburst"], case_sensitive=False),
     default="text",
     help="select the output format",
 )

@@ -2,7 +2,7 @@ Software Heritage - Code Scanner
 ================================
 
 Source code scanner using the
-`Software Heritage` <https://www.softwareheritage.org/>_
+`Software Heritage <https://www.softwareheritage.org/>`_
 `archive <https://archive.softwareheritage.org/>`_
 as knowledge base.
 

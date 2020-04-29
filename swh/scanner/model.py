@@ -58,7 +58,7 @@ class Tree:
     def show(self, format) -> None:
         """Show tree in different formats"""
         if format == "json":
-            print(json.dumps(self.getTree(), indent=4, sort_keys=True))
+            print(json.dumps(self.toDict(), indent=4, sort_keys=True))
 
         elif format == "text":
             isatty = sys.stdout.isatty()
@@ -156,27 +156,6 @@ class Tree:
             yield child_node.attributes
             if child_node.otype == DIRECTORY:
                 yield from child_node.iterate()
-
-    def getTree(self):
-        """Walk through the tree to discover content or directory that have
-        a persistent identifier. If a persistent identifier is found it saves
-        the path with the relative PID.
-
-        Returns:
-            child_tree: the tree with the content/directory found
-
-        """
-        child_tree = {}
-        for path, child_node in self.children.items():
-            rel_path = str(child_node.path.relative_to(self.path))
-            if child_node.swhid:
-                child_tree[rel_path] = child_node.swhid
-            else:
-                next_tree = child_node.getTree()
-                if next_tree:
-                    child_tree[rel_path] = next_tree
-
-        return child_tree
 
     def __getSubDirsInfo(self, root, directories):
         """Fills the directories given in input with the contents information

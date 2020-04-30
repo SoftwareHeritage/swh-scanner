@@ -250,7 +250,6 @@ def sunburst(directories: Dict[PosixPath, Tuple[int, int]], root: PosixPath) -> 
     hierarchical_df = build_hierarchical_df(
         dirs_df, levels_columns, metrics_columns, str(root)
     )
-    known_avg = dirs_df["known"].sum() / dirs_df["contents"].sum()
 
     fig = go.Figure()
     fig.add_trace(
@@ -260,7 +259,10 @@ def sunburst(directories: Dict[PosixPath, Tuple[int, int]], root: PosixPath) -> 
             values=hierarchical_df["contents"],
             branchvalues="total",
             marker=dict(
-                colors=hierarchical_df["known"], colorscale="RdBu", cmid=known_avg
+                colors=hierarchical_df["known"],
+                colorscale="matter",
+                cmid=50,
+                showscale=True,
             ),
             hovertemplate="""<b>%{label}</b>
         <br>Files: %{value}

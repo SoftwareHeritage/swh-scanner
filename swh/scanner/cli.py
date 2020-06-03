@@ -13,6 +13,8 @@ from typing import Tuple
 
 from .scanner import run
 from .model import Tree
+from .plot import generate_sunburst
+from .dashboard import run_app
 from .exceptions import InvalidDirectoryPath
 
 from swh.core.cli import CONTEXT_SETTINGS
@@ -80,8 +82,11 @@ def extract_regex_objs(root_path: PosixPath, patterns: Tuple[str]) -> object:
     default="text",
     help="select the output format",
 )
+@click.option(
+    "-i", "--interactive", is_flag=True, help="show the result in a dashboard"
+)
 @click.pass_context
-def scan(ctx, root_path, api_url, patterns, format):
+def scan(ctx, root_path, api_url, patterns, format, interactive):
     """Scan a source code project to discover files and directories already
     present in the archive"""
     sre_patterns = set()
@@ -95,7 +100,13 @@ def scan(ctx, root_path, api_url, patterns, format):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(run(root_path, api_url, source_tree, sre_patterns))
 
-    source_tree.show(format)
+    if interactive:
+        root = PosixPath(root_path)
+        directories = source_tree.getDirectoriesInfo(root)
+        figure = generate_sunburst(directories, root)
+        run_app(figure, source_tree)
+    else:
+        source_tree.show(format)
 
 
 if __name__ == "__main__":

@@ -8,4 +8,5 @@ ndjson
 plotly
 pandas
 numpy
+dash
 dulwich

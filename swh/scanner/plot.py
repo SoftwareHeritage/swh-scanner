@@ -18,8 +18,8 @@ the color gradient is generated relying on the percentage of contents known.
 from typing import List, Dict, Tuple
 from pathlib import PosixPath
 
-from plotly.offline import offline  # type: ignore
-import plotly.graph_objects as go  # type: ignore
+from plotly.offline import offline
+import plotly.graph_objects as go
 import pandas as pd  # type: ignore
 import numpy as np  # type: ignore
 
@@ -236,8 +236,10 @@ def generate_df_from_dirs(
     return df
 
 
-def sunburst(directories: Dict[PosixPath, Tuple[int, int]], root: PosixPath) -> None:
-    """Show the sunburst chart from the directories given in input.
+def generate_sunburst(
+    directories: Dict[PosixPath, Tuple[int, int]], root: PosixPath
+) -> go.Sunburst:
+    """Generate a sunburst chart from the directories given in input.
 
     """
     max_depth = compute_max_depth(list(directories.keys()), root)
@@ -251,24 +253,29 @@ def sunburst(directories: Dict[PosixPath, Tuple[int, int]], root: PosixPath) -> 
         dirs_df, levels_columns, metrics_columns, str(root)
     )
 
-    fig = go.Figure()
-    fig.add_trace(
-        go.Sunburst(
-            labels=hierarchical_df["id"],
-            parents=hierarchical_df["parent"],
-            values=hierarchical_df["contents"],
-            branchvalues="total",
-            marker=dict(
-                colors=hierarchical_df["known"],
-                colorscale="matter",
-                cmid=50,
-                showscale=True,
-            ),
-            hovertemplate="""<b>%{label}</b>
-        <br>Files: %{value}
-        <br>Known: <b>%{color:.2f}%</b>""",
-            name="",
-        )
+    sunburst = go.Sunburst(
+        labels=hierarchical_df["id"],
+        parents=hierarchical_df["parent"],
+        values=hierarchical_df["contents"],
+        branchvalues="total",
+        marker=dict(
+            colors=hierarchical_df["known"],
+            colorscale="matter",
+            cmid=50,
+            showscale=True,
+        ),
+        hovertemplate="""<b>%{label}</b>
+            <br>Files: %{value}
+            <br>Known: <b>%{color:.2f}%</b>""",
+        name="",
     )
 
-    offline.plot(fig, filename="sunburst.html")
+    return sunburst
+
+
+def offline_plot(graph_object: go):
+    """Plot a graph object to an html file
+    """
+    fig = go.Figure()
+    fig.add_trace(graph_object)
+    offline.plot(fig, filename="chart.html")

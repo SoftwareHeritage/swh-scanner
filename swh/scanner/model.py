@@ -12,7 +12,7 @@ from enum import Enum
 
 import ndjson
 
-from .plot import sunburst
+from .plot import generate_sunburst, offline_plot
 from .exceptions import InvalidObjectType
 from swh.model.identifiers import DIRECTORY, CONTENT
 
@@ -73,7 +73,8 @@ class Tree:
         elif format == "sunburst":
             root = self.path
             directories = self.getDirectoriesInfo(root)
-            sunburst(directories, root)
+            sunburst = generate_sunburst(directories, root)
+            offline_plot(sunburst)
 
     def printChildren(self, isatty: bool, inc: int = 1) -> None:
         for path, node in self.children.items():

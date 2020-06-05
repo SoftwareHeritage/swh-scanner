@@ -78,8 +78,8 @@ def test_scanner_result(live_server, event_loop, test_folder):
     source_tree = Tree(sample_folder)
     event_loop.run_until_complete(run(sample_folder, api_url, source_tree, set()))
 
-    for node_dict in source_tree.iterate():
-        node_info = list(node_dict.values())[0]
+    for child_node in source_tree.iterate():
+        node_info = list(child_node.attributes.values())[0]
         if node_info["swhid"] in present_swhids:
             assert node_info["known"] is True
         else:
@@ -101,6 +101,6 @@ def test_scanner_result_with_exclude_patterns(live_server, event_loop, test_fold
         run(sample_folder, api_url, source_tree, exclude_pattern)
     )
 
-    for node_dict in source_tree.iterate():
-        node_info = list(node_dict.values())[0]
+    for child_node in source_tree.iterate():
+        node_info = list(child_node.attributes.values())[0]
         assert node_info["swhid"] != to_exclude_swhid

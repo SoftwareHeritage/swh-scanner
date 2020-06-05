@@ -62,7 +62,7 @@ class Tree:
             print(json.dumps(self.toDict(), indent=4, sort_keys=True))
 
         if format == "ndjson":
-            print(ndjson.dumps(dict_path for dict_path in self.iterate()))
+            print(ndjson.dumps(dict_path for dict_path in self.__iterNodesAttr()))
 
         elif format == "text":
             isatty = sys.stdout.isatty()
@@ -144,23 +144,33 @@ class Tree:
 
 
         """
-        for node_dict in self.iterate():
+        for node_dict in self.__iterNodesAttr():
             dict_nodes.update(node_dict)
         return dict_nodes
 
-    def iterate(self) -> Iterable[Dict[str, Dict]]:
+    def iterate(self) -> Iterable[Tree]:
         """
         Recursively iterate through the children of the current node
+
+        """
+        for _, child_node in self.children.items():
+            yield child_node
+            if child_node.otype == DIRECTORY:
+                yield from child_node.iterate()
+
+    def __iterNodesAttr(self) -> Iterable[Dict[str, Dict]]:
+        """
+        Recursively iterate through the children of the current node returning
+        an iterable of the children nodes attributes
 
         Yields:
             a dictionary containing a path with its known/unknown status and the
             Software Heritage persistent identifier
-
         """
-        for _, child_node in self.children.items():
+        for child_node in self.iterate():
             yield child_node.attributes
             if child_node.otype == DIRECTORY:
-                yield from child_node.iterate()
+                yield from child_node.__iterNodesAttr()
 
     def __getSubDirsInfo(self, root, directories):
         """Fills the directories given in input with the contents information

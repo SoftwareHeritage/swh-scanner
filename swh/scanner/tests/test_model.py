@@ -3,6 +3,10 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import pytest
+
+from swh.scanner.exceptions import InvalidDirectoryPath
+
 
 def test_tree_add_node(example_tree, temp_folder):
     avail_paths = temp_folder["paths"].keys()
@@ -76,3 +80,29 @@ def test_get_directories_info(example_tree, temp_folder):
 
     assert subsubdir_path not in directories
     assert directories[subdir_path] == (2, 2)
+
+
+def test_get_files_from_dir(example_tree, temp_folder):
+    subdir_path = temp_folder["subdir"]
+
+    for path, pid in temp_folder["paths"].items():
+        example_tree.addNode(path, pid, True)
+
+    files = example_tree.getFilesFromDir(subdir_path)
+    assert len(files) == 2
+
+
+def test_get_files_source_path(example_tree, temp_folder):
+    for path, pid in temp_folder["paths"].items():
+        example_tree.addNode(path, pid, True)
+
+    files = example_tree.getFilesFromDir(example_tree.path)
+    assert len(files) == 1
+
+
+def test_get_files_from_dir_raise_exception(example_tree, temp_folder):
+    for path, pid in temp_folder["paths"].items():
+        example_tree.addNode(path, pid, True)
+
+    with pytest.raises(InvalidDirectoryPath):
+        example_tree.getFilesFromDir("test/")

@@ -7,13 +7,13 @@ from __future__ import annotations
 import sys
 import json
 from pathlib import PosixPath
-from typing import Any, Dict, Tuple, Iterable
+from typing import Any, Dict, Tuple, Iterable, List
 from enum import Enum
 
 import ndjson
 
 from .plot import generate_sunburst, offline_plot
-from .exceptions import InvalidObjectType
+from .exceptions import InvalidObjectType, InvalidDirectoryPath
 from swh.model.identifiers import DIRECTORY, CONTENT
 
 
@@ -171,6 +171,32 @@ class Tree:
             yield child_node.attributes
             if child_node.otype == DIRECTORY:
                 yield from child_node.__iterNodesAttr()
+
+    def getFilesFromDir(self, dir_path: PosixPath) -> List:
+        """
+        Retrieve files information about a specific directory path
+
+        Returns:
+            A list containing the files attributes present inside the directory given
+            in input
+        """
+
+        def getFiles(node):
+            files = []
+            for _, node in node.children.items():
+                if node.otype == CONTENT:
+                    files.append(node.attributes)
+            return files
+
+        if dir_path == self.path:
+            return getFiles(self)
+        else:
+            for node in self.iterate():
+                if node.path == dir_path:
+                    return getFiles(node)
+            raise InvalidDirectoryPath(
+                "The directory provided doesn't match any stored directory"
+            )
 
     def __getSubDirsInfo(self, root, directories):
         """Fills the directories given in input with the contents information

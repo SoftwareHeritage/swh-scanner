@@ -14,7 +14,7 @@ from typing import Tuple
 from .scanner import run
 from .model import Tree
 from .plot import generate_sunburst
-from .dashboard import run_app
+from .dashboard.dashboard import run_app
 from .exceptions import InvalidDirectoryPath
 
 from swh.core.cli import CONTEXT_SETTINGS

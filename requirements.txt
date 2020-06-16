@@ -9,4 +9,5 @@ plotly
 pandas
 numpy
 dash
+dash_bootstrap_components
 dulwich

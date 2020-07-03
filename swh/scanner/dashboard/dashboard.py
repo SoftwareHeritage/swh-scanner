@@ -20,8 +20,7 @@ def generate_table_body(dir_path: PosixPath, source: Tree):
     Generate the data_table from the path taken from the chart.
 
     For each file builds the html table rows showing the known status, a local link to
-    the file and the relative Software Heritage Persistent Identifier.
-
+    the file and the relative SoftWare Heritage persistent IDentifier (SWHID).
     """
     data = []
     for file_info in source.getFilesFromDir(dir_path):

@@ -9,7 +9,7 @@ correct_api_response = {
     "swh:1:dir:4b825dc642cb6eb9a060e54bf8d69288fbee4904": {"known": True},
 }
 
-# present pids inside /data/sample-folder
+# present SWHIDs inside /data/sample-folder
 present_swhids = [
     "swh:1:cnt:7c4c57ba9ff496ad179b8f65b1d286edbda34c9a",  # quotes.md
     "swh:1:cnt:68769579c3eaadbe555379b9c3538e6628bae1eb",  # some-binary

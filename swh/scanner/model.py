@@ -104,7 +104,7 @@ class Tree:
 
         Returns:
             a dictionary containing a path as key and its known/unknown status and the
-            Software Heritage persistent identifier as values.
+            SWHID as values.
 
         """
         return {str(self.path): {"swhid": self.swhid, "known": self.known,}}
@@ -165,7 +165,7 @@ class Tree:
 
         Yields:
             a dictionary containing a path with its known/unknown status and the
-            Software Heritage persistent identifier
+            SWHID
         """
         for child_node in self.iterate():
             yield child_node.attributes
@@ -229,7 +229,7 @@ class Tree:
 
     def count_contents(self) -> Tuple[int, int]:
         """Count how many contents are present inside a directory.
-           If a directory has a pid returns as it has all the contents.
+           If a directory has a SWHID returns as it has all the contents.
 
         Returns:
             A tuple with the total number of the contents and the number

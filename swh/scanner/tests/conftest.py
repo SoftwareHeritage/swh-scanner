@@ -10,7 +10,7 @@ import os
 from pathlib import PosixPath
 from aioresponses import aioresponses  # type: ignore
 
-from swh.model.cli import pid_of_file, pid_of_dir
+from swh.model.cli import swhid_of_file, swhid_of_dir
 from swh.scanner.model import Tree
 from .flask_api import create_app
 
@@ -68,12 +68,12 @@ def temp_folder(tmp_path_factory):
     filesample2.touch()
 
     avail_path = {
-        subdir: pid_of_dir(bytes(subdir)),
-        subsubdir: pid_of_dir(bytes(subsubdir)),
-        subdir2: pid_of_dir(bytes(subdir2)),
-        subfile: pid_of_file(bytes(subfile)),
-        filesample: pid_of_file(bytes(filesample)),
-        filesample2: pid_of_file(bytes(filesample2)),
+        subdir: swhid_of_dir(bytes(subdir)),
+        subsubdir: swhid_of_dir(bytes(subsubdir)),
+        subdir2: swhid_of_dir(bytes(subdir2)),
+        subfile: swhid_of_file(bytes(subfile)),
+        filesample: swhid_of_file(bytes(filesample)),
+        filesample2: swhid_of_file(bytes(filesample2)),
     }
 
     return {
@@ -111,11 +111,11 @@ def example_dirs(example_tree, temp_folder):
     subsubdir_path = temp_folder["subsubdir"]
     known_paths = [filesample_path, filesample2_path, subsubdir_path]
 
-    for path, pid in temp_folder["paths"].items():
+    for path, swhid in temp_folder["paths"].items():
         if path in known_paths:
-            example_tree.addNode(path, pid, True)
+            example_tree.addNode(path, swhid, True)
         else:
-            example_tree.addNode(path, pid, False)
+            example_tree.addNode(path, swhid, False)
 
     return example_tree.getDirectoriesInfo(root)
 

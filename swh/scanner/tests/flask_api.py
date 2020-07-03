@@ -19,7 +19,7 @@ def create_app():
 
         if len(swhids) > 900:
             raise LargePayloadExc(
-                "The maximum number of PIDs this endpoint " "can receive is 900"
+                "The maximum number of SWHIDs this endpoint can receive is 900"
             )
 
         res = {swhid: {"known": False} for swhid in swhids}

@@ -11,8 +11,8 @@ import dash_html_components as html
 def test_generate_table_body(example_tree, temp_folder):
     subdir_path = temp_folder["subdir"]
 
-    for path, pid in temp_folder["paths"].items():
-        example_tree.addNode(path, pid, True)
+    for path, swhid in temp_folder["paths"].items():
+        example_tree.addNode(path, swhid, True)
 
     generated_body = generate_table_body(subdir_path, example_tree)
 

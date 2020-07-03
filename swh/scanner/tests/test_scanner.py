@@ -9,7 +9,7 @@ from pathlib import PosixPath
 
 from .data import correct_api_response, present_swhids, to_exclude_swhid
 
-from swh.scanner.scanner import pids_discovery, get_subpaths, run
+from swh.scanner.scanner import swhids_discovery, get_subpaths, run
 from swh.scanner.model import Tree
 from swh.scanner.cli import extract_regex_objs
 from swh.scanner.exceptions import APIError
@@ -26,7 +26,7 @@ def test_scanner_correct_api_request(mock_aioresponse, event_loop, aiosession):
     )
 
     actual_result = event_loop.run_until_complete(
-        pids_discovery([], aiosession, "http://example.org/api/")
+        swhids_discovery([], aiosession, "http://example.org/api/")
     )
 
     assert correct_api_response == actual_result
@@ -37,7 +37,7 @@ def test_scanner_raise_apierror(mock_aioresponse, event_loop, aiosession):
 
     with pytest.raises(APIError):
         event_loop.run_until_complete(
-            pids_discovery([], aiosession, "http://example.org/api/")
+            swhids_discovery([], aiosession, "http://example.org/api/")
         )
 
 
@@ -49,18 +49,18 @@ def test_scanner_raise_apierror_input_size_limit(event_loop, aiosession, live_se
     ]  # /known/ is limited at 900
 
     with pytest.raises(APIError):
-        event_loop.run_until_complete(pids_discovery(request, aiosession, api_url))
+        event_loop.run_until_complete(swhids_discovery(request, aiosession, api_url))
 
 
 def test_scanner_get_subpaths(temp_folder):
     root = temp_folder["root"]
 
     actual_result = []
-    for subpath, pid in get_subpaths(root, tuple()):
+    for subpath, swhid in get_subpaths(root, tuple()):
         # also check if it's a symlink since pytest tmp_dir fixture create
         # also a symlink to each directory inside the tmp_dir path
         if subpath.is_dir() and not subpath.is_symlink():
-            actual_result.append((subpath, pid))
+            actual_result.append((subpath, swhid))
 
     assert len(actual_result) == 2
 

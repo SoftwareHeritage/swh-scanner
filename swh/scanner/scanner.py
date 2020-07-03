@@ -15,55 +15,55 @@ from .model import Tree
 
 from swh.model.from_disk import Directory, Content, accept_all_directories
 from swh.model.identifiers import (
-    persistent_identifier,
-    parse_persistent_identifier,
+    swhid,
+    parse_swhid,
     DIRECTORY,
     CONTENT,
 )
 
 
-async def pids_discovery(
-    pids: List[str], session: aiohttp.ClientSession, api_url: str,
+async def swhids_discovery(
+    swhids: List[str], session: aiohttp.ClientSession, api_url: str,
 ) -> Dict[str, Dict[str, bool]]:
-    """API Request to get information about the persistent identifiers given in
-    input.
+    """API Request to get information about the SoftWare Heritage persistent
+    IDentifiers (SWHIDs) given in input.
 
     Args:
-        pids: a list of persistent identifier
+        swhids: a list of SWHIDS
         api_url: url for the API request
 
     Returns:
         A dictionary with:
-        key: persistent identifier searched
+        key: SWHID searched
         value:
-            value['known'] = True if the pid is found
-            value['known'] = False if the pid is not found
+            value['known'] = True if the SWHID is found
+            value['known'] = False if the SWHID is not found
 
     """
     endpoint = api_url + "known/"
     chunk_size = 1000
     requests = []
 
-    def get_chunk(pids):
-        for i in range(0, len(pids), chunk_size):
-            yield pids[i : i + chunk_size]
+    def get_chunk(swhids):
+        for i in range(0, len(swhids), chunk_size):
+            yield swhids[i : i + chunk_size]
 
-    async def make_request(pids):
-        async with session.post(endpoint, json=pids) as resp:
+    async def make_request(swhids):
+        async with session.post(endpoint, json=swhids) as resp:
             if resp.status != 200:
                 error_response(resp.reason, resp.status, endpoint)
 
             return await resp.json()
 
-    if len(pids) > chunk_size:
-        for pids_chunk in get_chunk(pids):
-            requests.append(asyncio.create_task(make_request(pids_chunk)))
+    if len(swhids) > chunk_size:
+        for swhids_chunk in get_chunk(swhids):
+            requests.append(asyncio.create_task(make_request(swhids_chunk)))
 
         res = await asyncio.gather(*requests)
         # concatenate list of dictionaries
         return dict(itertools.chain.from_iterable(e.items() for e in res))
     else:
-        return await make_request(pids)
+        return await make_request(swhids)
 
 
 def directory_filter(path_name: Union[str, bytes], exclude_patterns: Set[Any]) -> bool:
@@ -86,18 +86,18 @@ def directory_filter(path_name: Union[str, bytes], exclude_patterns: Set[Any]) -
 def get_subpaths(
     path: PosixPath, exclude_patterns: Set[Any]
 ) -> Iterator[Tuple[PosixPath, str]]:
-    """Find the persistent identifier of the directories and files under a
-    given path.
+    """Find the SoftWare Heritage persistent IDentifier (SWHID) of
+    the directories and files under a given path.
 
     Args:
         path: the root path
 
     Yields:
-        pairs of: path, the relative persistent identifier
+        pairs of: path, the relative SWHID
 
     """
 
-    def pid_of(path):
+    def swhid_of(path):
         if path.is_dir():
             if exclude_patterns:
 
@@ -111,15 +111,15 @@ def get_subpaths(
                 path=bytes(path), dir_filter=dir_filter
             ).get_data()
 
-            return persistent_identifier(DIRECTORY, obj)
+            return swhid(DIRECTORY, obj)
         else:
             obj = Content.from_file(path=bytes(path)).get_data()
-            return persistent_identifier(CONTENT, obj)
+            return swhid(CONTENT, obj)
 
     dirpath, dnames, fnames = next(os.walk(path))
     for node in itertools.chain(dnames, fnames):
         sub_path = PosixPath(dirpath).joinpath(node)
-        yield (sub_path, pid_of(sub_path))
+        yield (sub_path, swhid_of(sub_path))
 
 
 async def parse_path(
@@ -137,15 +137,17 @@ async def parse_path(
 
     Returns:
         a map containing tuples with: a subpath of the given path,
-        the pid of the subpath and the result of the api call
+        the SWHID of the subpath and the result of the api call
 
     """
     parsed_paths = dict(get_subpaths(path, exclude_patterns))
-    parsed_pids = await pids_discovery(list(parsed_paths.values()), session, api_url)
+    parsed_swhids = await swhids_discovery(
+        list(parsed_paths.values()), session, api_url
+    )
 
     def unpack(tup):
-        subpath, pid = tup
-        return (subpath, pid, parsed_pids[pid]["known"])
+        subpath, swhid = tup
+        return (subpath, swhid, parsed_swhids[swhid]["known"])
 
     return map(unpack, parsed_paths.items())
 
@@ -164,15 +166,15 @@ async def run(
     """
 
     async def _scan(root, session, api_url, source_tree, exclude_patterns):
-        for path, pid, known in await parse_path(
+        for path, obj_swhid, known in await parse_path(
             root, session, api_url, exclude_patterns
         ):
-            obj_type = parse_persistent_identifier(pid).object_type
+            obj_type = parse_swhid(obj_swhid).object_type
 
             if obj_type == CONTENT:
-                source_tree.addNode(path, pid, known)
+                source_tree.addNode(path, obj_swhid, known)
             elif obj_type == DIRECTORY and directory_filter(path, exclude_patterns):
-                source_tree.addNode(path, pid, known)
+                source_tree.addNode(path, obj_swhid, known)
                 if not known:
                     await _scan(path, session, api_url, source_tree, exclude_patterns)
 

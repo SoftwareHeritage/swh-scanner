@@ -50,9 +50,9 @@ setup(
     packages=find_packages(),  # packages's modules
     install_requires=parse_requirements() + parse_requirements("swh"),
     tests_require=parse_requirements("test"),
-    setup_requires=["vcversioner"],
+    setup_requires=["setuptools-scm"],
+    use_scm_version=True,
     extras_require={"testing": parse_requirements("test")},
-    vcversioner={},
     include_package_data=True,
     entry_points="""
         [swh.cli.subcommands]

@@ -5,7 +5,6 @@
 
 import pytest
 import json
-from pathlib import PosixPath
 
 from .data import correct_api_response, present_swhids, to_exclude_swhid
 
@@ -70,13 +69,11 @@ def test_app(app):
     assert not app.debug
 
 
-def test_scanner_result(live_server, event_loop, test_folder):
+def test_scanner_result(live_server, event_loop, test_sample_folder):
     api_url = live_server.url() + "/"
 
-    sample_folder = test_folder.joinpath(PosixPath("sample-folder"))
-
-    source_tree = Tree(sample_folder)
-    event_loop.run_until_complete(run(sample_folder, api_url, source_tree, set()))
+    source_tree = Tree(test_sample_folder)
+    event_loop.run_until_complete(run(test_sample_folder, api_url, source_tree, set()))
 
     for child_node in source_tree.iterate():
         node_info = list(child_node.attributes.values())[0]
@@ -86,19 +83,19 @@ def test_scanner_result(live_server, event_loop, test_folder):
             assert node_info["known"] is False
 
 
-def test_scanner_result_with_exclude_patterns(live_server, event_loop, test_folder):
+def test_scanner_result_with_exclude_patterns(
+    live_server, event_loop, test_sample_folder
+):
     api_url = live_server.url() + "/"
 
-    sample_folder = test_folder.joinpath(PosixPath("sample-folder"))
-
-    patterns = (str(sample_folder) + "/toexclude",)
+    patterns = (str(test_sample_folder) + "/toexclude",)
     exclude_pattern = {
-        reg_obj for reg_obj in extract_regex_objs(sample_folder, patterns)
+        reg_obj for reg_obj in extract_regex_objs(test_sample_folder, patterns)
     }
 
-    source_tree = Tree(sample_folder)
+    source_tree = Tree(test_sample_folder)
     event_loop.run_until_complete(
-        run(sample_folder, api_url, source_tree, exclude_pattern)
+        run(test_sample_folder, api_url, source_tree, exclude_pattern)
     )
 
     for child_node in source_tree.iterate():

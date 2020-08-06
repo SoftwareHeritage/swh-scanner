@@ -7,6 +7,8 @@ import pytest
 import asyncio
 import aiohttp
 import os
+import shutil
+
 from pathlib import PosixPath
 from aioresponses import aioresponses  # type: ignore
 
@@ -121,12 +123,14 @@ def example_dirs(example_tree, temp_folder):
 
 
 @pytest.fixture
-def test_folder():
+def test_sample_folder(datadir, tmp_path):
     """Location of the "data" folder """
-    tests_path = PosixPath(os.path.abspath(__file__)).parent
-    tests_data_folder = tests_path.joinpath("data")
-    assert tests_data_folder.exists()
-    return tests_data_folder
+    archive_path = PosixPath(os.path.join(datadir, "sample-folder.tgz"))
+    assert archive_path.exists()
+    shutil.unpack_archive(archive_path, extract_dir=tmp_path)
+    test_sample_folder = PosixPath(os.path.join(tmp_path, "sample-folder"))
+    assert test_sample_folder.exists()
+    return test_sample_folder
 
 
 @pytest.fixture(scope="session")

@@ -7,9 +7,9 @@ Build-Depends: debhelper (>= 9),
                python3-all,
                python3-nose,
                python3-setuptools,
+               python3-setuptools-scm,
                python3-swh.core,
-               python3-swh.storage,
-               python3-vcversioner
+               python3-swh.storage
 Standards-Version: 3.9.6
 Homepage: https://forge.softwareheritage.org/source/<phabricator short name>/
 

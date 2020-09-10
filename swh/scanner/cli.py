@@ -3,19 +3,11 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+# WARNING: do not import unnecessary things here to keep cli startup time under
+# control
 import click
-import asyncio
-import glob
-import re
-import fnmatch
 from pathlib import PosixPath
 from typing import Tuple
-
-from .scanner import run
-from .model import Tree
-from .plot import generate_sunburst
-from .dashboard.dashboard import run_app
-from .exceptions import InvalidDirectoryPath
 
 from swh.core.cli import CONTEXT_SETTINGS
 
@@ -42,6 +34,11 @@ def extract_regex_objs(root_path: PosixPath, patterns: Tuple[str]) -> object:
        Yields:
           an SRE_Pattern object
     """
+    import glob
+    import fnmatch
+    import re
+    from .exceptions import InvalidDirectoryPath
+
     for pattern in patterns:
         for path in glob.glob(pattern):
             dirpath = PosixPath(path)
@@ -89,6 +86,12 @@ def extract_regex_objs(root_path: PosixPath, patterns: Tuple[str]) -> object:
 def scan(ctx, root_path, api_url, patterns, format, interactive):
     """Scan a source code project to discover files and directories already
     present in the archive"""
+    import asyncio
+    from .scanner import run
+    from .model import Tree
+    from .plot import generate_sunburst
+    from .dashboard.dashboard import run_app
+
     sre_patterns = set()
     if patterns:
         sre_patterns = {

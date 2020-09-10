@@ -9,7 +9,7 @@ def test_extract_regex_objs(temp_folder):
 
     patterns = (str(temp_folder["subdir"]), "/none")
     sre_patterns = [reg_obj for reg_obj in extract_regex_objs(root_path, patterns)]
-    assert len(sre_patterns) == 1
+    assert len(sre_patterns) == 2
 
     patterns = (*patterns, "/tmp")
     with pytest.raises(InvalidDirectoryPath):

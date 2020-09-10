@@ -49,9 +49,8 @@ def extract_regex_objs(root_path: PosixPath, patterns: Tuple[str]) -> object:
                 )
                 raise InvalidDirectoryPath(error_msg)
 
-        if glob.glob(pattern):
-            regex = fnmatch.translate(str(PosixPath(pattern)))
-            yield re.compile(regex)
+        regex = fnmatch.translate(str(PosixPath(pattern)))
+        yield re.compile(regex)
 
 
 @scanner.command(name="scan")

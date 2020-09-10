@@ -62,7 +62,7 @@ def extract_regex_objs(root_path: PosixPath, patterns: Tuple[str]) -> object:
     default="https://archive.softwareheritage.org/api/1",
     metavar="API_URL",
     show_default=True,
-    help="url for the api request",
+    help="URL for the api request",
 )
 @click.option(
     "--exclude",
@@ -70,17 +70,19 @@ def extract_regex_objs(root_path: PosixPath, patterns: Tuple[str]) -> object:
     "patterns",
     metavar="PATTERN",
     multiple=True,
-    help="recursively exclude a specific pattern",
+    help="Exclude directories using glob patterns \
+    (e.g., '*.git' to exclude all .git directories)",
 )
 @click.option(
     "-f",
     "--format",
-    type=click.Choice(["text", "json", "ndjson", "sunburst"], case_sensitive=False),
     default="text",
-    help="select the output format",
+    show_default=True,
+    type=click.Choice(["text", "json", "ndjson", "sunburst"], case_sensitive=False),
+    help="The output format",
 )
 @click.option(
-    "-i", "--interactive", is_flag=True, help="show the result in a dashboard"
+    "-i", "--interactive", is_flag=True, help="Show the result in a dashboard"
 )
 @click.pass_context
 def scan(ctx, root_path, api_url, patterns, format, interactive):

@@ -1,16 +1,17 @@
 .. _swh-scanner:
 
-.. include:: README.rst
+Software Heritage - Code Scanner
+================================
+
+Source code scanner using the
+`Software Heritage <https://www.softwareheritage.org/>`_
+`archive <https://archive.softwareheritage.org/>`_
+as knowledge base.
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   cli
+   /apidoc/swh.scanner

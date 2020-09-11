@@ -71,9 +71,10 @@ def test_app(app):
 
 def test_scanner_result(live_server, event_loop, test_sample_folder):
     api_url = live_server.url() + "/"
+    config = {"web-api": {"url": api_url, "auth-token": None}}
 
     source_tree = Tree(test_sample_folder)
-    event_loop.run_until_complete(run(test_sample_folder, api_url, source_tree, set()))
+    event_loop.run_until_complete(run(config, test_sample_folder, source_tree, set()))
 
     for child_node in source_tree.iterate():
         node_info = list(child_node.attributes.values())[0]
@@ -87,6 +88,7 @@ def test_scanner_result_with_exclude_patterns(
     live_server, event_loop, test_sample_folder
 ):
     api_url = live_server.url() + "/"
+    config = {"web-api": {"url": api_url, "auth-token": None}}
 
     patterns = (str(test_sample_folder) + "/toexclude",)
     exclude_pattern = {
@@ -95,7 +97,7 @@ def test_scanner_result_with_exclude_patterns(
 
     source_tree = Tree(test_sample_folder)
     event_loop.run_until_complete(
-        run(test_sample_folder, api_url, source_tree, exclude_pattern)
+        run(config, test_sample_folder, source_tree, exclude_pattern)
     )
 
     for child_node in source_tree.iterate():

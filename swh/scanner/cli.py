@@ -5,18 +5,29 @@
 
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
+import os
+from typing import Any, Dict
+
 import click
 from pathlib import PosixPath
 from typing import Tuple
 
+from swh.core import config
 from swh.core.cli import CONTEXT_SETTINGS
 
 
-@click.group(name="scanner", context_settings=CONTEXT_SETTINGS)
-@click.pass_context
-def scanner(ctx):
-    """Software Heritage Scanner tools."""
-    pass
+# All generic config code should reside in swh.core.config
+DEFAULT_CONFIG_PATH = os.environ.get(
+    "SWH_CONFIG_FILE", os.path.join(click.get_app_dir("swh"), "global.yml")
+)
+
+
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "web-api": {
+        "url": "https://archive.softwareheritage.org/api/1/",
+        "auth-token": None,
+    }
+}
 
 
 def parse_url(url):
@@ -53,12 +64,32 @@ def extract_regex_objs(root_path: PosixPath, patterns: Tuple[str]) -> object:
         yield re.compile(regex)
 
 
+@click.group(name="scanner", context_settings=CONTEXT_SETTINGS)
+@click.option(
+    "-C",
+    "--config-file",
+    default=DEFAULT_CONFIG_PATH,
+    type=click.Path(exists=True, dir_okay=False, path_type=str),
+    help="YAML configuration file",
+)
+@click.pass_context
+def scanner(ctx, config_file: str):
+    """Software Heritage Scanner tools."""
+
+    # recursive merge not done by config.read
+    conf = config.read_raw_config(config.config_basepath(config_file))
+    conf = config.merge_configs(DEFAULT_CONFIG, conf)
+
+    ctx.ensure_object(dict)
+    ctx.obj["config"] = conf
+
+
 @scanner.command(name="scan")
 @click.argument("root_path", required=True, type=click.Path(exists=True))
 @click.option(
     "-u",
     "--api-url",
-    default="https://archive.softwareheritage.org/api/1",
+    default=None,
     metavar="API_URL",
     show_default=True,
     help="URL for the api request",
@@ -93,16 +124,19 @@ def scan(ctx, root_path, api_url, patterns, format, interactive):
     from .plot import generate_sunburst
     from .dashboard.dashboard import run_app
 
+    config = ctx.obj["config"]
+    if api_url:
+        config["web-api"]["url"] = parse_url(api_url)
+
     sre_patterns = set()
     if patterns:
         sre_patterns = {
             reg_obj for reg_obj in extract_regex_objs(PosixPath(root_path), patterns)
         }
 
-    api_url = parse_url(api_url)
     source_tree = Tree(PosixPath(root_path))
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(run(root_path, api_url, source_tree, sre_patterns))
+    loop.run_until_complete(run(config, root_path, source_tree, sre_patterns))
 
     if interactive:
         root = PosixPath(root_path)
@@ -113,5 +147,9 @@ def scan(ctx, root_path, api_url, patterns, format, interactive):
         source_tree.show(format)
 
 
+def main():
+    return scanner(auto_envvar_prefix="SWH_SCANNER")
+
+
 if __name__ == "__main__":
-    scan()
+    main()

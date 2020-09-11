@@ -6,9 +6,10 @@
 import os
 import itertools
 import asyncio
-import aiohttp
-from typing import List, Dict, Tuple, Iterator, Union, Set, Any
 from pathlib import PosixPath
+from typing import List, Dict, Tuple, Iterator, Union, Iterable, Pattern, Any
+
+import aiohttp
 
 from .exceptions import error_response
 from .model import Tree
@@ -66,7 +67,9 @@ async def swhids_discovery(
         return await make_request(swhids)
 
 
-def directory_filter(path_name: Union[str, bytes], exclude_patterns: Set[Any]) -> bool:
+def directory_filter(
+    path_name: Union[str, bytes], exclude_patterns: Iterable[Pattern[str]]
+) -> bool:
     """It checks if the path_name is matching with the patterns given in input.
 
     It is also used as a `dir_filter` function when generating the directory
@@ -84,7 +87,7 @@ def directory_filter(path_name: Union[str, bytes], exclude_patterns: Set[Any]) -
 
 
 def get_subpaths(
-    path: PosixPath, exclude_patterns: Set[Any]
+    path: PosixPath, exclude_patterns: Iterable[Pattern[str]]
 ) -> Iterator[Tuple[PosixPath, str]]:
     """Find the SoftWare Heritage persistent IDentifier (SWHID) of
     the directories and files under a given path.
@@ -126,7 +129,7 @@ async def parse_path(
     path: PosixPath,
     session: aiohttp.ClientSession,
     api_url: str,
-    exclude_patterns: Set[Any],
+    exclude_patterns: Iterable[Pattern[str]],
 ) -> Iterator[Tuple[str, str, bool]]:
     """Check if the sub paths of the given path are present in the
     archive or not.
@@ -153,7 +156,10 @@ async def parse_path(
 
 
 async def run(
-    root: PosixPath, api_url: str, source_tree: Tree, exclude_patterns: Set[Any]
+    config: Dict[str, Any],
+    root: str,
+    source_tree: Tree,
+    exclude_patterns: Iterable[Pattern[str]],
 ) -> None:
     """Start scanning from the given root.
 
@@ -164,6 +170,7 @@ async def run(
         api_url: url for the API request
 
     """
+    api_url = config["web-api"]["url"]
 
     async def _scan(root, session, api_url, source_tree, exclude_patterns):
         for path, obj_swhid, known in await parse_path(
@@ -178,5 +185,10 @@ async def run(
                 if not known:
                     await _scan(path, session, api_url, source_tree, exclude_patterns)
 
-    async with aiohttp.ClientSession() as session:
+    if config["web-api"]["auth-token"]:
+        headers = {"Authorization": f"Bearer {config['web-api']['auth-token']}"}
+    else:
+        headers = {}
+
+    async with aiohttp.ClientSession(headers=headers) as session:
         await _scan(root, session, api_url, source_tree, exclude_patterns)

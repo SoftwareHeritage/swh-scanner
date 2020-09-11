@@ -9,8 +9,6 @@ import os
 from typing import Any, Dict
 
 import click
-from pathlib import PosixPath
-from typing import Tuple
 
 from swh.core import config
 from swh.core.cli import CONTEXT_SETTINGS
@@ -31,37 +29,12 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 
 
 def parse_url(url):
+    """CLI-specific helper to 'autocomplete' the provided url."""
     if not url.startswith("https://"):
         url = "https://" + url
     if not url.endswith("/"):
         url += "/"
     return url
-
-
-def extract_regex_objs(root_path: PosixPath, patterns: Tuple[str]) -> object:
-    """Generates a regex object for each pattern given in input and checks if
-       the path is a subdirectory or relative to the root path.
-
-       Yields:
-          an SRE_Pattern object
-    """
-    import glob
-    import fnmatch
-    import re
-    from .exceptions import InvalidDirectoryPath
-
-    for pattern in patterns:
-        for path in glob.glob(pattern):
-            dirpath = PosixPath(path)
-            if root_path not in dirpath.parents:
-                error_msg = (
-                    f'The path "{dirpath}" is not a subdirectory or relative '
-                    f'to the root directory path: "{root_path}"'
-                )
-                raise InvalidDirectoryPath(error_msg)
-
-        regex = fnmatch.translate(str(PosixPath(pattern)))
-        yield re.compile(regex)
 
 
 @click.group(name="scanner", context_settings=CONTEXT_SETTINGS)
@@ -105,7 +78,8 @@ def scanner(ctx, config_file: str):
 )
 @click.option(
     "-f",
-    "--format",
+    "--output-format",
+    "out_fmt",
     default="text",
     show_default=True,
     type=click.Choice(["text", "json", "ndjson", "sunburst"], case_sensitive=False),
@@ -115,36 +89,16 @@ def scanner(ctx, config_file: str):
     "-i", "--interactive", is_flag=True, help="Show the result in a dashboard"
 )
 @click.pass_context
-def scan(ctx, root_path, api_url, patterns, format, interactive):
+def scan(ctx, root_path, api_url, patterns, out_fmt, interactive):
     """Scan a source code project to discover files and directories already
     present in the archive"""
-    import asyncio
-    from .scanner import run
-    from .model import Tree
-    from .plot import generate_sunburst
-    from .dashboard.dashboard import run_app
+    from .scanner import scan
 
     config = ctx.obj["config"]
     if api_url:
         config["web-api"]["url"] = parse_url(api_url)
 
-    sre_patterns = set()
-    if patterns:
-        sre_patterns = {
-            reg_obj for reg_obj in extract_regex_objs(PosixPath(root_path), patterns)
-        }
-
-    source_tree = Tree(PosixPath(root_path))
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run(config, root_path, source_tree, sre_patterns))
-
-    if interactive:
-        root = PosixPath(root_path)
-        directories = source_tree.getDirectoriesInfo(root)
-        figure = generate_sunburst(directories, root)
-        run_app(figure, source_tree)
-    else:
-        source_tree.show(format)
+    scan(config, root_path, patterns, out_fmt, interactive)
 
 
 def main():

@@ -8,12 +8,23 @@ import json
 
 from .data import correct_api_response, present_swhids, to_exclude_swhid
 
-from swh.scanner.scanner import swhids_discovery, get_subpaths, run
+from swh.scanner.scanner import swhids_discovery, get_subpaths, extract_regex_objs, run
 from swh.scanner.model import Tree
-from swh.scanner.cli import extract_regex_objs
-from swh.scanner.exceptions import APIError
+from swh.scanner.exceptions import APIError, InvalidDirectoryPath
 
 aio_url = "http://example.org/api/known/"
+
+
+def test_extract_regex_objs(temp_folder):
+    root_path = temp_folder["root"]
+
+    patterns = (str(temp_folder["subdir"]), "/none")
+    sre_patterns = [reg_obj for reg_obj in extract_regex_objs(root_path, patterns)]
+    assert len(sre_patterns) == 2
+
+    patterns = (*patterns, "/tmp")
+    with pytest.raises(InvalidDirectoryPath):
+        sre_patterns = [reg_obj for reg_obj in extract_regex_objs(root_path, patterns)]
 
 
 def test_scanner_correct_api_request(mock_aioresponse, event_loop, aiosession):

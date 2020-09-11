@@ -16,7 +16,7 @@ the color gradient is generated relying on the percentage of contents known.
 """
 
 from typing import List, Dict, Tuple
-from pathlib import PosixPath
+from pathlib import Path
 
 from plotly.offline import offline
 import plotly.graph_objects as go
@@ -160,7 +160,7 @@ def build_hierarchical_df(
     return complete_df
 
 
-def compute_max_depth(dirs_path: List[PosixPath], root: PosixPath) -> int:
+def compute_max_depth(dirs_path: List[Path], root: Path) -> int:
     """Compute the maximum depth level of the given directory paths.
 
        Example: for `var/log/kernel/` the depth level is 3
@@ -179,10 +179,7 @@ def compute_max_depth(dirs_path: List[PosixPath], root: PosixPath) -> int:
 
 
 def generate_df_from_dirs(
-    dirs: Dict[PosixPath, Tuple[int, int]],
-    columns: List[str],
-    root: PosixPath,
-    max_depth: int,
+    dirs: Dict[Path, Tuple[int, int]], columns: List[str], root: Path, max_depth: int,
 ) -> pd.DataFrame:
     """Generate a dataframe from the directories given in input.
 
@@ -208,7 +205,7 @@ def generate_df_from_dirs(
 
     """
 
-    def get_parents(path: PosixPath):
+    def get_parents(path: Path):
         parts = path.parts[1:] if path.parts[0] == "/" else path.parts
 
         for i in range(1, len(parts) + 1):
@@ -237,7 +234,7 @@ def generate_df_from_dirs(
 
 
 def generate_sunburst(
-    directories: Dict[PosixPath, Tuple[int, int]], root: PosixPath
+    directories: Dict[Path, Tuple[int, int]], root: Path
 ) -> go.Sunburst:
     """Generate a sunburst chart from the directories given in input.
 

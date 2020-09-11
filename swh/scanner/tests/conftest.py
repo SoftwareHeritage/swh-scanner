@@ -9,7 +9,7 @@ import aiohttp
 import os
 import shutil
 
-from pathlib import PosixPath
+from pathlib import Path
 from aioresponses import aioresponses  # type: ignore
 
 from swh.model.cli import swhid_of_file, swhid_of_dir
@@ -125,10 +125,10 @@ def example_dirs(example_tree, temp_folder):
 @pytest.fixture
 def test_sample_folder(datadir, tmp_path):
     """Location of the "data" folder """
-    archive_path = PosixPath(os.path.join(datadir, "sample-folder.tgz"))
+    archive_path = Path(os.path.join(datadir, "sample-folder.tgz"))
     assert archive_path.exists()
     shutil.unpack_archive(archive_path, extract_dir=tmp_path)
-    test_sample_folder = PosixPath(os.path.join(tmp_path, "sample-folder"))
+    test_sample_folder = Path(os.path.join(tmp_path, "sample-folder"))
     assert test_sample_folder.exists()
     return test_sample_folder
 

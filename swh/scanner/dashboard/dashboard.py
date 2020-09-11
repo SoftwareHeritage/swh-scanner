@@ -3,7 +3,7 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from pathlib import PosixPath
+from pathlib import Path
 
 from ..model import Tree
 
@@ -15,7 +15,7 @@ import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
 
 
-def generate_table_body(dir_path: PosixPath, source: Tree):
+def generate_table_body(dir_path: Path, source: Tree):
     """
     Generate the data_table from the path taken from the chart.
 
@@ -25,7 +25,7 @@ def generate_table_body(dir_path: PosixPath, source: Tree):
     data = []
     for file_info in source.getFilesFromDir(dir_path):
         for file_path, attr in file_info.items():
-            file_path = PosixPath(file_path)
+            file_path = Path(file_path)
             file_name = file_path.parts[len(file_path.parts) - 1]
             data.append(
                 html.Tr(
@@ -92,7 +92,7 @@ def run_app(graph_obj: go, source: Tree):
             full_path = (
                 source.path.joinpath(raw_path)
                 if raw_path != str(source.path)
-                else PosixPath(raw_path)
+                else Path(raw_path)
             )
             return table_header + generate_table_body(full_path, source), str(full_path)
         else:

@@ -8,7 +8,7 @@ import fnmatch
 import glob
 import itertools
 import os
-from pathlib import PosixPath
+from pathlib import Path
 import re
 from typing import List, Dict, Tuple, Iterator, Union, Iterable, Pattern, Any
 
@@ -84,7 +84,7 @@ def directory_filter(
         False if the directory has to be ignored, True otherwise
 
     """
-    path = PosixPath(path_name.decode() if isinstance(path_name, bytes) else path_name)
+    path = Path(path_name.decode() if isinstance(path_name, bytes) else path_name)
     for sre_pattern in exclude_patterns:
         if sre_pattern.match(str(path)):
             return False
@@ -92,8 +92,8 @@ def directory_filter(
 
 
 def get_subpaths(
-    path: PosixPath, exclude_patterns: Iterable[Pattern[str]]
-) -> Iterator[Tuple[PosixPath, str]]:
+    path: Path, exclude_patterns: Iterable[Pattern[str]]
+) -> Iterator[Tuple[Path, str]]:
     """Find the SoftWare Heritage persistent IDentifier (SWHID) of
     the directories and files under a given path.
 
@@ -126,12 +126,12 @@ def get_subpaths(
 
     dirpath, dnames, fnames = next(os.walk(path))
     for node in itertools.chain(dnames, fnames):
-        sub_path = PosixPath(dirpath).joinpath(node)
+        sub_path = Path(dirpath).joinpath(node)
         yield (sub_path, swhid_of(sub_path))
 
 
 async def parse_path(
-    path: PosixPath,
+    path: Path,
     session: aiohttp.ClientSession,
     api_url: str,
     exclude_patterns: Iterable[Pattern[str]],
@@ -200,7 +200,7 @@ async def run(
 
 
 def extract_regex_objs(
-    root_path: PosixPath, patterns: Iterable[str]
+    root_path: Path, patterns: Iterable[str]
 ) -> Iterator[Pattern[str]]:
     """Generates a regex object for each pattern given in input and checks if
        the path is a subdirectory or relative to the root path.
@@ -210,7 +210,7 @@ def extract_regex_objs(
     """
     for pattern in patterns:
         for path in glob.glob(pattern):
-            dirpath = PosixPath(path)
+            dirpath = Path(path)
             if root_path not in dirpath.parents:
                 error_msg = (
                     f'The path "{dirpath}" is not a subdirectory or relative '
@@ -234,16 +234,15 @@ def scan(
     sre_patterns = set()
     if exclude_patterns:
         sre_patterns = {
-            reg_obj
-            for reg_obj in extract_regex_objs(PosixPath(root_path), exclude_patterns)
+            reg_obj for reg_obj in extract_regex_objs(Path(root_path), exclude_patterns)
         }
 
-    source_tree = Tree(PosixPath(root_path))
+    source_tree = Tree(Path(root_path))
     loop = asyncio.get_event_loop()
     loop.run_until_complete(run(config, root_path, source_tree, sre_patterns))
 
     if interactive:
-        root = PosixPath(root_path)
+        root = Path(root_path)
         directories = source_tree.getDirectoriesInfo(root)
         figure = generate_sunburst(directories, root)
         run_app(figure, source_tree)

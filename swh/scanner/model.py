@@ -6,7 +6,7 @@
 from __future__ import annotations
 import sys
 import json
-from pathlib import PosixPath
+from pathlib import Path
 from typing import Any, Dict, Tuple, Iterable, List
 from enum import Enum
 
@@ -32,20 +32,20 @@ class Tree:
     """Representation of a file system structure
     """
 
-    def __init__(self, path: PosixPath, father: Tree = None):
+    def __init__(self, path: Path, father: Tree = None):
         self.father = father
         self.path = path
         self.otype = DIRECTORY if path.is_dir() else CONTENT
         self.swhid = ""
         self.known = False
-        self.children: Dict[PosixPath, Tree] = {}
+        self.children: Dict[Path, Tree] = {}
 
-    def addNode(self, path: PosixPath, swhid: str, known: bool) -> None:
+    def addNode(self, path: Path, swhid: str, known: bool) -> None:
         """Recursively add a new path.
         """
         relative_path = path.relative_to(self.path)
 
-        if relative_path == PosixPath("."):
+        if relative_path == Path("."):
             self.swhid = swhid
             self.known = known
             return
@@ -172,7 +172,7 @@ class Tree:
             if child_node.otype == DIRECTORY:
                 yield from child_node.__iterNodesAttr()
 
-    def getFilesFromDir(self, dir_path: PosixPath) -> List:
+    def getFilesFromDir(self, dir_path: Path) -> List:
         """
         Retrieve files information about a specific directory path
 
@@ -215,7 +215,7 @@ class Tree:
                 if child_node.has_dirs():
                     child_node.__getSubDirsInfo(root, directories)
 
-    def getDirectoriesInfo(self, root: PosixPath) -> Dict[PosixPath, Tuple[int, int]]:
+    def getDirectoriesInfo(self, root: Path) -> Dict[Path, Tuple[int, int]]:
         """Get information about all directories under the given root.
 
         Returns:

@@ -3,9 +3,9 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from swh.scanner.dashboard.dashboard import generate_table_body
-
 import dash_html_components as html
+
+from swh.scanner.dashboard.dashboard import generate_table_body
 
 
 def test_generate_table_body(example_tree, temp_folder):

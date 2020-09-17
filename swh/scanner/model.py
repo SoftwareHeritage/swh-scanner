@@ -4,17 +4,19 @@
 # See top-level LICENSE file for more information
 
 from __future__ import annotations
-import sys
+
+from enum import Enum
 import json
 from pathlib import Path
-from typing import Any, Dict, Tuple, Iterable, List
-from enum import Enum
+import sys
+from typing import Any, Dict, Iterable, List, Tuple
 
 import ndjson
 
+from swh.model.identifiers import CONTENT, DIRECTORY
+
+from .exceptions import InvalidDirectoryPath, InvalidObjectType
 from .plot import generate_sunburst, offline_plot
-from .exceptions import InvalidObjectType, InvalidDirectoryPath
-from swh.model.identifiers import DIRECTORY, CONTENT
 
 
 class Color(Enum):

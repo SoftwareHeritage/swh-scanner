@@ -3,14 +3,15 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import pytest
 import json
 
-from .data import correct_api_response, present_swhids, to_exclude_swhid
+import pytest
 
-from swh.scanner.scanner import swhids_discovery, get_subpaths, extract_regex_objs, run
-from swh.scanner.model import Tree
 from swh.scanner.exceptions import APIError, InvalidDirectoryPath
+from swh.scanner.model import Tree
+from swh.scanner.scanner import extract_regex_objs, get_subpaths, run, swhids_discovery
+
+from .data import correct_api_response, present_swhids, to_exclude_swhid
 
 aio_url = "http://example.org/api/known/"
 

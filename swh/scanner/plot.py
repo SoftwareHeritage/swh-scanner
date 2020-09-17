@@ -15,13 +15,13 @@ The size of the directory is defined by the total number of contents whereas
 the color gradient is generated relying on the percentage of contents known.
 """
 
-from typing import List, Dict, Tuple
 from pathlib import Path
+from typing import Dict, List, Tuple
 
-from plotly.offline import offline
-import plotly.graph_objects as go
-import pandas as pd  # type: ignore
 import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import plotly.graph_objects as go
+from plotly.offline import offline
 
 
 def build_hierarchical_df(

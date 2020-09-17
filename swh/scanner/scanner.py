@@ -10,22 +10,17 @@ import itertools
 import os
 from pathlib import Path
 import re
-from typing import List, Dict, Tuple, Iterator, Union, Iterable, Pattern, Any
+from typing import Any, Dict, Iterable, Iterator, List, Pattern, Tuple, Union
 
 import aiohttp
 
-from swh.model.from_disk import Directory, Content, accept_all_directories
-from swh.model.identifiers import (
-    swhid,
-    parse_swhid,
-    DIRECTORY,
-    CONTENT,
-)
+from swh.model.from_disk import Content, Directory, accept_all_directories
+from swh.model.identifiers import CONTENT, DIRECTORY, parse_swhid, swhid
 
+from .dashboard.dashboard import run_app
 from .exceptions import InvalidDirectoryPath, error_response
 from .model import Tree
 from .plot import generate_sunburst
-from .dashboard.dashboard import run_app
 
 
 async def swhids_discovery(

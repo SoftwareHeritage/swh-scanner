@@ -5,9 +5,9 @@
 
 from flask import Flask, request
 
-from .data import present_swhids
-
 from swh.web.common.exc import LargePayloadExc
+
+from .data import present_swhids
 
 
 def create_app():

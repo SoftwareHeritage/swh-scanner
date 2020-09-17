@@ -4,9 +4,9 @@
 # See top-level LICENSE file for more information
 
 from swh.scanner.plot import (
+    build_hierarchical_df,
     compute_max_depth,
     generate_df_from_dirs,
-    build_hierarchical_df,
 )
 
 

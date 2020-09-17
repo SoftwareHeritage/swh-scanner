@@ -3,17 +3,18 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import pytest
 import asyncio
-import aiohttp
 import os
+from pathlib import Path
 import shutil
 
-from pathlib import Path
+import aiohttp
 from aioresponses import aioresponses  # type: ignore
+import pytest
 
-from swh.model.cli import swhid_of_file, swhid_of_dir
+from swh.model.cli import swhid_of_dir, swhid_of_file
 from swh.scanner.model import Tree
+
 from .flask_api import create_app
 
 

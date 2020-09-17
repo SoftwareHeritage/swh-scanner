@@ -13,7 +13,6 @@ import click
 from swh.core import config
 from swh.core.cli import CONTEXT_SETTINGS
 
-
 # All generic config code should reside in swh.core.config
 DEFAULT_CONFIG_PATH = os.environ.get(
     "SWH_CONFIG_FILE", os.path.join(click.get_app_dir("swh"), "global.yml")

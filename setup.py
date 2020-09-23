@@ -56,7 +56,7 @@ setup(
     include_package_data=True,
     entry_points="""
         [swh.cli.subcommands]
-        scanner=swh.scanner.cli:scanner
+        scanner=swh.scanner.cli
     """,
     classifiers=[
         "Programming Language :: Python :: 3",

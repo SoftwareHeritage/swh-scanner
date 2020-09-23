@@ -11,7 +11,7 @@ from typing import Any, Dict
 import click
 
 from swh.core import config
-from swh.core.cli import CONTEXT_SETTINGS
+from swh.core.cli import CONTEXT_SETTINGS, swh as swh_cli_group
 
 # All generic config code should reside in swh.core.config
 DEFAULT_CONFIG_PATH = os.environ.get(
@@ -36,7 +36,7 @@ def parse_url(url):
     return url
 
 
-@click.group(name="scanner", context_settings=CONTEXT_SETTINGS)
+@swh_cli_group.group(name="scanner", context_settings=CONTEXT_SETTINGS)
 @click.option(
     "-C",
     "--config-file",

@@ -6,7 +6,7 @@
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
 import os
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import click
 
@@ -41,17 +41,28 @@ def parse_url(url):
 @click.option(
     "-C",
     "--config-file",
-    default=DEFAULT_CONFIG_PATH,
-    type=click.Path(exists=True, dir_okay=False, path_type=str),
-    help="YAML configuration file",
+    default=None,
+    type=click.Path(exists=False, dir_okay=False, path_type=str),
+    help=f"""YAML configuration file. If absent and cannot load the default one,
+    default parameters are used.
+    Default config path is {DEFAULT_CONFIG_PATH}.
+    Default config values are {DEFAULT_CONFIG}
+    """,
 )
 @click.pass_context
-def scanner(ctx, config_file: str):
+def scanner(ctx, config_file: Optional[str]):
     """Software Heritage Scanner tools."""
+    if config_file is None and config.config_exists(DEFAULT_CONFIG_PATH):
+        config_file = DEFAULT_CONFIG_PATH
 
-    # recursive merge not done by config.read
-    conf = config.read_raw_config(config.config_basepath(config_file))
-    conf = config.merge_configs(DEFAULT_CONFIG, conf)
+    if config_file is None:
+        conf = DEFAULT_CONFIG
+    else:
+        # read_raw_config do not fail on ENOENT
+        if not config.config_exists(config_file):
+            raise FileNotFoundError(config_file)
+        conf = config.read_raw_config(config.config_basepath(config_file))
+        conf = config.merge_configs(DEFAULT_CONFIG, conf)
 
     ctx.ensure_object(dict)
     ctx.obj["config"] = conf

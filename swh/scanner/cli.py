@@ -11,7 +11,8 @@ from typing import Any, Dict
 import click
 
 from swh.core import config
-from swh.core.cli import CONTEXT_SETTINGS, swh as swh_cli_group
+from swh.core.cli import CONTEXT_SETTINGS
+from swh.core.cli import swh as swh_cli_group
 
 # All generic config code should reside in swh.core.config
 DEFAULT_CONFIG_PATH = os.environ.get(

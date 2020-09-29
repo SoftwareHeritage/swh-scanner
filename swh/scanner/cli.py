@@ -9,16 +9,16 @@ import os
 from typing import Any, Dict, Optional
 
 import click
+import yaml
 
 from swh.core import config
 from swh.core.cli import CONTEXT_SETTINGS
 from swh.core.cli import swh as swh_cli_group
 
 # All generic config code should reside in swh.core.config
-DEFAULT_CONFIG_PATH = os.environ.get(
-    "SWH_CONFIG_FILE", os.path.join(click.get_app_dir("swh"), "global.yml")
-)
-
+CONFIG_ENVVAR = "SWH_CONFIG_FILE"
+DEFAULT_CONFIG_PATH = os.path.join(click.get_app_dir("swh"), "global.yml")
+DEFAULT_PATH = os.environ.get(CONFIG_ENVVAR, DEFAULT_CONFIG_PATH)
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "web-api": {
@@ -28,23 +28,37 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 }
 
 
-@swh_cli_group.group(name="scanner", context_settings=CONTEXT_SETTINGS)
+CONFIG_FILE_HELP = f"""Configuration file:
+
+\b
+The CLI option or the environment variable will fail if invalid.
+CLI option is checked first.
+Then, environment variable {CONFIG_ENVVAR} is checked.
+Then, if cannot load the default path, a set of default values are used.
+Default config path is {DEFAULT_CONFIG_PATH}.
+Default config values are:
+
+\b
+{yaml.dump(DEFAULT_CONFIG)}"""
+SCANNER_HELP = f"""Software Heritage Scanner tools.
+
+{CONFIG_FILE_HELP}"""
+
+
+@swh_cli_group.group(
+    name="scanner", context_settings=CONTEXT_SETTINGS, help=SCANNER_HELP,
+)
 @click.option(
     "-C",
     "--config-file",
     default=None,
     type=click.Path(exists=False, dir_okay=False, path_type=str),
-    help=f"""YAML configuration file. If absent and cannot load the default one,
-    default parameters are used.
-    Default config path is {DEFAULT_CONFIG_PATH}.
-    Default config values are {DEFAULT_CONFIG}
-    """,
+    help="""YAML configuration file""",
 )
 @click.pass_context
 def scanner(ctx, config_file: Optional[str]):
-    """Software Heritage Scanner tools."""
-    if config_file is None and config.config_exists(DEFAULT_CONFIG_PATH):
-        config_file = DEFAULT_CONFIG_PATH
+    if config_file is None and config.config_exists(DEFAULT_PATH):
+        config_file = DEFAULT_PATH
 
     if config_file is None:
         conf = DEFAULT_CONFIG

@@ -41,8 +41,8 @@ async def aiosession():
     session.detach()
 
 
-@pytest.fixture(scope="session")
-def temp_folder(tmp_path_factory):
+@pytest.fixture(scope="function")
+def temp_folder(tmp_path):
     """Fixture that generates a temporary folder with the following
     structure:
 
@@ -58,11 +58,13 @@ def temp_folder(tmp_path_factory):
             subfile.txt
         }
     """
-    root = tmp_path_factory.getbasetemp()
-    subdir = tmp_path_factory.mktemp("subdir")
-    subsubdir = subdir.joinpath("subsubdir")
+    root = tmp_path
+    subdir = root / "subdir"
+    subdir.mkdir()
+    subsubdir = subdir / "subsubdir"
     subsubdir.mkdir()
-    subdir2 = tmp_path_factory.mktemp("subdir2")
+    subdir2 = root / "subdir2"
+    subdir2.mkdir()
     subfile = root / "subfile.txt"
     subfile.touch()
     filesample = subdir / "filesample.txt"

@@ -34,8 +34,8 @@ def test_generate_df_from_dirs(temp_folder, example_dirs):
     assert actual_df["known"][1] == 2
 
     # assert subsubdir has correct level information
-    assert actual_df["lev0"][2] == "subdir0"
-    assert actual_df["lev1"][2] == "subdir0/subsubdir"
+    assert actual_df["lev0"][2] == "subdir"
+    assert actual_df["lev1"][2] == "subdir/subsubdir"
 
 
 def test_build_hierarchical_df(temp_folder, example_dirs):
@@ -51,7 +51,7 @@ def test_build_hierarchical_df(temp_folder, example_dirs):
         actual_df, levels_columns, metrics_columns, root
     )
 
-    assert actual_result["parent"][1] == "subdir0"
+    assert actual_result["parent"][1] == "subdir"
     assert actual_result["contents"][1] == 2
     assert actual_result["id"][5] == root
     assert actual_result["known"][5] == 75

@@ -28,15 +28,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 }
 
 
-def parse_url(url):
-    """CLI-specific helper to 'autocomplete' the provided url."""
-    if not url.startswith("https://"):
-        url = "https://" + url
-    if not url.endswith("/"):
-        url += "/"
-    return url
-
-
 @swh_cli_group.group(name="scanner", context_settings=CONTEXT_SETTINGS)
 @click.option(
     "-C",
@@ -107,7 +98,9 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive):
 
     config = ctx.obj["config"]
     if api_url:
-        config["web-api"]["url"] = parse_url(api_url)
+        if not api_url.endswith("/"):
+            api_url += "/"
+        config["web-api"]["url"] = api_url
 
     scan(config, root_path, patterns, out_fmt, interactive)
 

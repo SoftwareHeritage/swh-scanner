@@ -108,7 +108,7 @@ def scanner(ctx, config_file: Optional[str]):
 def scan(ctx, root_path, api_url, patterns, out_fmt, interactive):
     """Scan a source code project to discover files and directories already
     present in the archive"""
-    from .scanner import scan
+    import swh.scanner.scanner as scanner
 
     config = ctx.obj["config"]
     if api_url:
@@ -116,7 +116,7 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive):
             api_url += "/"
         config["web-api"]["url"] = api_url
 
-    scan(config, root_path, patterns, out_fmt, interactive)
+    scanner.scan(config, root_path, patterns, out_fmt, interactive)
 
 
 def main():

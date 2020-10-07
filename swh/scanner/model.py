@@ -9,7 +9,7 @@ from enum import Enum
 import json
 from pathlib import Path
 import sys
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterator, List, Tuple
 
 import ndjson
 
@@ -100,7 +100,7 @@ class Tree:
         print(f"{begin}{rel_path}{end}")
 
     @property
-    def attributes(self):
+    def attributes(self) -> Dict[str, Dict[str, Any]]:
         """
         Get the attributes of the current node grouped by the relative path.
 
@@ -111,9 +111,9 @@ class Tree:
         """
         return {str(self.path): {"swhid": self.swhid, "known": self.known,}}
 
-    def toDict(self, dict_nodes={}) -> Dict[str, Dict[str, Dict]]:
+    def toDict(self) -> Dict[str, Dict[str, Any]]:
         """
-        Recursively groups the current child nodes inside a dictionary.
+        Recursively flatten the current tree nodes into a dictionary.
 
         For example, if you have the following structure:
 
@@ -146,11 +146,9 @@ class Tree:
 
 
         """
-        for node_dict in self.__iterNodesAttr():
-            dict_nodes.update(node_dict)
-        return dict_nodes
+        return {k: v for d in self.__iterNodesAttr() for k, v in d.items()}
 
-    def iterate(self) -> Iterable[Tree]:
+    def iterate(self) -> Iterator[Tree]:
         """
         Recursively iterate through the children of the current node
 
@@ -160,7 +158,7 @@ class Tree:
             if child_node.otype == DIRECTORY:
                 yield from child_node.iterate()
 
-    def __iterNodesAttr(self) -> Iterable[Dict[str, Dict]]:
+    def __iterNodesAttr(self) -> Iterator[Dict[str, Dict[str, Any]]]:
         """
         Recursively iterate through the children of the current node returning
         an iterable of the children nodes attributes

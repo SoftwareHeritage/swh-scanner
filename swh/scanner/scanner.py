@@ -179,9 +179,9 @@ async def run(
             obj_type = parse_swhid(obj_swhid).object_type
 
             if obj_type == CONTENT:
-                source_tree.addNode(path, obj_swhid, known)
+                source_tree.add_node(path, obj_swhid, known)
             elif obj_type == DIRECTORY and directory_filter(path, exclude_patterns):
-                source_tree.addNode(path, obj_swhid, known)
+                source_tree.add_node(path, obj_swhid, known)
                 if not known:
                     await _scan(path, session, api_url, source_tree, exclude_patterns)
 
@@ -238,7 +238,7 @@ def scan(
 
     if interactive:
         root = Path(root_path)
-        directories = source_tree.getDirectoriesInfo(root)
+        directories = source_tree.get_directories_info(root)
         figure = generate_sunburst(directories, root)
         run_app(figure, source_tree)
     else:

@@ -23,7 +23,7 @@ def generate_table_body(dir_path: Path, source: Tree):
     the file and the relative SoftWare Heritage persistent IDentifier (SWHID).
     """
     data = []
-    for file_info in source.getFilesFromDir(dir_path):
+    for file_info in source.get_files_from_dir(dir_path):
         for file_path, attr in file_info.items():
             file_path = Path(file_path)
             file_name = file_path.parts[len(file_path.parts) - 1]

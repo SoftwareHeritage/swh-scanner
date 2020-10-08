@@ -12,7 +12,7 @@ def test_tree_add_node(example_tree, temp_folder):
     avail_paths = temp_folder["paths"].keys()
 
     for path, swhid in temp_folder["paths"].items():
-        example_tree.addNode(path, swhid, False)
+        example_tree.add_node(path, swhid, False)
 
     for path, node in example_tree.children.items():
         assert path in avail_paths
@@ -23,9 +23,9 @@ def test_tree_add_node(example_tree, temp_folder):
 
 def test_to_json_no_one_present(example_tree, temp_folder):
     for path, swhid in temp_folder["paths"].items():
-        example_tree.addNode(path, swhid, False)
+        example_tree.add_node(path, swhid, False)
 
-    result = example_tree.toDict()
+    result = example_tree.to_dict()
 
     assert len(result) == 6
 
@@ -35,9 +35,9 @@ def test_to_json_no_one_present(example_tree, temp_folder):
 
 def test_get_json_tree_all_present(example_tree, temp_folder):
     for path, swhid in temp_folder["paths"].items():
-        example_tree.addNode(path, swhid, True)
+        example_tree.add_node(path, swhid, True)
 
-    result = example_tree.toDict()
+    result = example_tree.to_dict()
 
     assert len(result) == 6
 
@@ -50,9 +50,9 @@ def test_get_json_tree_only_one_present(example_tree, temp_folder):
     filesample_path = temp_folder["filesample"]
 
     for path, swhid in temp_folder["paths"].items():
-        example_tree.addNode(path, swhid, True if path == filesample_path else False)
+        example_tree.add_node(path, swhid, True if path == filesample_path else False)
 
-    result = example_tree.toDict()
+    result = example_tree.to_dict()
 
     assert len(result) == 6
 
@@ -72,11 +72,11 @@ def test_get_directories_info(example_tree, temp_folder):
 
     for path, swhid in temp_folder["paths"].items():
         if path == filesample_path or path == filesample2_path:
-            example_tree.addNode(path, swhid, True)
+            example_tree.add_node(path, swhid, True)
         else:
-            example_tree.addNode(path, swhid, False)
+            example_tree.add_node(path, swhid, False)
 
-    directories = example_tree.getDirectoriesInfo(example_tree.path)
+    directories = example_tree.get_directories_info(example_tree.path)
 
     assert subsubdir_path not in directories
     assert directories[subdir_path] == (2, 2)
@@ -86,23 +86,23 @@ def test_get_files_from_dir(example_tree, temp_folder):
     subdir_path = temp_folder["subdir"]
 
     for path, swhid in temp_folder["paths"].items():
-        example_tree.addNode(path, swhid, True)
+        example_tree.add_node(path, swhid, True)
 
-    files = example_tree.getFilesFromDir(subdir_path)
+    files = example_tree.get_files_from_dir(subdir_path)
     assert len(files) == 2
 
 
 def test_get_files_source_path(example_tree, temp_folder):
     for path, swhid in temp_folder["paths"].items():
-        example_tree.addNode(path, swhid, True)
+        example_tree.add_node(path, swhid, True)
 
-    files = example_tree.getFilesFromDir(example_tree.path)
+    files = example_tree.get_files_from_dir(example_tree.path)
     assert len(files) == 1
 
 
 def test_get_files_from_dir_raise_exception(example_tree, temp_folder):
     for path, swhid in temp_folder["paths"].items():
-        example_tree.addNode(path, swhid, True)
+        example_tree.add_node(path, swhid, True)
 
     with pytest.raises(InvalidDirectoryPath):
-        example_tree.getFilesFromDir("test/")
+        example_tree.get_files_from_dir("test/")

@@ -42,7 +42,7 @@ class Tree:
         self.known = False
         self.children: Dict[Path, Tree] = {}
 
-    def addNode(self, path: Path, swhid: str, known: bool) -> None:
+    def add_node(self, path: Path, swhid: str, known: bool) -> None:
         """Recursively add a new path.
         """
         relative_path = path.relative_to(self.path)
@@ -56,35 +56,35 @@ class Tree:
         if new_path not in self.children:
             self.children[new_path] = Tree(new_path, self)
 
-        self.children[new_path].addNode(path, swhid, known)
+        self.children[new_path].add_node(path, swhid, known)
 
-    def show(self, format) -> None:
+    def show(self, fmt) -> None:
         """Show tree in different formats"""
-        if format == "json":
-            print(json.dumps(self.toDict(), indent=4, sort_keys=True))
+        if fmt == "json":
+            print(json.dumps(self.to_dict(), indent=4, sort_keys=True))
 
-        if format == "ndjson":
-            print(ndjson.dumps(dict_path for dict_path in self.__iterNodesAttr()))
+        if fmt == "ndjson":
+            print(ndjson.dumps(dict_path for dict_path in self._iter_nodes_attr()))
 
-        elif format == "text":
+        elif fmt == "text":
             isatty = sys.stdout.isatty()
 
             print(colorize(str(self.path), Color.blue) if isatty else str(self.path))
-            self.printChildren(isatty)
+            self.print_children(isatty)
 
-        elif format == "sunburst":
+        elif fmt == "sunburst":
             root = self.path
-            directories = self.getDirectoriesInfo(root)
+            directories = self.get_directories_info(root)
             sunburst = generate_sunburst(directories, root)
             offline_plot(sunburst)
 
-    def printChildren(self, isatty: bool, inc: int = 1) -> None:
+    def print_children(self, isatty: bool, inc: int = 1) -> None:
         for path, node in self.children.items():
-            self.printNode(node, isatty, inc)
+            self.print_node(node, isatty, inc)
             if node.children:
-                node.printChildren(isatty, inc + 1)
+                node.print_children(isatty, inc + 1)
 
-    def printNode(self, node: Any, isatty: bool, inc: int) -> None:
+    def print_node(self, node: Any, isatty: bool, inc: int) -> None:
         rel_path = str(node.path.relative_to(self.path))
         begin = "│   " * inc
         end = "/" if node.otype == DIRECTORY else ""
@@ -111,7 +111,7 @@ class Tree:
         """
         return {str(self.path): {"swhid": self.swhid, "known": self.known,}}
 
-    def toDict(self) -> Dict[str, Dict[str, Any]]:
+    def to_dict(self) -> Dict[str, Dict[str, Any]]:
         """
         Recursively flatten the current tree nodes into a dictionary.
 
@@ -146,7 +146,7 @@ class Tree:
 
 
         """
-        return {k: v for d in self.__iterNodesAttr() for k, v in d.items()}
+        return {k: v for d in self._iter_nodes_attr() for k, v in d.items()}
 
     def iterate(self) -> Iterator[Tree]:
         """
@@ -158,7 +158,7 @@ class Tree:
             if child_node.otype == DIRECTORY:
                 yield from child_node.iterate()
 
-    def __iterNodesAttr(self) -> Iterator[Dict[str, Dict[str, Any]]]:
+    def _iter_nodes_attr(self) -> Iterator[Dict[str, Dict[str, Any]]]:
         """
         Recursively iterate through the children of the current node returning
         an iterable of the children nodes attributes
@@ -170,9 +170,9 @@ class Tree:
         for child_node in self.iterate():
             yield child_node.attributes
             if child_node.otype == DIRECTORY:
-                yield from child_node.__iterNodesAttr()
+                yield from child_node._iter_nodes_attr()
 
-    def getFilesFromDir(self, dir_path: Path) -> List:
+    def get_files_from_dir(self, dir_path: Path) -> List:
         """
         Retrieve files information about a specific directory path
 
@@ -181,7 +181,7 @@ class Tree:
             in input
         """
 
-        def getFiles(node):
+        def get_files(node):
             files = []
             for _, node in node.children.items():
                 if node.otype == CONTENT:
@@ -189,16 +189,16 @@ class Tree:
             return files
 
         if dir_path == self.path:
-            return getFiles(self)
+            return get_files(self)
         else:
             for node in self.iterate():
                 if node.path == dir_path:
-                    return getFiles(node)
+                    return get_files(node)
             raise InvalidDirectoryPath(
                 "The directory provided doesn't match any stored directory"
             )
 
-    def __getSubDirsInfo(self, root, directories):
+    def _get_sub_dirs_info(self, root, directories):
         """Fills the directories given in input with the contents information
            stored inside the directory child, only if they have contents.
         """
@@ -213,9 +213,9 @@ class Tree:
                 if not contents_info[0] == 0:
                     directories[rel_path] = contents_info
                 if child_node.has_dirs():
-                    child_node.__getSubDirsInfo(root, directories)
+                    child_node._get_sub_dirs_info(root, directories)
 
-    def getDirectoriesInfo(self, root: Path) -> Dict[Path, Tuple[int, int]]:
+    def get_directories_info(self, root: Path) -> Dict[Path, Tuple[int, int]]:
         """Get information about all directories under the given root.
 
         Returns:
@@ -224,7 +224,7 @@ class Tree:
 
         """
         directories = {root: self.count_contents()}
-        self.__getSubDirsInfo(root, directories)
+        self._get_sub_dirs_info(root, directories)
         return directories
 
     def count_contents(self) -> Tuple[int, int]:
@@ -241,7 +241,7 @@ class Tree:
 
         if not self.otype == DIRECTORY:
             raise InvalidObjectType(
-                "Can't calculate contents of the " "object type: %s" % self.otype
+                "Can't count contents of the object type: %s" % self.otype
             )
 
         if self.known:

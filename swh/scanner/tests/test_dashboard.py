@@ -12,7 +12,7 @@ def test_generate_table_body(example_tree, temp_folder):
     subdir_path = temp_folder["subdir"]
 
     for path, swhid in temp_folder["paths"].items():
-        example_tree.addNode(path, swhid, True)
+        example_tree.add_node(path, swhid, True)
 
     generated_body = generate_table_body(subdir_path, example_tree)
 

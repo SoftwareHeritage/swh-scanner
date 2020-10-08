@@ -116,11 +116,11 @@ def example_dirs(example_tree, temp_folder):
 
     for path, swhid in temp_folder["paths"].items():
         if path in known_paths:
-            example_tree.addNode(path, swhid, True)
+            example_tree.add_node(path, swhid, True)
         else:
-            example_tree.addNode(path, swhid, False)
+            example_tree.add_node(path, swhid, False)
 
-    return example_tree.getDirectoriesInfo(root)
+    return example_tree.get_directories_info(root)
 
 
 @pytest.fixture

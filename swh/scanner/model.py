@@ -64,7 +64,7 @@ class Tree:
             print(json.dumps(self.to_dict(), indent=4, sort_keys=True))
 
         if fmt == "ndjson":
-            print(ndjson.dumps(dict_path for dict_path in self._iter_nodes_attr()))
+            print(ndjson.dumps(node.attributes for node in self.iterate()))
 
         elif fmt == "text":
             isatty = sys.stdout.isatty()
@@ -146,7 +146,7 @@ class Tree:
 
 
         """
-        return {k: v for d in self._iter_nodes_attr() for k, v in d.items()}
+        return {k: v for node in self.iterate() for k, v in node.attributes.items()}
 
     def iterate(self) -> Iterator[Tree]:
         """
@@ -157,20 +157,6 @@ class Tree:
             yield child_node
             if child_node.otype == DIRECTORY:
                 yield from child_node.iterate()
-
-    def _iter_nodes_attr(self) -> Iterator[Dict[str, Dict[str, Any]]]:
-        """
-        Recursively iterate through the children of the current node returning
-        an iterable of the children nodes attributes
-
-        Yields:
-            a dictionary containing a path with its known/unknown status and the
-            SWHID
-        """
-        for child_node in self.iterate():
-            yield child_node.attributes
-            if child_node.otype == DIRECTORY:
-                yield from child_node._iter_nodes_attr()
 
     def get_files_from_dir(self, dir_path: Path) -> List:
         """

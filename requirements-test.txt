@@ -6,3 +6,4 @@ swh.core[testing-core]
 swh.model[testing]
 swh.storage[testing]
 swh.web[testing]
+asynctest

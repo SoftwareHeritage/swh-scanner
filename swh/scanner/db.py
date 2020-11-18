@@ -1,0 +1,69 @@
+# Copyright (C) 2020  The Software Heritage developers
+# See the AUTHORS file at the top-level directory of this distribution
+# License: GNU General Public License version 3, or any later version
+# See top-level LICENSE file for more information
+
+"""
+This module is an interface to interact with the local database
+where the SWHIDs will be saved for the local API.
+
+SWHIDs can be added directly from an input file.
+"""
+
+from io import TextIOWrapper
+from pathlib import Path
+import sqlite3
+from typing import Iterable
+
+from swh.core.utils import grouper
+
+from .exceptions import DBError
+
+
+class Db:
+    """Local database interface"""
+
+    def __init__(self, db_file: Path):
+        self.db_file: Path = db_file
+        self.conn: sqlite3.Connection = sqlite3.connect(
+            db_file, check_same_thread=False
+        )
+
+    def close(self):
+        """Close the connection to the database."""
+        self.conn.close()
+
+    def create_table(self, cur: sqlite3.Cursor):
+        """Create the table where the SWHIDs will be stored."""
+        cur.execute("""CREATE TABLE IF NOT EXISTS swhids (swhid text PRIMARY KEY)""")
+
+    def add(self, swhids: Iterable[str], chunk_size: int, cur: sqlite3.Cursor):
+        """Insert the SWHID inside the database."""
+        for swhids_chunk in grouper(swhids, chunk_size):
+            cur.executemany(
+                """INSERT INTO swhids VALUES (?)""",
+                [(swhid_chunk,) for swhid_chunk in swhids_chunk],
+            )
+
+    def create_from(
+        self, input_file: TextIOWrapper, chunk_size: int, cur: sqlite3.Cursor
+    ):
+        """Create a new database with the SWHIDs present inside the input file."""
+        self.create_table(cur)
+        # use a set to avoid equal swhid
+        swhids = set(line.strip() for line in input_file.readlines())
+
+        try:
+            self.add(list(swhids), chunk_size, cur)
+            cur.close()
+            self.conn.commit()
+        except Exception:
+            raise DBError
+
+    def known(self, swhid: str, cur: sqlite3.Cursor):
+        """Check if a given SWHID is present or not inside the local database."""
+        cur.execute("""SELECT 1 FROM swhids WHERE swhid=?""", (swhid,))
+        res = cur.fetchone()
+        cur.close()
+
+        return res is not None

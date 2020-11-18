@@ -6,6 +6,7 @@
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
 import os
+import sys
 from typing import Any, Dict, Optional
 
 import click
@@ -14,6 +15,8 @@ import yaml
 from swh.core import config
 from swh.core.cli import CONTEXT_SETTINGS
 from swh.core.cli import swh as swh_cli_group
+
+from .exceptions import DBError
 
 # All generic config code should reside in swh.core.config
 CONFIG_ENVVAR = "SWH_CONFIG_FILE"
@@ -42,6 +45,16 @@ Default config values are:
 SCANNER_HELP = f"""Software Heritage Scanner tools.
 
 {CONFIG_FILE_HELP}"""
+
+
+def setup_config(ctx, api_url):
+    config = ctx.obj["config"]
+    if api_url:
+        if not api_url.endswith("/"):
+            api_url += "/"
+        config["web-api"]["url"] = api_url
+
+    return config
 
 
 @swh_cli_group.group(
@@ -121,13 +134,59 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive):
     present in the archive"""
     import swh.scanner.scanner as scanner
 
-    config = ctx.obj["config"]
-    if api_url:
-        if not api_url.endswith("/"):
-            api_url += "/"
-        config["web-api"]["url"] = api_url
-
+    config = setup_config(ctx, api_url)
     scanner.scan(config, root_path, patterns, out_fmt, interactive)
+
+
+@scanner.group("db")
+@click.pass_context
+def db(ctx):
+    pass
+
+
+@db.command("import")
+@click.option(
+    "-s",
+    "--chunk-size",
+    "chunk_size",
+    default="10000",
+    metavar="SIZE",
+    show_default=True,
+    type=int,
+    help="The chunk size ",
+)
+@click.option(
+    "-i",
+    "--input",
+    "input_file",
+    metavar="INPUT_FILE",
+    type=click.File("r"),
+    help="A file containing SWHIDs",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_file_db",
+    metavar="OUTPUT_DB_FILE",
+    default="SWHID_DB.sqlite",
+    show_default=True,
+    help="The name of the generated sqlite database",
+)
+@click.pass_context
+def import_(ctx, chunk_size, input_file, output_file_db):
+    """Parse an input list of SWHID to generate a local sqlite database
+    """
+    from .db import Db
+
+    db = Db(output_file_db)
+    cur = db.conn.cursor()
+    try:
+        db.create_from(input_file, chunk_size, cur)
+        db.close()
+    except DBError:
+        print("Failed to create database")
+        os.remove(output_file_db)
+        sys.exit(1)
 
 
 def main():

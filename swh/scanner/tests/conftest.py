@@ -15,6 +15,7 @@ import pytest
 from swh.model.cli import swhid_of_dir, swhid_of_file
 from swh.scanner.model import Tree
 
+from .data import present_swhids
 from .flask_api import create_app
 
 
@@ -134,6 +135,20 @@ def test_sample_folder(datadir, tmp_path):
     test_sample_folder = Path(os.path.join(tmp_path, "sample-folder"))
     assert test_sample_folder.exists()
     return test_sample_folder
+
+
+@pytest.fixture
+def test_swhids_sample(tmp_path):
+    """Create and return the opened "swhids_sample" file,
+       filled with present swhids present in data.py
+    """
+    test_swhids_sample = Path(os.path.join(tmp_path, "swhids_sample.txt"))
+
+    with open(test_swhids_sample, "w") as f:
+        f.write("\n".join(swhid for swhid in present_swhids))
+
+    assert test_swhids_sample.exists()
+    return open(test_swhids_sample, "r")
 
 
 @pytest.fixture(scope="session")

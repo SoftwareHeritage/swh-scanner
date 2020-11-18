@@ -3,6 +3,7 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import os
 from pathlib import Path
 from unittest.mock import Mock, call
 
@@ -11,6 +12,8 @@ import pytest
 
 import swh.scanner.cli as cli
 import swh.scanner.scanner as scanner
+
+from .data import present_swhids
 
 DATADIR = Path(__file__).absolute().parent / "data"
 CONFIG_PATH_GOOD = str(DATADIR / "global.yml")
@@ -39,6 +42,17 @@ def cli_runner(monkeypatch, tmp_path):
     BAD_CONFIG_PATH = str(tmp_path / "missing")
     monkeypatch.setattr(cli, "DEFAULT_CONFIG_PATH", BAD_CONFIG_PATH)
     return CliRunner(env={"SWH_CONFIG_FILE": None})
+
+
+@pytest.fixture(scope="function")
+def swhids_input_file(tmp_path):
+    swhids_input_file = Path(os.path.join(tmp_path, "input_file.txt"))
+
+    with open(swhids_input_file, "w") as f:
+        f.write("\n".join(swhid for swhid in present_swhids))
+
+    assert swhids_input_file.exists()
+    return swhids_input_file
 
 
 # TEST BEGIN
@@ -119,3 +133,18 @@ def test_api_url_option(cli_runner, m_scanner):
     res = cli_runner.invoke(cli.scanner, ["scan", ROOTPATH_GOOD, "-u", API_URL])
     assert res.exit_code == 0
     assert m_scanner.scan.call_count == 1
+
+
+def test_db_option(cli_runner, swhids_input_file, tmp_path):
+    res = cli_runner.invoke(
+        cli.scanner,
+        [
+            "db",
+            "import",
+            "--input",
+            swhids_input_file,
+            "--output",
+            f"{tmp_path}/test_db.sqlite",
+        ],
+    )
+    assert res.exit_code == 0

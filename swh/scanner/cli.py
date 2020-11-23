@@ -146,6 +146,24 @@ def db(ctx):
 
 @db.command("import")
 @click.option(
+    "-i",
+    "--input",
+    "input_file",
+    metavar="INPUT_FILE",
+    required=True,
+    type=click.File("r"),
+    help="A file containing SWHIDs",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_file_db",
+    metavar="OUTPUT_DB_FILE",
+    required=True,
+    show_default=True,
+    help="The name of the generated sqlite database",
+)
+@click.option(
     "-s",
     "--chunk-size",
     "chunk_size",
@@ -155,26 +173,10 @@ def db(ctx):
     type=int,
     help="The chunk size ",
 )
-@click.option(
-    "-i",
-    "--input",
-    "input_file",
-    metavar="INPUT_FILE",
-    type=click.File("r"),
-    help="A file containing SWHIDs",
-)
-@click.option(
-    "-o",
-    "--output",
-    "output_file_db",
-    metavar="OUTPUT_DB_FILE",
-    default="SWHID_DB.sqlite",
-    show_default=True,
-    help="The name of the generated sqlite database",
-)
 @click.pass_context
 def import_(ctx, chunk_size, input_file, output_file_db):
-    """Parse an input list of SWHID to generate a local sqlite database
+    """Create SQLite database of known SWHIDs from a textual list of SWHIDs
+
     """
     from .db import Db
 

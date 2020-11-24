@@ -18,6 +18,9 @@ from swh.core.cli import swh as swh_cli_group
 
 from .exceptions import DBError
 
+# Config for the "serve" option
+BACKEND_DEFAULT_PORT = 5011
+
 # All generic config code should reside in swh.core.config
 CONFIG_ENVVAR = "SWH_CONFIG_FILE"
 DEFAULT_CONFIG_PATH = os.path.join(click.get_app_dir("swh"), "global.yml")
@@ -189,6 +192,46 @@ def import_(ctx, chunk_size, input_file, output_file_db):
         print("Failed to create database")
         os.remove(output_file_db)
         sys.exit(1)
+
+
+@db.command("serve")
+@click.option(
+    "-h",
+    "--host",
+    metavar="HOST",
+    default="127.0.0.1",
+    show_default=True,
+    help="The host of the API server",
+)
+@click.option(
+    "-p",
+    "--port",
+    metavar="PORT",
+    default=f"{BACKEND_DEFAULT_PORT}",
+    show_default=True,
+    help="The port of the API server",
+)
+@click.option(
+    "-f",
+    "--db-file",
+    "db_file",
+    metavar="DB_FILE",
+    default="SWHID_DB.sqlite",
+    show_default=True,
+    type=click.Path(exists=True),
+    help="An sqlite database file (it can be generated with: 'swh scanner db import')",
+)
+@click.pass_context
+def serve(ctx, host, port, db_file):
+    """Start an API service using the sqlite database generated with the "db import"
+    option."""
+    import swh.scanner.backend as backend
+
+    from .db import Db
+
+    db = Db(db_file)
+    backend.run(host, port, db)
+    db.close()
 
 
 def main():

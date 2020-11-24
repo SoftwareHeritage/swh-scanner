@@ -12,6 +12,10 @@ class InvalidDirectoryPath(Exception):
     pass
 
 
+class LargePayloadExc(Exception):
+    pass
+
+
 class DBError(Exception):
     pass
 

@@ -64,6 +64,5 @@ class Db:
         """Check if a given SWHID is present or not inside the local database."""
         cur.execute("""SELECT 1 FROM swhids WHERE swhid=?""", (swhid,))
         res = cur.fetchone()
-        cur.close()
 
         return res is not None

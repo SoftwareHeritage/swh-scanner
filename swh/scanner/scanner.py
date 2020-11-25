@@ -190,7 +190,7 @@ async def run(
     else:
         headers = {}
 
-    async with aiohttp.ClientSession(headers=headers) as session:
+    async with aiohttp.ClientSession(headers=headers, trust_env=True) as session:
         await _scan(root, session, api_url, source_tree, exclude_patterns)
 
 

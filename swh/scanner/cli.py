@@ -141,7 +141,7 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive):
     scanner.scan(config, root_path, patterns, out_fmt, interactive)
 
 
-@scanner.group("db")
+@scanner.group("db", help="Manage local knowledge base for swh-scanner")
 @click.pass_context
 def db(ctx):
     pass

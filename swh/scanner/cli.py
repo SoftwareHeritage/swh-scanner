@@ -234,6 +234,79 @@ def serve(ctx, host, port, db_file):
     db.close()
 
 
+@scanner.command()
+@click.argument("root_path", required=True, type=click.Path(exists=True))
+@click.option(
+    "-u",
+    "--api-url",
+    default=None,
+    metavar="API_URL",
+    show_default=True,
+    required=True,
+    help="URL for the api request.",
+)
+@click.option(
+    "-n",
+    "--backend-name",
+    default=None,
+    metavar="BACKEND_NAME",
+    show_default=True,
+    required=True,
+    help="The backend name.",
+)
+@click.option(
+    "--origin",
+    "-o",
+    "origin_url",
+    metavar="ORIGIN_URL",
+    required=True,
+    help="Repository origin url.",
+)
+@click.option(
+    "--commit", "-c", metavar="COMMIT", required=True, help="Commit identifier.",
+)
+@click.option(
+    "--exclude",
+    "-x",
+    "patterns",
+    metavar="PATTERN",
+    multiple=True,
+    show_default=True,
+    help="Exclude directories using glob patterns \
+    (e.g., '*.git' to exclude all .git directories).",
+)
+@click.option(
+    "--algo", "-a", metavar="ALGO NAME", required=True, help="Algorithm name.",
+)
+@click.option(
+    "--seed", "-s", metavar="SEED", type=int, help="Seed for the random algorithm"
+)
+@click.pass_context
+def benchmark(
+    ctx, root_path, api_url, backend_name, origin_url, commit, patterns, algo, seed
+):
+    from importlib import reload
+    import logging
+
+    from swh.scanner.benchmark_algos import run
+
+    # reload logging module avoid conflict with benchmark.py logging
+    reload(logging)
+    logging.basicConfig(
+        filename="experiments.log",
+        format="%(asctime)s %(message)s",
+        datefmt="%m/%d/%Y %I:%M:%S %p",
+    )
+
+    try:
+        run(root_path, api_url, backend_name, patterns, algo, origin_url, commit, seed)
+    except Exception as e:
+        logging.exception(
+            f'Repository: "{root_path}" using "{algo}" '
+            f'algorithm on "{api_url}" FAILED: {e}'
+        )
+
+
 def main():
     return scanner(auto_envvar_prefix="SWH_SCANNER")
 

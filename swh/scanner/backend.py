@@ -3,6 +3,8 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+from pathlib import Path
+
 from flask import Flask, request
 
 from .db import Db
@@ -11,10 +13,11 @@ from .exceptions import LargePayloadExc
 LIMIT = 1000
 
 
-def create_app(db: Db):
+def create_app(db_file: str):
     """Backend for swh-scanner, implementing the /known endpoint of the
        Software Heritage Web API"""
     app = Flask(__name__)
+    db = Db(Path(db_file))
 
     @app.route("/api/1/known/", methods=["POST"])
     def known():
@@ -34,8 +37,13 @@ def create_app(db: Db):
     return app
 
 
-def run(host: str, port: int, db: Db):
+def run(host: str, port: int, db_file: str):
     """Serve the local database
     """
-    app = create_app(db)
-    app.run(host, port, debug=True)
+    # from .db import Db
+
+    # db = Db(db_file)
+    # app = create_app(db)
+    # app.run(host, port, debug=False)
+    # db.close()
+    pass

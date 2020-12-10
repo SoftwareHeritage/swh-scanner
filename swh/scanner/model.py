@@ -22,12 +22,20 @@ from .plot import generate_sunburst, offline_plot
 class Color(Enum):
     blue = "\033[94m"
     green = "\033[92m"
+    yellow = "\033[93m"
+    magenta = "\033[95m"
     red = "\033[91m"
     end = "\033[0m"
 
 
 def colorize(text: str, color: Color):
     return color.value + text + Color.end.value
+
+
+class Status(Enum):
+    unset = 0
+    set = 1
+    queried = 2
 
 
 class Tree:
@@ -40,23 +48,26 @@ class Tree:
         self.otype = DIRECTORY if path.is_dir() else CONTENT
         self.swhid = ""
         self.known = False
+        self.status = Status.unset
         self.children: Dict[Path, Tree] = {}
 
-    def add_node(self, path: Path, swhid: str, known: bool) -> None:
+    def __len__(self):
+        return sum(1 for node in self.iterate()) + 1  # the root node
+
+    def add_node(self, path: Path, swhid: str) -> None:
         """Recursively add a new path.
         """
         relative_path = path.relative_to(self.path)
 
         if relative_path == Path("."):
             self.swhid = swhid
-            self.known = known
             return
 
         new_path = self.path.joinpath(relative_path.parts[0])
         if new_path not in self.children:
             self.children[new_path] = Tree(new_path, self)
 
-        self.children[new_path].add_node(path, swhid, known)
+        self.children[new_path].add_node(path, swhid)
 
     def show(self, fmt) -> None:
         """Show tree in different formats"""
@@ -90,14 +101,27 @@ class Tree:
         end = "/" if node.otype == DIRECTORY else ""
 
         if isatty:
-            if not node.known:
-                rel_path = colorize(rel_path, Color.red)
-            elif node.otype == DIRECTORY:
+            if node.status == Status.unset:
+                rel_path = colorize(rel_path, Color.magenta)
+            elif node.status == Status.set and not node.known:
+                rel_path = colorize(rel_path, Color.yellow)
+            elif node.status == Status.set and node.known:
                 rel_path = colorize(rel_path, Color.blue)
-            elif node.otype == CONTENT:
+            elif node.status == Status.queried and not node.known:
+                rel_path = colorize(rel_path, Color.red)
+            elif node.status == Status.queried and node.known:
                 rel_path = colorize(rel_path, Color.green)
 
         print(f"{begin}{rel_path}{end}")
+
+    @property
+    def known(self):
+        return self._known
+
+    @known.setter
+    def known(self, value: bool):
+        self._known = value
+        self.status = Status.set
 
     @property
     def attributes(self) -> Dict[str, Dict[str, Any]]:
@@ -157,6 +181,16 @@ class Tree:
             yield child_node
             if child_node.otype == DIRECTORY:
                 yield from child_node.iterate()
+
+    def iterate_bfs(self) -> Iterator[Tree]:
+        """Get nodes in BFS order
+        """
+        nodes = set(node for node in self.children.values())
+        for node in nodes:
+            yield node
+        for node in nodes:
+            if node.otype == DIRECTORY:
+                yield from node.iterate_bfs()
 
     def get_files_from_dir(self, dir_path: Path) -> List:
         """
@@ -247,5 +281,11 @@ class Tree:
         """
         for _, child_node in self.children.items():
             if child_node.otype == DIRECTORY:
+                return True
+        return False
+
+    def has_contents(self) -> bool:
+        for _, child_node in self.children.items():
+            if child_node.otype == CONTENT:
                 return True
         return False

@@ -6,7 +6,6 @@
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
 import os
-import sys
 from typing import Any, Dict, Optional
 
 import click
@@ -188,10 +187,8 @@ def import_(ctx, chunk_size, input_file, output_file_db):
     try:
         db.create_from(input_file, chunk_size, cur)
         db.close()
-    except DBError:
-        print("Failed to create database")
-        os.remove(output_file_db)
-        sys.exit(1)
+    except DBError as e:
+        ctx.fail("Failed to import SWHIDs into database: {0}".format(e))
 
 
 @db.command("serve")

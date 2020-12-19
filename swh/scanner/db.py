@@ -49,16 +49,15 @@ class Db:
         self, input_file: TextIOWrapper, chunk_size: int, cur: sqlite3.Cursor
     ):
         """Create a new database with the SWHIDs present inside the input file."""
-        self.create_table(cur)
-        # use a set to avoid equal swhid
-        swhids = set(line.strip() for line in input_file.readlines())
-
         try:
-            self.add(list(swhids), chunk_size, cur)
+            self.create_table(cur)
+            cur.execute("PRAGMA synchronous = OFF")
+            cur.execute("PRAGMA journal_mode = OFF")
+            self.add((line.rstrip() for line in input_file), chunk_size, cur)
             cur.close()
             self.conn.commit()
-        except Exception:
-            raise DBError
+        except sqlite3.Error as e:
+            raise DBError(f"SQLite error: {e}")
 
     def known(self, swhid: str, cur: sqlite3.Cursor):
         """Check if a given SWHID is present or not inside the local database."""

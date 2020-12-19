@@ -11,13 +11,19 @@ SWHIDs can be added directly from an input file.
 """
 
 from io import TextIOWrapper
+import logging
 from pathlib import Path
+import re
 import sqlite3
 from typing import Iterable
 
 from swh.core.utils import grouper
 
 from .exceptions import DBError
+
+# XXX copied and simplified from swh.model.identifiers (WIP), replace this in favor of
+# swh.model.identifiers.SWHID_RE when it is landed there
+SWHID_RE = re.compile("^swh:1:(ori|snp|rel|rev|dir|cnt):[0-9a-f]{40}$")
 
 
 class Db:
@@ -45,6 +51,17 @@ class Db:
                 [(swhid_chunk,) for swhid_chunk in swhids_chunk],
             )
 
+    @staticmethod
+    def iter_swhids(lines: Iterable[str]) -> Iterable[str]:
+        lineno = 0
+        for line in lines:
+            lineno += 1
+            swhid = line.rstrip()
+            if SWHID_RE.match(swhid):
+                yield swhid
+            else:
+                logging.error("ignoring invalid SWHID on line %d: %s", lineno, swhid)
+
     def create_from(
         self, input_file: TextIOWrapper, chunk_size: int, cur: sqlite3.Cursor
     ):
@@ -53,7 +70,7 @@ class Db:
             self.create_table(cur)
             cur.execute("PRAGMA synchronous = OFF")
             cur.execute("PRAGMA journal_mode = OFF")
-            self.add((line.rstrip() for line in input_file), chunk_size, cur)
+            self.add(self.iter_swhids(input_file), chunk_size, cur)
             cur.close()
             self.conn.commit()
         except sqlite3.Error as e:

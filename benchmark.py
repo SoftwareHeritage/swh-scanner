@@ -11,6 +11,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from tempfile import TemporaryDirectory
 from typing import Set
 
 import click
@@ -118,15 +119,16 @@ def main(repo_path, temp_path, kb_state, algos):
         format="%(asctime)s %(message)s",
         datefmt="%m/%d/%Y %I:%M:%S %p",
     )
-
     try:
-        subprocess.run(
-            ["tar", "xvf", repo_path, "-C", temp_path],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=sys.stderr,
-        )
-        run_experiments(repo_path, temp_path, kb_state, set(algos))
+        repo_id = Path(repo_path).parts[-1].split(".")[0]
+        with TemporaryDirectory(prefix=repo_id + "_", dir=temp_path) as tmp_dir:
+            subprocess.run(
+                ["tar", "xf", repo_path, "-C", tmp_dir, "--strip-components=1"],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=sys.stderr,
+            )
+            run_experiments(repo_path, temp_path, kb_state, set(algos))
     except Exception as e:
         logging.exception(e)
     except IOError as ioerror:

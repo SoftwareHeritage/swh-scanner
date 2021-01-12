@@ -293,7 +293,7 @@ def load_source(root, sre_patterns):
     """
 
     def _scan(root_path, source_tree, sre_patterns):
-        dirpath, dnames, fnames = next(os.walk(root_path))
+        dirpath, dnames, fnames = next(os.walk(root_path, followlinks=False))
         dirpath = Path(dirpath)
 
         if fnames:
@@ -336,7 +336,8 @@ def run(
             reg_obj for reg_obj in extract_regex_objs(Path(root), exclude_patterns)
         }
 
-    repo_id = Path(root).parts[-1]
+    # temporary directory prefix
+    repo_id = Path(root).parts[-1].split("_")[0]
     counter: collections.Counter = collections.Counter()
     counter["api_calls"] = 0
     counter["queries"] = 0
@@ -356,9 +357,10 @@ def run(
             backend_name,
             len(source_tree),
             algo,
+            -1,
             min_queries,
         )
-        print(min_result)
+        print(*min_result, sep=",")
         return
     elif algo == "stopngo":
         stopngo(source_tree, api_url, counter)
@@ -380,4 +382,4 @@ def run(
         counter["queries"],
     )
 
-    print(result)
+    print(*result, sep=",")

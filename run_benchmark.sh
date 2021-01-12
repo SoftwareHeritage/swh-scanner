@@ -28,6 +28,9 @@ for i in "${@:3}"; do
     algos="$algos -a $i"
 done
 
+# print headers
+echo "repo_id,origin,commit_id,kb_state,repo_size,algorithm_name,kb_queries,swhids_queried"
+
 while IFS= read -r repo;
 do
     ./benchmark.py $repo $temp_dir $kb_state $algos

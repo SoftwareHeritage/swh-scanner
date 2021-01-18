@@ -8,7 +8,6 @@ import json
 import logging
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
@@ -88,8 +87,6 @@ def run_experiments(
 
     for proc in processes:
         proc.wait()
-
-    shutil.rmtree(extracted_repo_path)
 
 
 @click.command(

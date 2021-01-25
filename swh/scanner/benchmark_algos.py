@@ -254,6 +254,7 @@ def algo_min(source_tree: Tree, api_url: str):
 
     for node in all_nodes:
         if node.otype == CONTENT and not node.known:
+            all_nodes_copy.remove(node)
             remove_parents(node, all_nodes_copy)
 
     for node in all_nodes_copy:

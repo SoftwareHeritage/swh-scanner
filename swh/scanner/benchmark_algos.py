@@ -12,6 +12,8 @@ import random
 from typing import Dict, Iterable, List, Optional
 
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 from swh.model.from_disk import Content, Directory, accept_all_directories
 from swh.model.identifiers import CONTENT, DIRECTORY, swhid
@@ -19,6 +21,10 @@ from swh.model.identifiers import CONTENT, DIRECTORY, swhid
 from .exceptions import APIError
 from .model import Status, Tree
 from .scanner import directory_filter, extract_regex_objs
+
+session = requests.Session()
+retries_rule = Retry(total=5, backoff_factor=1)
+session.mount("http://", HTTPAdapter(max_retries=retries_rule))
 
 
 def query_swhids(
@@ -40,7 +46,7 @@ def query_swhids(
 
     def make_request(swhids):
         swhids = [swhid.swhid for swhid in swhids]
-        req = requests.post(endpoint, json=swhids)
+        req = session.post(endpoint, json=swhids)
         if req.status_code != 200:
             error_message = "%s with given values %s" % (req.text, str(swhids))
             raise APIError(error_message)

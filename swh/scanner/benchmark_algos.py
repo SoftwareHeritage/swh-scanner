@@ -149,7 +149,8 @@ def file_priority(source_tree: Tree, api_url: str, counter: collections.Counter)
             # update directory status
             dir_.known = query_swhids([dir_], api_url, counter)[dir_.swhid]["known"]
             dir_.status = Status.queried
-            set_children_status(dir_, DIRECTORY, dir_.known)
+            if dir_.known:
+                set_children_status(dir_, DIRECTORY, True)
 
 
 def directory_priority(source_tree: Tree, api_url: str, counter: collections.Counter):

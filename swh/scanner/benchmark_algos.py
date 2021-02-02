@@ -160,9 +160,6 @@ def directory_priority(source_tree: Tree, api_url: str, counter: collections.Cou
         )
     )
     unset_dirs.reverse()
-    # insert root if it has no contents
-    if source_tree.has_contents:
-        unset_dirs.append(source_tree)
 
     for dir_ in unset_dirs:
         # if the directory is known set all the downstream file contents to known
@@ -248,8 +245,7 @@ def algo_min(source_tree: Tree, api_url: str):
         for child_node in node.iterate():
             nodes.remove(child_node)
 
-    all_nodes = [node for node in source_tree.iterate()]
-    all_nodes.insert(0, source_tree)
+    all_nodes = [node for node in source_tree.iterate_bfs()]
 
     parsed_nodes = query_swhids(all_nodes, api_url)
     for node in all_nodes:

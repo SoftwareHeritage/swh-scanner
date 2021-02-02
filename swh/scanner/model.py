@@ -185,12 +185,15 @@ class Tree:
     def iterate_bfs(self) -> Iterator[Tree]:
         """Get nodes in BFS order
         """
-        nodes = set(node for node in self.children.values())
-        for node in nodes:
-            yield node
-        for node in nodes:
-            if node.otype == DIRECTORY:
-                yield from node.iterate_bfs()
+        nodes = []
+        nodes.append(self)
+
+        while len(nodes) > 0:
+            for node in nodes.copy():
+                yield node
+                nodes.remove(node)
+                if node.otype == DIRECTORY:
+                    nodes.extend(list(node.children.values()))
 
     def get_files_from_dir(self, dir_path: Path) -> List:
         """

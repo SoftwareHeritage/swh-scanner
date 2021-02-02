@@ -70,10 +70,6 @@ def query_swhids(
 
 
 def stopngo(source_tree: Tree, api_url: str, counter: collections.Counter):
-    def set_children_known(node):
-        for child_node in node.iterate():
-            child_node.known = True
-
     nodes = []
     nodes.append(source_tree)
 
@@ -87,7 +83,7 @@ def stopngo(source_tree: Tree, api_url: str, counter: collections.Counter):
                 if not node.known:
                     nodes.extend(list(node.children.values()))
                 else:
-                    set_children_known(node)
+                    set_children_status(node, [CONTENT, DIRECTORY], True)
 
 
 def set_father_status(node, known):
@@ -105,12 +101,14 @@ def set_father_status(node, known):
     set_father_status(parent, known)
 
 
-def set_children_status(node, node_type, known, status: Status = Status.unset):
+def set_children_status(
+    node: Tree, node_types: Iterable[str], known: bool, status: Status = Status.unset
+):
     """
-    Recursively change father known and visited status of a given node
+    Recursively change the status of the children of the provided node
     """
     for child_node in node.iterate():
-        if child_node.otype == node_type and child_node.status == status:
+        if child_node.otype in node_types and child_node.status == status:
             child_node.known = known
 
 
@@ -150,7 +148,7 @@ def file_priority(source_tree: Tree, api_url: str, counter: collections.Counter)
             dir_.known = query_swhids([dir_], api_url, counter)[dir_.swhid]["known"]
             dir_.status = Status.queried
             if dir_.known:
-                set_children_status(dir_, DIRECTORY, True)
+                set_children_status(dir_, [DIRECTORY], True)
 
 
 def directory_priority(source_tree: Tree, api_url: str, counter: collections.Counter):
@@ -172,7 +170,7 @@ def directory_priority(source_tree: Tree, api_url: str, counter: collections.Cou
             dir_.known = query_swhids([dir_], api_url, counter)[dir_.swhid]["known"]
             dir_.status = Status.queried
             if dir_.known:
-                set_children_status(dir_, CONTENT, True)
+                set_children_status(dir_, [CONTENT], True)
             else:
                 set_father_status(dir_, False)
 

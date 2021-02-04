@@ -15,7 +15,7 @@ from typing import Set
 
 import click
 
-SEED_OPTIONS = ["-s 10", "-s 20", "-s 30"]
+SEED_OPTIONS = ["-s 10"]
 
 
 def get_scenario_cmd(algo, kb_url, kb_label, origin_info, extracted_repo_path):

@@ -299,18 +299,23 @@ def load_source(root, sre_patterns):
     """
 
     def _scan(root_path, source_tree, sre_patterns):
-        dirpath, dnames, fnames = next(os.walk(root_path, followlinks=False))
-        dirpath = Path(dirpath)
+        files = []
+        dirs = []
+        for elem in os.listdir(root_path):
+            cnt = Path(root_path).joinpath(elem)
+            if not os.path.islink(cnt):
+                if os.path.isfile(cnt):
+                    files.append(cnt)
+                elif os.path.isdir(cnt):
+                    dirs.append(cnt)
 
-        if fnames:
-            files = [dirpath.joinpath(fname) for fname in fnames]
+        if files:
             parsed_file_swhids = dict(get_swhids(files, sre_patterns))
 
             for path, swhid_ in parsed_file_swhids.items():
                 source_tree.add_node(Path(path), swhid_)
 
-        if dnames:
-            dirs = [dirpath.joinpath(dname) for dname in dnames]
+        if dirs:
             parsed_dirs_swhids = dict(get_swhids(dirs, sre_patterns))
 
             for path, swhid_ in parsed_dirs_swhids.items():

@@ -234,17 +234,18 @@ def algo_min(source_tree: Tree, api_url: str):
     The minimal number of queries knowing the known/unknown status of every node
     """
 
-    def remove_parents(node, nodes):
+    def change_parent_status(node, status):
         parent = node.father
-        if parent is None or parent not in nodes:
-            return
-        else:
-            nodes.remove(parent)
-            remove_parents(parent, nodes)
 
-    def remove_children(node, nodes):
+        if parent is None:
+            return
+
+        parent.status = status
+        change_parent_status(parent, status)
+
+    def change_children_status(node, status):
         for child_node in node.iterate():
-            nodes.remove(child_node)
+            child_node.status = status
 
     all_nodes = [node for node in source_tree.iterate_bfs()]
 
@@ -252,22 +253,32 @@ def algo_min(source_tree: Tree, api_url: str):
     for node in all_nodes:
         node.known = parsed_nodes[node.swhid]["known"]
 
-    all_nodes_copy = all_nodes.copy()
+    unknown_cnts = list(
+        filter(lambda node: node.known is False, source_tree.iterate_bfs())
+    )
+    unknown_cnts.reverse()
 
-    for node in all_nodes:
-        if node.otype == CONTENT and not node.known:
-            remove_parents(node, all_nodes_copy)
+    for node in unknown_cnts:
+        change_parent_status(node, Status.unset)
 
-    all_nodes.reverse()
-    for node in all_nodes:
-        if node.otype == DIRECTORY and not node.known:
-            remove_parents(node, all_nodes_copy)
+    known_dirs = list(
+        filter(
+            lambda node: node.otype == DIRECTORY and node.known is True,
+            source_tree.iterate(),
+        )
+    )
 
-    for node in all_nodes_copy:
-        if node.otype == DIRECTORY and node.known:
-            remove_children(node, all_nodes_copy)
+    if source_tree.known:
+        known_dirs += [source_tree]
 
-    return len(all_nodes_copy)
+    for dir_ in known_dirs:
+        change_children_status(dir_, Status.unset)
+
+    unset_cnts = list(
+        filter(lambda node: node.status == Status.unset, source_tree.iterate_bfs())
+    )
+
+    return len(source_tree) - len(unset_cnts)
 
 
 def get_swhids(paths: Iterable[Path], exclude_patterns):

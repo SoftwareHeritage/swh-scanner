@@ -281,9 +281,19 @@ def serve(ctx, host, port, db_file):
 @click.option(
     "--seed", "-s", metavar="SEED", type=int, help="Seed for the random algorithm"
 )
+@click.option("--log-file", "-l", metavar="FILENAME", help="Log custom path.")
 @click.pass_context
 def benchmark(
-    ctx, root_path, api_url, backend_name, origin_url, commit, patterns, algo, seed
+    ctx,
+    root_path,
+    api_url,
+    backend_name,
+    origin_url,
+    commit,
+    patterns,
+    algo,
+    seed,
+    log_file,
 ):
     from importlib import reload
     import logging
@@ -293,9 +303,10 @@ def benchmark(
     # reload logging module avoid conflict with benchmark.py logging
     reload(logging)
     logging.basicConfig(
-        filename="experiments.log",
+        filename=log_file if log_file else "experiments.log",
         format="%(asctime)s %(message)s",
         datefmt="%m/%d/%Y %I:%M:%S %p",
+        level=logging.INFO,
     )
 
     try:

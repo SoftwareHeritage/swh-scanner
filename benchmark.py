@@ -18,7 +18,9 @@ import click
 SEED_OPTIONS = ["-s 10"]
 
 
-def get_scenario_cmd(algo, kb_url, kb_label, origin_info, extracted_repo_path):
+def get_scenario_cmd(
+    algo, kb_url, kb_label, origin_info, extracted_repo_path, log_file
+):
     return [
         "swh",
         "scanner",
@@ -33,6 +35,8 @@ def get_scenario_cmd(algo, kb_url, kb_label, origin_info, extracted_repo_path):
         origin_info["origin"],
         "--commit",
         origin_info["commit"],
+        "--log-file",
+        log_file,
         "--exclude",
         str(extracted_repo_path) + "/.git",
         str(extracted_repo_path),
@@ -40,7 +44,7 @@ def get_scenario_cmd(algo, kb_url, kb_label, origin_info, extracted_repo_path):
 
 
 def run_experiments(
-    repo_path: str, temp_path: str, kb_state_file: str, algos: Set[str]
+    repo_path: str, temp_path: str, kb_state_file: str, algos: Set[str], log_file: str
 ):
     """This function create a process for each experiment; one experiment is composed
     by: the repository we want to scan, the algorithms we need to test and different
@@ -70,13 +74,23 @@ def run_experiments(
             if algo == "random":
                 for seed_opt in SEED_OPTIONS:
                     random_cmd = get_scenario_cmd(
-                        algo, kb_url, kb_label, origin_info, str(extracted_repo_path)
+                        algo,
+                        kb_url,
+                        kb_label,
+                        origin_info,
+                        str(extracted_repo_path),
+                        log_file,
                     )
                     scenario_cmds.append(random_cmd + [seed_opt])
             else:
                 scenario_cmds.append(
                     get_scenario_cmd(
-                        algo, kb_url, kb_label, origin_info, str(extracted_repo_path)
+                        algo,
+                        kb_url,
+                        kb_label,
+                        origin_info,
+                        str(extracted_repo_path),
+                        log_file,
                     )
                 )
 
@@ -98,6 +112,9 @@ def run_experiments(
 @click.argument("temp_path", type=click.Path(exists=True), required=True)
 @click.argument("kb_state", type=click.Path(exists=True), required=True)
 @click.option(
+    "--log-file", "-l", metavar="FILENAME", required=True, help="Log custom path."
+)
+@click.option(
     "-a",
     "--algo",
     "algos",
@@ -110,9 +127,9 @@ def run_experiments(
     metavar="ALGORITHM_NAME",
     help="The algorithm name for the benchmark.",
 )
-def main(repo_path, temp_path, kb_state, algos):
+def main(repo_path, temp_path, kb_state, log_file, algos):
     logging.basicConfig(
-        filename="experiments.log",
+        filename=log_file,
         format="%(asctime)s %(message)s",
         datefmt="%m/%d/%Y %I:%M:%S %p",
     )
@@ -125,7 +142,7 @@ def main(repo_path, temp_path, kb_state, algos):
                 stdout=subprocess.DEVNULL,
                 stderr=sys.stderr,
             )
-            run_experiments(repo_path, temp_path, kb_state, set(algos))
+            run_experiments(repo_path, temp_path, kb_state, set(algos), log_file)
     except Exception as e:
         logging.exception(e)
     except IOError as ioerror:

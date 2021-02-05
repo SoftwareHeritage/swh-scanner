@@ -6,6 +6,7 @@
 import collections
 import itertools
 import json
+import logging
 import os
 from pathlib import Path
 import random
@@ -353,6 +354,10 @@ def run(
     counter["api_calls"] = 0
     counter["queries"] = 0
     source_tree = load_source(Path(root), sre_patterns)
+    logging.info(
+        f'started processing repo "{repo_id}" with algorithm '
+        f'"{algo}" and knowledge base "{backend_name}"'
+    )
 
     if algo == "random":
         if seed:
@@ -391,6 +396,11 @@ def run(
         algo,
         counter["api_calls"],
         counter["queries"],
+    )
+
+    logging.info(
+        f'finished processing repo "{repo_id}" with algorithm '
+        f'"{algo}" and knowledge base "{backend_name}"'
     )
 
     print(*result, sep=",")

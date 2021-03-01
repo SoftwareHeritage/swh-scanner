@@ -15,7 +15,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Pattern, Tuple, Union
 import aiohttp
 
 from swh.model.from_disk import Content, Directory, accept_all_directories
-from swh.model.identifiers import CONTENT, DIRECTORY, parse_swhid, swhid
+from swh.model.identifiers import CoreSWHID, ObjectType
 
 from .dashboard.dashboard import run_app
 from .exceptions import InvalidDirectoryPath, error_response
@@ -114,10 +114,10 @@ def get_subpaths(
                 path=bytes(path), dir_filter=dir_filter
             ).get_data()
 
-            return swhid(DIRECTORY, obj)
+            return CoreSWHID(object_type=ObjectType.DIRECTORY, object_id=obj["id"])
         else:
             obj = Content.from_file(path=bytes(path)).get_data()
-            return swhid(CONTENT, obj)
+            return Content(object_type=ObjectType.CONTENT, object_id=obj["sha1_git"])
 
     dirpath, dnames, fnames = next(os.walk(path))
     for node in itertools.chain(dnames, fnames):
@@ -176,11 +176,13 @@ async def run(
         for path, obj_swhid, known in await parse_path(
             root, session, api_url, exclude_patterns
         ):
-            obj_type = parse_swhid(obj_swhid).object_type
+            obj_type = CoreSWHID.from_string(obj_swhid).object_type
 
-            if obj_type == CONTENT:
+            if obj_type == ObjectType.CONTENT:
                 source_tree.add_node(path, obj_swhid, known)
-            elif obj_type == DIRECTORY and directory_filter(path, exclude_patterns):
+            elif obj_type == ObjectType.DIRECTORY and directory_filter(
+                path, exclude_patterns
+            ):
                 source_tree.add_node(path, obj_swhid, known)
                 if not known:
                     await _scan(path, session, api_url, source_tree, exclude_patterns)

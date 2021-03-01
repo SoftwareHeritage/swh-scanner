@@ -13,6 +13,10 @@ from .data import present_swhids
 def create_app():
     app = Flask(__name__)
 
+    @app.route("/")
+    def index():
+        return "SWH scanner API"
+
     @app.route("/known/", methods=["POST"])
     def known():
         swhids = request.get_json()

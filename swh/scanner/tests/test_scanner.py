@@ -5,6 +5,7 @@
 
 import json
 
+from flask import url_for
 import pytest
 
 from swh.scanner.exceptions import APIError, InvalidDirectoryPath
@@ -54,7 +55,7 @@ def test_scanner_raise_apierror(mock_aioresponse, event_loop, aiosession):
 
 def test_scanner_raise_apierror_input_size_limit(event_loop, aiosession, live_server):
 
-    api_url = live_server.url() + "/"
+    api_url = url_for("index", _external=True)
     request = [
         "swh:1:cnt:7c4c57ba9ff496ad179b8f65b1d286edbda34c9a" for i in range(901)
     ]  # /known/ is limited at 900
@@ -82,7 +83,7 @@ def test_app(app):
 
 
 def test_scanner_result(live_server, event_loop, test_sample_folder):
-    api_url = live_server.url() + "/"
+    api_url = url_for("index", _external=True)
     config = {"web-api": {"url": api_url, "auth-token": None}}
 
     source_tree = Tree(test_sample_folder)
@@ -99,7 +100,7 @@ def test_scanner_result(live_server, event_loop, test_sample_folder):
 def test_scanner_result_with_exclude_patterns(
     live_server, event_loop, test_sample_folder
 ):
-    api_url = live_server.url() + "/"
+    api_url = url_for("index", _external=True)
     config = {"web-api": {"url": api_url, "auth-token": None}}
 
     patterns = (str(test_sample_folder) + "/toexclude",)

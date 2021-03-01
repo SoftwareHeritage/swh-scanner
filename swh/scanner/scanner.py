@@ -100,24 +100,26 @@ def get_subpaths(
 
     """
 
-    def swhid_of(path):
+    def swhid_of(path: Path) -> str:
         if path.is_dir():
             if exclude_patterns:
 
-                def dir_filter(dirpath, *args):
+                def dir_filter(dirpath: str, *args) -> bool:
                     return directory_filter(dirpath, exclude_patterns)
 
             else:
-                dir_filter = accept_all_directories
+                dir_filter = accept_all_directories  # type: ignore
 
             obj = Directory.from_disk(
                 path=bytes(path), dir_filter=dir_filter
             ).get_data()
 
-            return CoreSWHID(object_type=ObjectType.DIRECTORY, object_id=obj["id"])
+            return str(CoreSWHID(object_type=ObjectType.DIRECTORY, object_id=obj["id"]))
         else:
             obj = Content.from_file(path=bytes(path)).get_data()
-            return Content(object_type=ObjectType.CONTENT, object_id=obj["sha1_git"])
+            return str(
+                CoreSWHID(object_type=ObjectType.CONTENT, object_id=obj["sha1_git"])
+            )
 
     dirpath, dnames, fnames = next(os.walk(path))
     for node in itertools.chain(dnames, fnames):

@@ -64,12 +64,18 @@ class Tree:
             print(json.dumps(self.to_dict(), indent=4, sort_keys=True))
 
         if fmt == "ndjson":
-            print(ndjson.dumps(node.attributes for node in self.iterate()))
+            print(
+                ndjson.dumps(
+                    {str(Path(k).relative_to(self.path)): v}
+                    for node in self.iterate()
+                    for k, v in node.attributes.items()
+                )
+            )
 
         elif fmt == "text":
             isatty = sys.stdout.isatty()
-
-            print(colorize(str(self.path), Color.blue) if isatty else str(self.path))
+            root_dir = self.path.relative_to(self.path.parent)
+            print(colorize(str(root_dir), Color.blue) if isatty else str(root_dir))
             self.print_children(isatty)
 
         elif fmt == "sunburst":
@@ -146,7 +152,11 @@ class Tree:
 
 
         """
-        return {k: v for node in self.iterate() for k, v in node.attributes.items()}
+        return {
+            str(Path(k).relative_to(self.path)): v
+            for node in self.iterate()
+            for k, v in node.attributes.items()
+        }
 
     def iterate(self) -> Iterator[Tree]:
         """

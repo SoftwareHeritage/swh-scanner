@@ -46,7 +46,6 @@ def test_get_json_tree_all_present(example_tree, temp_folder):
 
 
 def test_get_json_tree_only_one_present(example_tree, temp_folder):
-    root = temp_folder["root"]
     filesample_path = temp_folder["filesample"]
 
     for path, swhid in temp_folder["paths"].items():
@@ -57,7 +56,7 @@ def test_get_json_tree_only_one_present(example_tree, temp_folder):
     assert len(result) == 6
 
     for path, node_attr in result.items():
-        if path == str(root) + "/subdir/filesample.txt":
+        if path == "subdir/filesample.txt":
             assert node_attr["known"] is True
         else:
             assert node_attr["known"] is False

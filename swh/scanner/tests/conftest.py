@@ -74,12 +74,12 @@ def temp_folder(tmp_path):
     filesample2.touch()
 
     avail_path = {
-        subdir: swhid_of_dir(bytes(subdir)),
-        subsubdir: swhid_of_dir(bytes(subsubdir)),
-        subdir2: swhid_of_dir(bytes(subdir2)),
-        subfile: swhid_of_file(bytes(subfile)),
-        filesample: swhid_of_file(bytes(filesample)),
-        filesample2: swhid_of_file(bytes(filesample2)),
+        subdir: str(swhid_of_dir(bytes(subdir))),
+        subsubdir: str(swhid_of_dir(bytes(subsubdir))),
+        subdir2: str(swhid_of_dir(bytes(subdir2))),
+        subfile: str(swhid_of_file(bytes(subfile))),
+        filesample: str(swhid_of_file(bytes(filesample))),
+        filesample2: str(swhid_of_file(bytes(filesample2))),
     }
 
     return {

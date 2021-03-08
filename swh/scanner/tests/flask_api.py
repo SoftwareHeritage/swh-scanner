@@ -5,7 +5,7 @@
 
 from flask import Flask, request
 
-from swh.web.common.exc import LargePayloadExc
+from swh.scanner.exceptions import LargePayloadExc
 
 from .data import present_swhids
 

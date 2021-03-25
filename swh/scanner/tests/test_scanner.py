@@ -8,7 +8,8 @@ import json
 from flask import url_for
 import pytest
 
-from swh.scanner.exceptions import APIError, InvalidDirectoryPath
+from swh.model.exceptions import InvalidDirectoryPath
+from swh.scanner.exceptions import APIError
 from swh.scanner.model import Tree
 from swh.scanner.scanner import extract_regex_objs, get_subpaths, run, swhids_discovery
 
@@ -18,13 +19,14 @@ aio_url = "http://example.org/api/known/"
 
 
 def test_extract_regex_objs(temp_folder):
-    root_path = temp_folder["root"]
+    root_path = bytes(temp_folder["root"])
 
-    patterns = (str(temp_folder["subdir"]), "/none")
+    patterns = (bytes(temp_folder["subdir"]), b"/none")
+
     sre_patterns = [reg_obj for reg_obj in extract_regex_objs(root_path, patterns)]
     assert len(sre_patterns) == 2
 
-    patterns = (*patterns, "/tmp")
+    patterns = (*patterns, b"/tmp")
     with pytest.raises(InvalidDirectoryPath):
         sre_patterns = [reg_obj for reg_obj in extract_regex_objs(root_path, patterns)]
 
@@ -102,10 +104,11 @@ def test_scanner_result_with_exclude_patterns(
 ):
     api_url = url_for("index", _external=True)
     config = {"web-api": {"url": api_url, "auth-token": None}}
+    to_exclude_dir = str(test_sample_folder) + "/toexclude"
 
-    patterns = (str(test_sample_folder) + "/toexclude",)
+    patterns = (to_exclude_dir.encode(),)
     exclude_pattern = {
-        reg_obj for reg_obj in extract_regex_objs(test_sample_folder, patterns)
+        reg_obj for reg_obj in extract_regex_objs(bytes(test_sample_folder), patterns)
     }
 
     source_tree = Tree(test_sample_folder)

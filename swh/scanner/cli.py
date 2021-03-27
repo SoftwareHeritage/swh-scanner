@@ -9,6 +9,7 @@ import os
 from typing import Any, Dict, Optional
 
 import click
+from importlib_metadata import version
 import yaml
 
 from swh.core import config
@@ -68,6 +69,9 @@ def setup_config(ctx, api_url):
     default=None,
     type=click.Path(exists=False, dir_okay=False, path_type=str),
     help="""YAML configuration file""",
+)
+@click.version_option(
+    version=version("swh-scanner"), prog_name="swh-scanner",
 )
 @click.pass_context
 def scanner(ctx, config_file: Optional[str]):

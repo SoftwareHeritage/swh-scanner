@@ -120,7 +120,7 @@ def scanner(ctx, config_file: Optional[str]):
     metavar="PATTERN",
     multiple=True,
     help="Exclude directories using glob patterns \
-    (e.g., '*.git' to exclude all .git directories)",
+    (e.g., ``*.git`` to exclude all .git directories)",
 )
 @click.option(
     "-f",

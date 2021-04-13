@@ -125,32 +125,30 @@ class Tree:
 
         .. code-block:: none
 
-        root {
-            subdir: {
-                file.txt
+            root {
+                subdir: {
+                    file.txt
+                }
             }
-        }
 
         The generated dictionary will be:
 
         .. code-block:: none
 
-        {
-            "root": {
-                "swhid": "...",
-                "known": True/False
+            {
+                "root": {
+                    "swhid": "...",
+                    "known": True/False
+                }
+                "root/subdir": {
+                    "swhid": "...",
+                    "known": True/False
+                }
+                "root/subdir/file.txt": {
+                    "swhid": "...",
+                    "known": True/False
+                }
             }
-            "root/subdir": {
-                "swhid": "...",
-                "known": True/False
-            }
-            "root/subdir/file.txt": {
-                "swhid": "...",
-                "known": True/False
-            }
-        }
-
-
         """
         return {
             str(Path(k).relative_to(self.path)): v

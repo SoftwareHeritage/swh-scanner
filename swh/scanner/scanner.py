@@ -37,7 +37,9 @@ async def swhids_discovery(
 
     Returns:
         A dictionary with:
-        key: SWHID searched
+
+        key:
+            SWHID searched
         value:
             value['known'] = True if the SWHID is found
             value['known'] = False if the SWHID is not found

@@ -18,7 +18,7 @@ the color gradient is generated relying on the percentage of contents known.
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import numpy as np  # type: ignore
+import numpy as np
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go
 from plotly.offline import offline

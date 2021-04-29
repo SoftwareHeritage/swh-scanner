@@ -10,6 +10,7 @@ import logging
 import os
 from pathlib import Path
 import random
+import time
 from typing import Dict, Iterable, List, Optional
 
 import requests
@@ -17,7 +18,7 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
 from swh.model.from_disk import Content, Directory, accept_all_directories
-from swh.model.identifiers import CONTENT, DIRECTORY, swhid
+from swh.model.identifiers import CONTENT, DIRECTORY, CoreSWHID, ObjectType
 
 from .exceptions import APIError
 from .model import Status, Tree
@@ -229,7 +230,7 @@ def random_(
             set_father_status(node, False)
 
 
-def algo_min(source_tree: Tree, api_url: str):
+def algo_min(source_tree: Tree, api_url: str, counter: collections.Counter):
     """
     The minimal number of queries knowing the known/unknown status of every node
     """
@@ -278,7 +279,8 @@ def algo_min(source_tree: Tree, api_url: str):
         filter(lambda node: node.status == Status.unset, source_tree.iterate_bfs())
     )
 
-    return len(source_tree) - len(unset_cnts)
+    counter["api_calls"] = -1
+    counter["queries"] = len(source_tree) - len(unset_cnts)
 
 
 def get_swhids(paths: Iterable[Path], exclude_patterns):
@@ -296,10 +298,12 @@ def get_swhids(paths: Iterable[Path], exclude_patterns):
                 path=bytes(path), dir_filter=dir_filter
             ).get_data()
 
-            return swhid(DIRECTORY, obj)
+            return str(CoreSWHID(object_type=ObjectType.DIRECTORY, object_id=obj["id"]))
         else:
             obj = Content.from_file(path=bytes(path)).get_data()
-            return swhid(CONTENT, obj)
+            return str(
+                CoreSWHID(object_type=ObjectType.CONTENT, object_id=obj["sha1_git"])
+            )
 
     for path in paths:
         yield str(path), swhid_of(path)
@@ -369,6 +373,7 @@ def run(
         f'started processing repo "{repo_id}" with algorithm '
         f'"{algo}" and knowledge base "{backend_name}"'
     )
+    tstart = time.time()
 
     if algo == "random":
         if seed:
@@ -376,19 +381,7 @@ def run(
         else:
             random_(source_tree, api_url, counter)
     elif algo == "algo_min":
-        min_queries = algo_min(source_tree, api_url)
-        min_result = (
-            repo_id,
-            origin,
-            commit,
-            backend_name,
-            len(source_tree),
-            algo,
-            -1,
-            min_queries,
-        )
-        print(*min_result, sep=",")
-        return
+        algo_min(source_tree, api_url, counter)
     elif algo == "stopngo":
         stopngo(source_tree, api_url, counter)
     elif algo == "file_priority":
@@ -398,6 +391,7 @@ def run(
     else:
         raise Exception(f'Algorithm "{algo}" not found')
 
+    tend = time.time()
     result = (
         repo_id,
         origin,
@@ -407,6 +401,7 @@ def run(
         algo,
         counter["api_calls"],
         counter["queries"],
+        tend - tstart,
     )
 
     logging.info(

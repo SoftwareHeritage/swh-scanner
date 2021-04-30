@@ -37,7 +37,7 @@ for i in "${@:4}"; do
 done
 
 # print headers
-echo "repo_id,origin,commit_id,kb_state,repo_size,algorithm_name,kb_queries,swhids_queried"
+echo "repo_id,origin,commit_id,kb_state,repo_size,algorithm_name,kb_queries,swhids_queried,scan_time"
 
 while IFS= read -r repo;
 do

@@ -2,6 +2,7 @@ pytest
 aioresponses
 pytest_asyncio
 pytest_flask
+pytest-mock
 swh.core[testing-core]
 swh.model[testing]
 asynctest

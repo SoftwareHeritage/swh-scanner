@@ -1,8 +1,9 @@
-pytest
 aioresponses
-pytest_asyncio
-pytest_flask
+asynctest
+pytest
+pytest-asyncio
+pytest-flask
 pytest-mock
 swh.core[testing-core]
 swh.model[testing]
-asynctest
+types-pyyaml

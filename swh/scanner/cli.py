@@ -71,7 +71,7 @@ def setup_config(ctx, api_url):
     help="""YAML configuration file""",
 )
 @click.version_option(
-    version=version("swh-scanner"), prog_name="swh-scanner",
+    version=version("swh.scanner"), prog_name="swh.scanner",
 )
 @click.pass_context
 def scanner(ctx, config_file: Optional[str]):

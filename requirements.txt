@@ -11,4 +11,4 @@ dash
 dash_bootstrap_components
 flask
 dulwich
-importlib_metadata
+importlib-metadata

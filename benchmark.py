@@ -37,8 +37,6 @@ def get_scenario_cmd(
         origin_info["commit"],
         "--log-file",
         log_file,
-        "--exclude",
-        str(extracted_repo_path) + "/.git",
         str(extracted_repo_path),
     ]
 
@@ -137,7 +135,15 @@ def main(repo_path, temp_path, kb_state, log_file, algos):
         repo_id = Path(repo_path).parts[-1].split(".")[0]
         with TemporaryDirectory(prefix=repo_id + "_", dir=temp_path) as tmp_dir:
             subprocess.run(
-                ["tar", "xf", repo_path, "-C", tmp_dir, "--strip-components=1"],
+                [
+                    "tar",
+                    "xf",
+                    repo_path,
+                    "-C",
+                    tmp_dir,
+                    "--strip-components=1",
+                    "--exclude=.git",
+                ],
                 check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=sys.stderr,

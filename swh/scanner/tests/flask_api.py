@@ -7,7 +7,7 @@ from flask import Flask, request
 
 from swh.scanner.exceptions import LargePayloadExc
 
-from .data import present_swhids
+from .data import unknown_swhids
 
 
 def create_app():
@@ -28,7 +28,7 @@ def create_app():
 
         res = {swhid: {"known": False} for swhid in swhids}
         for swhid in swhids:
-            if swhid in present_swhids:
+            if swhid not in unknown_swhids:
                 res[swhid]["known"] = True
 
         return res

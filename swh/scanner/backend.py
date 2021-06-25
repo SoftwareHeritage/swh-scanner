@@ -13,7 +13,7 @@ LIMIT = 1000
 
 def create_app(db: Db):
     """Backend for swh-scanner, implementing the /known endpoint of the
-       Software Heritage Web API"""
+    Software Heritage Web API"""
     app = Flask(__name__)
 
     @app.route("/api/1/known/", methods=["POST"])
@@ -35,7 +35,6 @@ def create_app(db: Db):
 
 
 def run(host: str, port: int, db: Db):
-    """Serve the local database
-    """
+    """Serve the local database"""
     app = create_app(db)
     app.run(host, port, debug=True)

@@ -181,9 +181,7 @@ def db(ctx):
 )
 @click.pass_context
 def import_(ctx, chunk_size, input_file, output_file_db):
-    """Create SQLite database of known SWHIDs from a textual list of SWHIDs
-
-    """
+    """Create SQLite database of known SWHIDs from a textual list of SWHIDs"""
     from .db import Db
 
     db = Db(output_file_db)

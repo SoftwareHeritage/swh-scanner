@@ -12,8 +12,8 @@ import aiohttp
 from aioresponses import aioresponses  # type: ignore
 import pytest
 
-from swh.model.cli import swhid_of_dir, swhid_of_file
-from swh.scanner.model import Tree
+from swh.model.cli import model_of_dir
+from swh.scanner.data import MerkleNodeInfo
 
 from .data import present_swhids
 from .flask_api import create_app
@@ -43,92 +43,8 @@ async def aiosession():
 
 
 @pytest.fixture(scope="function")
-def temp_folder(tmp_path):
-    """Fixture that generates a temporary folder with the following
-    structure:
-
-    .. code-block:: python
-
-        root = {
-            subdir: {
-                subsubdir
-                filesample.txt
-                filesample2.txt
-            }
-            subdir2
-            subfile.txt
-        }
-    """
-    root = tmp_path
-    subdir = root / "subdir"
-    subdir.mkdir()
-    subsubdir = subdir / "subsubdir"
-    subsubdir.mkdir()
-    subdir2 = root / "subdir2"
-    subdir2.mkdir()
-    subfile = root / "subfile.txt"
-    subfile.touch()
-    filesample = subdir / "filesample.txt"
-    filesample.touch()
-    filesample2 = subdir / "filesample2.txt"
-    filesample2.touch()
-
-    avail_path = {
-        subdir: str(swhid_of_dir(bytes(subdir))),
-        subsubdir: str(swhid_of_dir(bytes(subsubdir))),
-        subdir2: str(swhid_of_dir(bytes(subdir2))),
-        subfile: str(swhid_of_file(bytes(subfile))),
-        filesample: str(swhid_of_file(bytes(filesample))),
-        filesample2: str(swhid_of_file(bytes(filesample2))),
-    }
-
-    return {
-        "root": root,
-        "paths": avail_path,
-        "filesample": filesample,
-        "filesample2": filesample2,
-        "subsubdir": subsubdir,
-        "subdir": subdir,
-    }
-
-
-@pytest.fixture(scope="function")
-def example_tree(temp_folder):
-    """Fixture that generate a Tree with the root present in the
-       session fixture "temp_folder".
-    """
-    example_tree = Tree(temp_folder["root"])
-    assert example_tree.path == temp_folder["root"]
-
-    return example_tree
-
-
-@pytest.fixture(scope="function")
-def example_dirs(example_tree, temp_folder):
-    """
-        Fixture that fill the fixture example_tree with the values contained in
-        the fixture temp_folder and returns the directories information of the
-        filled example_tree.
-
-    """
-    root = temp_folder["root"]
-    filesample_path = temp_folder["filesample"]
-    filesample2_path = temp_folder["filesample2"]
-    subsubdir_path = temp_folder["subsubdir"]
-    known_paths = [filesample_path, filesample2_path, subsubdir_path]
-
-    for path, swhid in temp_folder["paths"].items():
-        if path in known_paths:
-            example_tree.add_node(path, swhid, True)
-        else:
-            example_tree.add_node(path, swhid, False)
-
-    return example_tree.get_directories_info(root)
-
-
-@pytest.fixture
 def test_sample_folder(datadir, tmp_path):
-    """Location of the "data" folder """
+    """Location of the "data" folder"""
     archive_path = Path(os.path.join(datadir, "sample-folder.tgz"))
     assert archive_path.exists()
     shutil.unpack_archive(archive_path, extract_dir=tmp_path)
@@ -137,10 +53,45 @@ def test_sample_folder(datadir, tmp_path):
     return test_sample_folder
 
 
+@pytest.fixture(scope="function")
+def source_tree(test_sample_folder):
+    """Generate a model.from_disk.Directory object from the test sample
+    folder
+    """
+    return model_of_dir(str(test_sample_folder).encode())
+
+
+@pytest.fixture(scope="function")
+def source_tree_dirs(source_tree):
+    """Returns a list of all directories contained inside the test sample
+    folder
+    """
+    root = source_tree.data["path"]
+    return list(
+        map(
+            lambda n: Path(n.data["path"].decode()).relative_to(Path(root.decode())),
+            filter(
+                lambda n: n.object_type == "directory"
+                and not n.data["path"] == source_tree.data["path"],
+                source_tree.iter_tree(dedup=False),
+            ),
+        )
+    )
+
+
+@pytest.fixture(scope="function")
+def nodes_data(source_tree):
+    """mock known status of file/dirs in test_sample_folder"""
+    nodes_data = MerkleNodeInfo()
+    for node in source_tree.iter_tree():
+        nodes_data[node.swhid()] = {"known": True}
+    return nodes_data
+
+
 @pytest.fixture
 def test_swhids_sample(tmp_path):
     """Create and return the opened "swhids_sample" file,
-       filled with present swhids present in data.py
+    filled with present swhids present in data.py
     """
     test_swhids_sample = Path(os.path.join(tmp_path, "swhids_sample.txt"))
 

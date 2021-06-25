@@ -5,16 +5,23 @@
 
 import dash_html_components as html
 
+from swh.model.identifiers import CoreSWHID, ObjectType
 from swh.scanner.dashboard.dashboard import generate_table_body
+from swh.scanner.data import MerkleNodeInfo
 
 
-def test_generate_table_body(example_tree, temp_folder):
-    subdir_path = temp_folder["subdir"]
+def test_generate_table_body(source_tree):
+    chart_path = b"/bar/barfoo"
+    dir_path = source_tree[b"/bar/barfoo"].data["path"].decode()
+    nodes_data = MerkleNodeInfo()
+    # CoreSWHID of 'another-quote.org'
+    known_cnt_swhid = CoreSWHID(
+        object_type=ObjectType.CONTENT,
+        object_id=b"\x136\x93\xb1%\xba\xd2\xb4\xac1\x855\xb8I\x01\xeb\xb1\xf6\xb68",
+    )
+    nodes_data[known_cnt_swhid] = {"known": True}
 
-    for path, swhid in temp_folder["paths"].items():
-        example_tree.add_node(path, swhid, True)
-
-    generated_body = generate_table_body(subdir_path, example_tree)
+    generated_body = generate_table_body(chart_path, source_tree, nodes_data)
 
     expected_body = [
         html.Tbody(
@@ -24,23 +31,11 @@ def test_generate_table_body(example_tree, temp_folder):
                         html.Td("✔"),
                         html.Td(
                             html.A(
-                                children="filesample.txt",
-                                href=f"file://{subdir_path}/filesample.txt",
+                                children="another-quote.org",
+                                href=f"file://{dir_path}/another-quote.org",
                             )
                         ),
-                        html.Td("swh:1:cnt:e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
-                    ]
-                ),
-                html.Tr(
-                    [
-                        html.Td("✔"),
-                        html.Td(
-                            html.A(
-                                children="filesample2.txt",
-                                href=f"file://{subdir_path}/filesample2.txt",
-                            )
-                        ),
-                        html.Td("swh:1:cnt:e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
+                        html.Td("swh:1:cnt:133693b125bad2b4ac318535b84901ebb1f6b638"),
                     ]
                 ),
             ]

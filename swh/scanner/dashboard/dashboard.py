@@ -1,4 +1,4 @@
-# Copyright (C) 2020  The Software Heritage developers
+# Copyright (C) 2020-2021 The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -12,37 +12,40 @@ import dash_core_components as dcc
 import dash_html_components as html
 import plotly.graph_objects as go
 
-from ..model import Tree
+from swh.model.from_disk import Directory
+
+from ..data import MerkleNodeInfo, get_content_from
 
 
-def generate_table_body(dir_path: Path, source: Tree):
+def generate_table_body(
+    dir_path: bytes, source_tree: Directory, nodes_data: MerkleNodeInfo
+):
     """
     Generate the data_table from the path taken from the chart.
 
     For each file builds the html table rows showing the known status, a local link to
     the file and the relative SoftWare Heritage persistent IDentifier (SWHID).
     """
+    contents = get_content_from(dir_path, source_tree, nodes_data)
     data = []
-    for file_info in source.get_files_from_dir(dir_path):
-        for file_path, attr in file_info.items():
-            file_path = Path(file_path)
-            file_name = file_path.parts[len(file_path.parts) - 1]
-            data.append(
-                html.Tr(
-                    [
-                        html.Td("✔" if attr["known"] else ""),
-                        html.Td(
-                            html.A(file_name, href="file://" + str(file_path.resolve()))
-                        ),
-                        html.Td(attr["swhid"]),
-                    ]
-                )
+    for cnt, attr in contents.items():
+        file_path = Path(cnt.decode())
+        file_name = file_path.parts[len(file_path.parts) - 1]
+        full_file_path = Path(Path(dir_path.decode()), file_path)
+        data.append(
+            html.Tr(
+                [
+                    html.Td("✔" if attr["known"] else ""),
+                    html.Td(html.A(file_name, href="file://" + str(full_file_path))),
+                    html.Td(attr["swhid"]),
+                ]
             )
+        )
 
     return [html.Tbody(data)]
 
 
-def run_app(graph_obj: go, source: Tree):
+def run_app(graph_obj: go, source_tree: Directory, nodes_data: MerkleNodeInfo):
     app = dash.Dash(__name__)
     fig = go.Figure().add_trace(graph_obj)
 
@@ -88,13 +91,12 @@ def run_app(graph_obj: go, source: Tree):
 
         """
         if click_data is not None:
-            raw_path = click_data["points"][0]["label"]
-            full_path = (
-                source.path.joinpath(raw_path)
-                if raw_path != str(source.path)
-                else Path(raw_path)
+            full_path = click_data["points"][0]["label"]
+            return (
+                table_header
+                + generate_table_body(full_path.encode(), source_tree, nodes_data),
+                full_path,
             )
-            return table_header + generate_table_body(full_path, source), str(full_path)
         else:
             return "", ""
 

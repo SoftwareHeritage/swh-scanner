@@ -31,81 +31,81 @@ def build_hierarchical_df(
     root_name: str,
 ) -> pd.DataFrame:
     """
-        Build a hierarchy of levels for Sunburst or Treemap charts.
+    Build a hierarchy of levels for Sunburst or Treemap charts.
 
-        For each directory the new dataframe will have the following
-        information:
+    For each directory the new dataframe will have the following
+    information:
 
-        id: the directory name
-        parent: the parent directory of id
-        contents: the total number of contents of the directory id and
-        the relative subdirectories
-        known: the percentage of contents known relative to computed
-        'contents'
+    id: the directory name
+    parent: the parent directory of id
+    contents: the total number of contents of the directory id and
+    the relative subdirectories
+    known: the percentage of contents known relative to computed
+    'contents'
 
-        Example:
-        Given the following dataframe:
+    Example:
+    Given the following dataframe:
 
-        .. code-block:: none
+    .. code-block:: none
 
-            lev0     lev1                contents  known
-             ''       ''                 20        2     //root
-            kernel   kernel/subdirker    5         0
-            telnet   telnet/subdirtel    10        4
+        lev0     lev1                contents  known
+         ''       ''                 20        2     //root
+        kernel   kernel/subdirker    5         0
+        telnet   telnet/subdirtel    10        4
 
-        The output hierarchical dataframe will be like the following:
+    The output hierarchical dataframe will be like the following:
 
-        .. code-block:: none
+    .. code-block:: none
 
-              id                parent    contents  known
-                                          20        10.00
-           kernel/subdirker     kernel    5         0.00
-           telnet/subdirtel     telnet    10        40.00
-                                total     20        10.00
-           kernel               total     5         0.00
-           telnet               total     10        40.00
-           total                          35        17.14
+          id                parent    contents  known
+                                      20        10.00
+       kernel/subdirker     kernel    5         0.00
+       telnet/subdirtel     telnet    10        40.00
+                            total     20        10.00
+       kernel               total     5         0.00
+       telnet               total     10        40.00
+       total                          35        17.14
 
-        To create the hierarchical dataframe we need to iterate through
-        the dataframe given in input relying on the number of levels.
+    To create the hierarchical dataframe we need to iterate through
+    the dataframe given in input relying on the number of levels.
 
-        Based on the previous example we have to do two iterations:
+    Based on the previous example we have to do two iterations:
 
-        iteration 1
-        The generated dataframe 'df_tree' will be:
+    iteration 1
+    The generated dataframe 'df_tree' will be:
 
-        .. code-block:: none
+    .. code-block:: none
 
-            id                parent   contents  known
-                                       20        10.0
-            kernel/subdirker  kernel   5         0.0
-            telnet/subdirtel  telnet   10        40.0
+        id                parent   contents  known
+                                   20        10.0
+        kernel/subdirker  kernel   5         0.0
+        telnet/subdirtel  telnet   10        40.0
 
-        iteration 2
-        The generated dataframe 'df_tree' will be:
+    iteration 2
+    The generated dataframe 'df_tree' will be:
 
-        .. code-block:: none
+    .. code-block:: none
 
-            id       parent   contents  known
-                     total    20        10.0
-            kernel   total    5         0.0
-            telnet   total    10        40.0
+        id       parent   contents  known
+                 total    20        10.0
+        kernel   total    5         0.0
+        telnet   total    10        40.0
 
-        Note that since we have reached the last level, the parent given
-        to the directory id is the directory root.
+    Note that since we have reached the last level, the parent given
+    to the directory id is the directory root.
 
-        The 'total' row il computed by adding the number of contents of the
-        dataframe given in input and the average of the contents known on
-        the total number of contents.
+    The 'total' row il computed by adding the number of contents of the
+    dataframe given in input and the average of the contents known on
+    the total number of contents.
 
     """
 
     def compute_known_percentage(contents: pd.Series, known: pd.Series) -> pd.Series:
         """This function compute the percentage of known contents and generate
-           the new known column with the percentage values.
+        the new known column with the percentage values.
 
-           It also assures that if there is no contents inside a directory
-           the percentage is zero
+        It also assures that if there is no contents inside a directory
+        the percentage is zero
 
         """
         known_values = []
@@ -160,18 +160,17 @@ def build_hierarchical_df(
     return complete_df
 
 
-def compute_max_depth(dirs_path: List[Path], root: Path) -> int:
+def compute_max_depth(dirs_path: List[Path]) -> int:
     """Compute the maximum depth level of the given directory paths.
 
-       Example: for `var/log/kernel/` the depth level is 3
+    Example: for `var/log/kernel/` the depth level is 3
 
     """
     max_depth = 0
     for dir_path in dirs_path:
-        if dir_path == root:
-            continue
-
-        dir_depth = len(dir_path.parts)
+        dir_depth = len(
+            dir_path.parts[1:] if dir_path.parts[0] == "/" else dir_path.parts
+        )
         if dir_depth > max_depth:
             max_depth = dir_depth
 
@@ -179,7 +178,7 @@ def compute_max_depth(dirs_path: List[Path], root: Path) -> int:
 
 
 def generate_df_from_dirs(
-    dirs: Dict[Path, Tuple[int, int]], columns: List[str], root: Path, max_depth: int,
+    dirs: Dict[Path, Tuple[int, int]], columns: List[str], max_depth: int,
 ) -> pd.DataFrame:
     """Generate a dataframe from the directories given in input.
 
@@ -215,13 +214,7 @@ def generate_df_from_dirs(
         for dir_path, contents_info in dirs.items():
             empty_lvl = max_depth - len(dir_path.parts)
 
-            if dir_path == root:
-                # ignore the root but store contents information
-                yield [""] * (max_depth) + list(contents_info)
-            else:
-                yield list(get_parents(dir_path)) + [""] * empty_lvl + list(
-                    contents_info
-                )
+            yield list(get_parents(dir_path)) + [""] * empty_lvl + list(contents_info)
 
     df = pd.DataFrame(
         np.array([dir_array for dir_array in get_dirs_array()]), columns=columns
@@ -236,15 +229,13 @@ def generate_df_from_dirs(
 def generate_sunburst(
     directories: Dict[Path, Tuple[int, int]], root: Path
 ) -> go.Sunburst:
-    """Generate a sunburst chart from the directories given in input.
-
-    """
-    max_depth = compute_max_depth(list(directories.keys()), root)
+    """Generate a sunburst chart from the directories given in input."""
+    max_depth = compute_max_depth(list(directories.keys()))
     metrics_columns = ["contents", "known"]
     levels_columns = ["lev" + str(i) for i in range(max_depth)]
 
     df_columns = levels_columns + metrics_columns
-    dirs_df = generate_df_from_dirs(directories, df_columns, root, max_depth)
+    dirs_df = generate_df_from_dirs(directories, df_columns, max_depth)
 
     hierarchical_df = build_hierarchical_df(
         dirs_df, levels_columns, metrics_columns, str(root)
@@ -271,8 +262,7 @@ def generate_sunburst(
 
 
 def offline_plot(graph_object: go):
-    """Plot a graph object to an html file
-    """
+    """Plot a graph object to an html file"""
     fig = go.Figure()
     fig.add_trace(graph_object)
     offline.plot(fig, filename="chart.html")

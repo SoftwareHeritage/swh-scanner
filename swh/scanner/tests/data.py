@@ -9,7 +9,6 @@ correct_api_response = {
     "swh:1:dir:4b825dc642cb6eb9a060e54bf8d69288fbee4904": {"known": True},
 }
 
-# present SWHIDs inside /data/sample-folder
 present_swhids = [
     "swh:1:cnt:7c4c57ba9ff496ad179b8f65b1d286edbda34c9a",  # quotes.md
     "swh:1:cnt:68769579c3eaadbe555379b9c3538e6628bae1eb",  # some-binary
@@ -17,5 +16,11 @@ present_swhids = [
     "swh:1:dir:07d4d9ec5c406632d203dbd4631e7863612a0326",  # toexclude/
 ]
 
+# these SWHIDs are considered known by the fake backend (scanner.test.flask_api)
+unknown_swhids = [
+    "swh:1:dir:0a7b61ef5780b03aa274d11069564980246445ce",  # root directory
+    "swh:1:cnt:5f1cfce26640056bed3710cfaf3062a6a326a119",  # toexclude/example.txt
+    "swh:1:dir:07d4d9ec5c406632d203dbd4631e7863612a0326",  # toexclude/
+]
 
 to_exclude_swhid = "swh:1:dir:07d4d9ec5c406632d203dbd4631e7863612a0326"

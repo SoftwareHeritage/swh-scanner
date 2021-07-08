@@ -81,7 +81,7 @@ class Output:
         end = "/" if node.object_type == "directory" else ""
 
         if isatty:
-            if not self.nodes_data[str(node.swhid())]["known"]:
+            if not self.nodes_data[node.swhid()]["known"]:
                 rel_path = colorize(rel_path, Color.RED)
             elif node.object_type == "directory":
                 rel_path = colorize(rel_path, Color.BLUE)

@@ -18,7 +18,8 @@ present_swhids = [
 
 # these SWHIDs are considered known by the fake backend (scanner.test.flask_api)
 unknown_swhids = [
-    "swh:1:dir:0a7b61ef5780b03aa274d11069564980246445ce",  # root directory
+    "swh:1:dir:fe8cd7076bef324eb8865f818ef08617879022ce",  # root sample-folder-policy
+    "swh:1:dir:0a7b61ef5780b03aa274d11069564980246445ce",  # root sample-folder
     "swh:1:cnt:5f1cfce26640056bed3710cfaf3062a6a326a119",  # toexclude/example.txt
     "swh:1:dir:07d4d9ec5c406632d203dbd4631e7863612a0326",  # toexclude/
 ]

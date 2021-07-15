@@ -10,7 +10,7 @@ from swh.scanner.exceptions import LargePayloadExc
 from .data import unknown_swhids
 
 
-def create_app():
+def create_app(tmp_requests):
     app = Flask(__name__)
 
     @app.route("/")
@@ -20,6 +20,9 @@ def create_app():
     @app.route("/known/", methods=["POST"])
     def known():
         swhids = request.get_json()
+        with open(tmp_requests, "a") as f:
+            for swhid in swhids:
+                f.write(swhid + "\n")
 
         if len(swhids) > 900:
             raise LargePayloadExc(

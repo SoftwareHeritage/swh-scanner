@@ -54,11 +54,30 @@ def test_sample_folder(datadir, tmp_path):
 
 
 @pytest.fixture(scope="function")
+def test_sample_folder_policy(datadir, tmp_path):
+    """Location of the sample source code project to test the scanner policies"""
+    archive_path = Path(os.path.join(datadir, "sample-folder-policy.tgz"))
+    assert archive_path.exists()
+    shutil.unpack_archive(archive_path, extract_dir=tmp_path)
+    test_sample_folder = Path(os.path.join(tmp_path, "sample-folder-policy"))
+    assert test_sample_folder.exists()
+    return test_sample_folder
+
+
+@pytest.fixture(scope="function")
 def source_tree(test_sample_folder):
     """Generate a model.from_disk.Directory object from the test sample
     folder
     """
     return model_of_dir(str(test_sample_folder).encode())
+
+
+@pytest.fixture(scope="function")
+def source_tree_policy(test_sample_folder_policy):
+    """Generate a model.from_disk.Directory object from the test sample
+    folder
+    """
+    return model_of_dir(str(test_sample_folder_policy).encode())
 
 
 @pytest.fixture(scope="function")
@@ -103,7 +122,13 @@ def test_swhids_sample(tmp_path):
 
 
 @pytest.fixture(scope="session")
-def app():
+def tmp_requests(tmpdir_factory):
+    requests_file = tmpdir_factory.mktemp("data").join("requests.json")
+    return requests_file
+
+
+@pytest.fixture(scope="session")
+def app(tmp_requests):
     """Flask backend API (used by live_server)."""
-    app = create_app()
+    app = create_app(tmp_requests)
     return app

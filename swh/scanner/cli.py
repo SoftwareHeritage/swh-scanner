@@ -134,14 +134,22 @@ def scanner(ctx, config_file: Optional[str]):
 @click.option(
     "-i", "--interactive", is_flag=True, help="Show the result in a dashboard"
 )
+@click.option(
+    "-p",
+    "--policy",
+    default="bfs",
+    show_default=True,
+    type=click.Choice(["bfs", "filepriority", "dirpriority"]),
+    help="The scan policy.",
+)
 @click.pass_context
-def scan(ctx, root_path, api_url, patterns, out_fmt, interactive):
+def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy):
     """Scan a source code project to discover files and directories already
     present in the archive"""
     import swh.scanner.scanner as scanner
 
     config = setup_config(ctx, api_url)
-    scanner.scan(config, root_path, patterns, out_fmt, interactive)
+    scanner.scan(config, root_path, patterns, out_fmt, interactive, policy)
 
 
 @scanner.group("db", help="Manage local knowledge base for swh-scanner")

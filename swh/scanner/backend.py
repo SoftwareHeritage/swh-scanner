@@ -7,8 +7,7 @@ from flask import Flask, request
 
 from .db import Db
 from .exceptions import LargePayloadExc
-
-LIMIT = 1000
+from .policy import QUERY_LIMIT
 
 
 def create_app(db: Db):
@@ -20,9 +19,10 @@ def create_app(db: Db):
     def known():
         swhids = request.get_json()
 
-        if len(swhids) > LIMIT:
+        if len(swhids) > QUERY_LIMIT:
             raise LargePayloadExc(
-                f"The maximum number of SWHIDs this endpoint can receive is {LIMIT}"
+                f"The maximum number of SWHIDs this endpoint can receive is"
+                f"{QUERY_LIMIT}"
             )
 
         cur = db.conn.cursor()

@@ -14,6 +14,7 @@ import pytest
 
 from swh.model.cli import model_of_dir
 from swh.scanner.data import MerkleNodeInfo
+from swh.scanner.policy import QUERY_LIMIT
 
 from .data import present_swhids
 from .flask_api import create_app
@@ -70,6 +71,21 @@ def source_tree(test_sample_folder):
     folder
     """
     return model_of_dir(str(test_sample_folder).encode())
+
+
+@pytest.fixture(scope="function")
+def big_source_tree(tmp_path):
+    """Generate a model.from_disk.Directory from a "big" temporary directory
+       (more than 1000 nodes)
+    """
+    dir_ = tmp_path / "big-directory"
+    dir_.mkdir()
+    for i in range(0, QUERY_LIMIT + 1):
+        file_ = dir_ / f"file_{i}.org"
+        file_.touch()
+    dir_obj = model_of_dir(str(dir_).encode())
+    assert len(dir_obj) > QUERY_LIMIT
+    return dir_obj
 
 
 @pytest.fixture(scope="function")

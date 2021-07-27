@@ -3,8 +3,9 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from swh.scanner.backend import LIMIT, create_app
+from swh.scanner.backend import create_app
 from swh.scanner.db import Db
+from swh.scanner.policy import QUERY_LIMIT
 
 from .data import present_swhids
 
@@ -13,7 +14,7 @@ def test_backend_endpoint_all_present(tmp_path, live_server, test_swhids_sample)
     tmp_dbfile = tmp_path / "tmp_db.sqlite"
     db = Db(tmp_dbfile)
     cur = db.conn.cursor()
-    db.create_from(test_swhids_sample, LIMIT, cur)
+    db.create_from(test_swhids_sample, QUERY_LIMIT, cur)
 
     app = create_app(db)
 
@@ -31,7 +32,7 @@ def test_backend_endpoint_one_not_present(tmp_path, live_server, test_swhids_sam
 
     db = Db(tmp_dbfile)
     cur = db.conn.cursor()
-    db.create_from(test_swhids_sample, LIMIT, cur)
+    db.create_from(test_swhids_sample, QUERY_LIMIT, cur)
 
     app = create_app(db)
 
@@ -52,7 +53,7 @@ def test_backend_large_payload_exc(tmp_path, live_server, test_swhids_sample):
     swhids = [swhid for n in range(1001)]
     db = Db(tmp_dbfile)
     cur = db.conn.cursor()
-    db.create_from(test_swhids_sample, LIMIT, cur)
+    db.create_from(test_swhids_sample, QUERY_LIMIT, cur)
 
     app = create_app(db)
 

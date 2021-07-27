@@ -137,15 +137,30 @@ def scanner(ctx, config_file: Optional[str]):
 @click.option(
     "-p",
     "--policy",
-    default="bfs",
+    default="auto",
     show_default=True,
-    type=click.Choice(["bfs", "filepriority", "dirpriority"]),
+    type=click.Choice(["auto", "bfs", "filepriority", "dirpriority"]),
     help="The scan policy.",
 )
 @click.pass_context
 def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy):
     """Scan a source code project to discover files and directories already
-    present in the archive"""
+    present in the archive.
+
+    The source code project can be checked using different policies that can be set
+    using the -p/--policy option:
+
+    auto: it selects the best policy based on the source code, for codebase(s) with
+    less than 1000 file/dir contents all the nodes will be queried.
+
+    bfs: scan the source code in the BFS order, checking unknown directories only.
+
+    filepriority: scan all the source code file contents, checking only unset
+    directories. (useful if the codebase contains a lot of source files)
+
+    dirpriority: scan all the source code directories and check only unknown
+    directory contents.
+    """
     import swh.scanner.scanner as scanner
 
     config = setup_config(ctx, api_url)

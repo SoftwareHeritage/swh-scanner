@@ -16,6 +16,10 @@ from swh.model.identifiers import CONTENT, DIRECTORY
 from .data import MerkleNodeInfo
 from .exceptions import error_response
 
+# Maximum number of SWHIDs that can be requested by a single call to the
+# Web API endpoint /known/
+QUERY_LIMIT = 1000
+
 
 async def swhids_discovery(
     swhids: List[str], session: aiohttp.ClientSession, api_url: str,
@@ -38,12 +42,11 @@ async def swhids_discovery(
 
     """
     endpoint = api_url + "known/"
-    chunk_size = 1000
     requests = []
 
     def get_chunk(swhids):
-        for i in range(0, len(swhids), chunk_size):
-            yield swhids[i : i + chunk_size]
+        for i in range(0, len(swhids), QUERY_LIMIT):
+            yield swhids[i : i + QUERY_LIMIT]
 
     async def make_request(swhids):
         async with session.post(endpoint, json=swhids) as resp:
@@ -52,7 +55,7 @@ async def swhids_discovery(
 
             return await resp.json()
 
-    if len(swhids) > chunk_size:
+    if len(swhids) > QUERY_LIMIT:
         for swhids_chunk in get_chunk(swhids):
             requests.append(asyncio.create_task(make_request(swhids_chunk)))
 
@@ -86,6 +89,11 @@ class Policy(metaclass=abc.ABCMeta):
 
 
 class LazyBFS(Policy):
+    """Read nodes in the merkle tree using the BFS algorithm.
+       Lookup only directories that are unknown otherwise set all the downstream
+       contents to known.
+    """
+
     async def run(
         self, session: aiohttp.ClientSession, api_url: str,
     ):
@@ -112,6 +120,12 @@ class LazyBFS(Policy):
 
 
 class FilePriority(Policy):
+    """Check the Merkle tree querying all the file contents and set all the upstream
+       directories to unknown in the case a file content is unknown.
+       Finally check all the directories which status is still unknown and set all the
+       sub-directories of known directories to known.
+    """
+
     @no_type_check
     async def run(
         self, session: aiohttp.ClientSession, api_url: str,
@@ -169,6 +183,13 @@ class FilePriority(Policy):
 
 
 class DirectoryPriority(Policy):
+    """Check the Merkle tree querying all the directories that have at least one file
+       content and set all the upstream directories to unknown in the case a directory
+       is unknown otherwise set all the downstream contents to known.
+       Finally check the status of empty directories and all the remaining file
+       contents.
+    """
+
     @no_type_check
     async def run(
         self, session: aiohttp.ClientSession, api_url: str,
@@ -248,3 +269,18 @@ class DirectoryPriority(Policy):
         for _, node in list(dir_.items()):
             if node.object_type == CONTENT:
                 yield node
+
+
+class QueryAll(Policy):
+    """Check the status of every node in the Merkle tree.
+    """
+
+    @no_type_check
+    async def run(
+        self, session: aiohttp.ClientSession, api_url: str,
+    ):
+        all_nodes = [node for node in self.source_tree.iter_tree()]
+        all_swhids = [str(node.swhid()) for node in all_nodes]
+        swhids_res = await swhids_discovery(all_swhids, session, api_url)
+        for node in all_nodes:
+            self.data[node.swhid()]["known"] = swhids_res[str(node.swhid())]["known"]

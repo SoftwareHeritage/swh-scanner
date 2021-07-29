@@ -11,7 +11,7 @@ from typing import Dict, List, no_type_check
 import aiohttp
 
 from swh.model.from_disk import Directory
-from swh.model.identifiers import CONTENT, DIRECTORY
+from swh.model.identifiers import CONTENT, DIRECTORY, CoreSWHID
 
 from .data import MerkleNodeInfo
 from .exceptions import error_response
@@ -22,20 +22,20 @@ QUERY_LIMIT = 1000
 
 
 async def swhids_discovery(
-    swhids: List[str], session: aiohttp.ClientSession, api_url: str,
+    swhids: List[CoreSWHID], session: aiohttp.ClientSession, api_url: str,
 ) -> Dict[str, Dict[str, bool]]:
     """API Request to get information about the SoftWare Heritage persistent
     IDentifiers (SWHIDs) given in input.
 
     Args:
-        swhids: a list of SWHIDS
+        swhids: a list of CoreSWHID instances
         api_url: url for the API request
 
     Returns:
         A dictionary with:
 
         key:
-            SWHID searched
+            string SWHID searched
         value:
             value['known'] = True if the SWHID is found
             value['known'] = False if the SWHID is not found
@@ -49,6 +49,7 @@ async def swhids_discovery(
             yield swhids[i : i + QUERY_LIMIT]
 
     async def make_request(swhids):
+        swhids = [str(swhid) for swhid in swhids]
         async with session.post(endpoint, json=swhids) as resp:
             if resp.status != 200:
                 error_response(resp.reason, resp.status, endpoint)
@@ -101,7 +102,7 @@ class LazyBFS(Policy):
         queue.append(self.source_tree)
 
         while queue:
-            swhids = [str(node.swhid()) for node in queue]
+            swhids = [node.swhid() for node in queue]
             swhids_res = await swhids_discovery(swhids, session, api_url)
             for node in queue.copy():
                 queue.remove(node)
@@ -139,7 +140,7 @@ class FilePriority(Policy):
         all_contents.reverse()  # check deepest node first
 
         # query the backend to get all file contents status
-        cnt_swhids = [str(node.swhid()) for node in all_contents]
+        cnt_swhids = [node.swhid() for node in all_contents]
         cnt_status_res = await swhids_discovery(cnt_swhids, session, api_url)
         # set all the file contents status
         for cnt in all_contents:
@@ -165,9 +166,7 @@ class FilePriority(Policy):
         for dir_ in unset_dirs:
             if self.data[dir_.swhid()]["known"] is None:
                 # update directory status
-                dir_status = await swhids_discovery(
-                    [str(dir_.swhid())], session, api_url
-                )
+                dir_status = await swhids_discovery([dir_.swhid()], session, api_url)
                 dir_known = dir_status[str(dir_.swhid())]["known"]
                 self.data[dir_.swhid()]["known"] = dir_known
                 if dir_known:
@@ -205,9 +204,7 @@ class DirectoryPriority(Policy):
 
         for dir_ in unknown_dirs:
             if self.data[dir_.swhid()]["known"] is None:
-                dir_status = await swhids_discovery(
-                    [str(dir_.swhid())], session, api_url
-                )
+                dir_status = await swhids_discovery([dir_.swhid()], session, api_url)
                 dir_known = dir_status[str(dir_.swhid())]["known"]
                 self.data[dir_.swhid()]["known"] = dir_known
                 # set all the downstream file contents to known
@@ -230,7 +227,7 @@ class DirectoryPriority(Policy):
                 self.source_tree.iter_tree(),
             )
         )
-        empty_dirs_swhids = [str(n.swhid()) for n in empty_dirs]
+        empty_dirs_swhids = [n.swhid() for n in empty_dirs]
         empty_dir_status = await swhids_discovery(empty_dirs_swhids, session, api_url)
 
         # update status of directories that have no file contents
@@ -247,7 +244,7 @@ class DirectoryPriority(Policy):
                 self.source_tree.iter_tree(),
             )
         )
-        unknown_cnts_swhids = [str(n.swhid()) for n in unknown_cnts]
+        unknown_cnts_swhids = [n.swhid() for n in unknown_cnts]
         unknown_cnts_status = await swhids_discovery(
             unknown_cnts_swhids, session, api_url
         )
@@ -280,7 +277,7 @@ class QueryAll(Policy):
         self, session: aiohttp.ClientSession, api_url: str,
     ):
         all_nodes = [node for node in self.source_tree.iter_tree()]
-        all_swhids = [str(node.swhid()) for node in all_nodes]
+        all_swhids = [node.swhid() for node in all_nodes]
         swhids_res = await swhids_discovery(all_swhids, session, api_url)
         for node in all_nodes:
             self.data[node.swhid()]["known"] = swhids_res[str(node.swhid())]["known"]

@@ -8,13 +8,15 @@ import json
 from flask import url_for
 import pytest
 
-from swh.model.identifiers import CoreSWHID, ObjectType
+from swh.model.identifiers import CONTENT, CoreSWHID, ObjectType
 from swh.scanner.data import MerkleNodeInfo
 from swh.scanner.exceptions import APIError
 from swh.scanner.policy import (
     DirectoryPriority,
     FilePriority,
+    GreedyBFS,
     LazyBFS,
+    source_size,
     swhids_discovery,
 )
 
@@ -45,17 +47,6 @@ def test_scanner_raise_apierror(mock_aioresponse, event_loop, aiosession):
         event_loop.run_until_complete(
             swhids_discovery([], aiosession, "http://example.org/api/")
         )
-
-
-def test_scanner_raise_apierror_input_size_limit(event_loop, aiosession, live_server):
-
-    api_url = url_for("index", _external=True)
-    request = [
-        "swh:1:cnt:7c4c57ba9ff496ad179b8f65b1d286edbda34c9a" for i in range(901)
-    ]  # /known/ is limited at 900
-
-    with pytest.raises(APIError):
-        event_loop.run_until_complete(swhids_discovery(request, aiosession, api_url))
 
 
 def test_scanner_directory_priority_has_contents(source_tree):
@@ -143,3 +134,35 @@ def test_file_priority_policy(
 
     for swhid in backend_swhids_requests[5:]:
         assert CoreSWHID.from_string(swhid).object_type == ObjectType.DIRECTORY
+
+
+def test_greedy_bfs_policy(
+    live_server, event_loop, aiosession, big_source_tree, tmp_requests
+):
+    open(tmp_requests, "w").close()
+    api_url = url_for("index", _external=True)
+
+    nodes_data = MerkleNodeInfo()
+    policy = GreedyBFS(big_source_tree, nodes_data)
+    event_loop.run_until_complete(policy.run(aiosession, api_url))
+
+    backend_swhids_requests = get_backend_swhids_order(tmp_requests)
+
+    last_swhid = backend_swhids_requests[-1]
+    assert CoreSWHID.from_string(last_swhid).object_type == ObjectType.CONTENT
+
+
+@pytest.mark.asyncio
+async def test_greedy_bfs_get_nodes_chunks(live_server, aiosession, big_source_tree):
+    api_url = url_for("index", _external=True)
+
+    nodes_data = MerkleNodeInfo()
+    policy = GreedyBFS(big_source_tree, nodes_data)
+    chunks = [
+        n_chunk
+        async for n_chunk in policy.get_nodes_chunks(
+            aiosession, api_url, source_size(big_source_tree)
+        )
+    ]
+    assert len(chunks) == 2
+    assert chunks[1][-1].object_type == CONTENT

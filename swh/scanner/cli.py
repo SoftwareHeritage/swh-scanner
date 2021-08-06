@@ -139,7 +139,7 @@ def scanner(ctx, config_file: Optional[str]):
     "--policy",
     default="auto",
     show_default=True,
-    type=click.Choice(["auto", "bfs", "filepriority", "dirpriority"]),
+    type=click.Choice(["auto", "bfs", "greedybfs", "filepriority", "dirpriority"]),
     help="The scan policy.",
 )
 @click.pass_context
@@ -154,6 +154,9 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy):
     less than 1000 file/dir contents all the nodes will be queried.
 
     bfs: scan the source code in the BFS order, checking unknown directories only.
+
+    greedybfs: same as "bfs" policy, but lookup the status of source code artifacts in
+    chunks, in order to minimize the number of Web API round-trips with the archive.
 
     filepriority: scan all the source code file contents, checking only unset
     directories. (useful if the codebase contains a lot of source files)

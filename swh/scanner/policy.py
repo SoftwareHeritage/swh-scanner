@@ -10,6 +10,7 @@ from typing import Dict, List, no_type_check
 
 import aiohttp
 
+from swh.core.utils import grouper
 from swh.model.from_disk import Directory
 from swh.model.identifiers import CONTENT, DIRECTORY, CoreSWHID
 
@@ -67,6 +68,12 @@ async def swhids_discovery(
         return await make_request(swhids)
 
 
+def source_size(source_tree: Directory):
+    """return the size of a source tree as the number of nodes it contains
+    """
+    return sum(1 for n in source_tree.iter_tree(dedup=False))
+
+
 class Policy(metaclass=abc.ABCMeta):
 
     data: MerkleNodeInfo
@@ -118,6 +125,48 @@ class LazyBFS(Policy):
                             if sub_node == node:
                                 continue
                             self.data[sub_node.swhid()]["known"] = True  # type: ignore
+
+
+class GreedyBFS(Policy):
+    """Query graph nodes in chunks (to maximize the Web API rate limit use) and set the
+       downstream contents of known directories to known.
+    """
+
+    async def run(
+        self, session: aiohttp.ClientSession, api_url: str,
+    ):
+        ssize = source_size(self.source_tree)
+        seen = []
+
+        async for nodes_chunk in self.get_nodes_chunks(session, api_url, ssize):
+            for node in nodes_chunk:
+                seen.append(node)
+                if len(seen) == ssize:
+                    return
+                if node.object_type == DIRECTORY and self.data[node.swhid()]["known"]:
+                    sub_nodes = [n for n in node.iter_tree(dedup=False)]
+                    sub_nodes.remove(node)  # remove root node
+                    for sub_node in sub_nodes:
+                        seen.append(sub_node)
+                        self.data[sub_node.swhid()]["known"] = True
+
+    @no_type_check
+    async def get_nodes_chunks(
+        self, session: aiohttp.ClientSession, api_url: str, ssize: int
+    ):
+        """Query chunks of QUERY_LIMIT nodes at once in order to fill the Web API
+           rate limit. It query all the nodes in the case the source code contains
+           less than QUERY_LIMIT nodes.
+        """
+        nodes = self.source_tree.iter_tree(dedup=False)
+        for nodes_chunk in grouper(nodes, QUERY_LIMIT):
+            nodes_chunk = [n for n in nodes_chunk]
+            swhids = [node.swhid() for node in nodes_chunk]
+            swhids_res = await swhids_discovery(swhids, session, api_url)
+            for node in nodes_chunk:
+                swhid = node.swhid()
+                self.data[swhid]["known"] = swhids_res[str(swhid)]["known"]
+            yield nodes_chunk
 
 
 class FilePriority(Policy):

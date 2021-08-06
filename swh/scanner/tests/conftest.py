@@ -7,6 +7,7 @@ import asyncio
 import os
 from pathlib import Path
 import shutil
+import sys
 
 import aiohttp
 from aioresponses import aioresponses  # type: ignore
@@ -78,13 +79,17 @@ def big_source_tree(tmp_path):
     """Generate a model.from_disk.Directory from a "big" temporary directory
        (more than 1000 nodes)
     """
+    # workaround to avoid a RecursionError that could be generated while creating
+    # a large number of directories
+    sys.setrecursionlimit(1100)
     dir_ = tmp_path / "big-directory"
-    dir_.mkdir()
+    sub_dirs = dir_
     for i in range(0, QUERY_LIMIT + 1):
-        file_ = dir_ / f"file_{i}.org"
-        file_.touch()
+        sub_dirs = sub_dirs / "dir"
+    sub_dirs.mkdir(parents=True, exist_ok=True)
+    file_ = sub_dirs / "file.org"
+    file_.touch()
     dir_obj = model_of_dir(str(dir_).encode())
-    assert len(dir_obj) > QUERY_LIMIT
     return dir_obj
 
 

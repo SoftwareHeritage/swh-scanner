@@ -13,7 +13,15 @@ from swh.model.from_disk import Directory
 
 from .data import MerkleNodeInfo
 from .output import Output
-from .policy import QUERY_LIMIT, DirectoryPriority, FilePriority, LazyBFS, QueryAll
+from .policy import (
+    QUERY_LIMIT,
+    DirectoryPriority,
+    FilePriority,
+    GreedyBFS,
+    LazyBFS,
+    QueryAll,
+    source_size,
+)
 
 
 async def run(config: Dict[str, Any], policy) -> None:
@@ -35,10 +43,6 @@ async def run(config: Dict[str, Any], policy) -> None:
         await policy.run(session, api_url)
 
 
-def source_size(source_tree: Directory):
-    return len([n for n in source_tree.iter_tree(dedup=False)])
-
-
 def get_policy_obj(source_tree: Directory, nodes_data: MerkleNodeInfo, policy: str):
     if policy == "auto":
         return (
@@ -48,6 +52,8 @@ def get_policy_obj(source_tree: Directory, nodes_data: MerkleNodeInfo, policy: s
         )
     elif policy == "bfs":
         return LazyBFS(source_tree, nodes_data)
+    elif policy == "greedybfs":
+        return GreedyBFS(source_tree, nodes_data)
     elif policy == "filepriority":
         return FilePriority(source_tree, nodes_data)
     elif policy == "dirpriority":

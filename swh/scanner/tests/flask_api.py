@@ -6,6 +6,7 @@
 from flask import Flask, request
 
 from swh.scanner.exceptions import LargePayloadExc
+from swh.scanner.policy import QUERY_LIMIT
 
 from .data import unknown_swhids
 
@@ -24,9 +25,10 @@ def create_app(tmp_requests):
             for swhid in swhids:
                 f.write(swhid + "\n")
 
-        if len(swhids) > 900:
+        if len(swhids) > QUERY_LIMIT:
             raise LargePayloadExc(
-                "The maximum number of SWHIDs this endpoint can receive is 900"
+                f"The maximum number of SWHIDs this endpoint can receive is "
+                f"{QUERY_LIMIT}"
             )
 
         res = {swhid: {"known": False} for swhid in swhids}

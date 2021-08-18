@@ -3,6 +3,8 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+from typing import Any, Optional
+
 
 class InvalidObjectType(TypeError):
     pass
@@ -25,6 +27,6 @@ class APIError(Exception):
         return '"%s"' % self.args
 
 
-def error_response(reason: str, status_code: int, api_url: str):
+def error_response(reason: Optional[Any], status_code: int, api_url: str):
     error_msg = f"{status_code} {reason}: '{api_url}'"
     raise APIError(error_msg)

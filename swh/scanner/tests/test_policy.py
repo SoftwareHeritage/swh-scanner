@@ -3,50 +3,20 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import json
 
 from flask import url_for
 import pytest
 
 from swh.model.identifiers import CONTENT, CoreSWHID, ObjectType
-from swh.scanner.data import MerkleNodeInfo
-from swh.scanner.exceptions import APIError
+from swh.scanner.client import Client
+from swh.scanner.data import MerkleNodeInfo, init_merkle_node_info
 from swh.scanner.policy import (
     DirectoryPriority,
     FilePriority,
     GreedyBFS,
     LazyBFS,
     source_size,
-    swhids_discovery,
 )
-
-from .data import correct_api_response
-
-aio_url = "http://example.org/api/known/"
-
-
-def test_scanner_correct_api_request(mock_aioresponse, event_loop, aiosession):
-    mock_aioresponse.post(
-        aio_url,
-        status=200,
-        content_type="application/json",
-        body=json.dumps(correct_api_response),
-    )
-
-    actual_result = event_loop.run_until_complete(
-        swhids_discovery([], aiosession, "http://example.org/api/")
-    )
-
-    assert correct_api_response == actual_result
-
-
-def test_scanner_raise_apierror(mock_aioresponse, event_loop, aiosession):
-    mock_aioresponse.post(aio_url, content_type="application/json", status=413)
-
-    with pytest.raises(APIError):
-        event_loop.run_until_complete(
-            swhids_discovery([], aiosession, "http://example.org/api/")
-        )
 
 
 def test_scanner_directory_priority_has_contents(source_tree):
@@ -69,8 +39,10 @@ def test_lazybfs_policy(
     api_url = url_for("index", _external=True)
 
     nodes_data = MerkleNodeInfo()
+    init_merkle_node_info(source_tree_policy, nodes_data, {"known"})
     policy = LazyBFS(source_tree_policy, nodes_data)
-    event_loop.run_until_complete(policy.run(aiosession, api_url))
+    client = Client(api_url, aiosession)
+    event_loop.run_until_complete(policy.run(client))
 
     backend_swhids_requests = get_backend_swhids_order(tmp_requests)
 
@@ -105,8 +77,10 @@ def test_directory_priority_policy(
     api_url = url_for("index", _external=True)
 
     nodes_data = MerkleNodeInfo()
+    init_merkle_node_info(source_tree_policy, nodes_data, {"known"})
     policy = DirectoryPriority(source_tree_policy, nodes_data)
-    event_loop.run_until_complete(policy.run(aiosession, api_url))
+    client = Client(api_url, aiosession)
+    event_loop.run_until_complete(policy.run(client))
 
     backend_swhids_requests = get_backend_swhids_order(tmp_requests)
 
@@ -124,8 +98,10 @@ def test_file_priority_policy(
     api_url = url_for("index", _external=True)
 
     nodes_data = MerkleNodeInfo()
+    init_merkle_node_info(source_tree_policy, nodes_data, {"known"})
     policy = FilePriority(source_tree_policy, nodes_data)
-    event_loop.run_until_complete(policy.run(aiosession, api_url))
+    client = Client(api_url, aiosession)
+    event_loop.run_until_complete(policy.run(client))
 
     backend_swhids_requests = get_backend_swhids_order(tmp_requests)
 
@@ -143,8 +119,10 @@ def test_greedy_bfs_policy(
     api_url = url_for("index", _external=True)
 
     nodes_data = MerkleNodeInfo()
+    init_merkle_node_info(big_source_tree, nodes_data, {"known"})
     policy = GreedyBFS(big_source_tree, nodes_data)
-    event_loop.run_until_complete(policy.run(aiosession, api_url))
+    client = Client(api_url, aiosession)
+    event_loop.run_until_complete(policy.run(client))
 
     backend_swhids_requests = get_backend_swhids_order(tmp_requests)
 
@@ -157,11 +135,13 @@ async def test_greedy_bfs_get_nodes_chunks(live_server, aiosession, big_source_t
     api_url = url_for("index", _external=True)
 
     nodes_data = MerkleNodeInfo()
+    init_merkle_node_info(big_source_tree, nodes_data, {"known"})
     policy = GreedyBFS(big_source_tree, nodes_data)
+    client = Client(api_url, aiosession)
     chunks = [
         n_chunk
         async for n_chunk in policy.get_nodes_chunks(
-            aiosession, api_url, source_size(big_source_tree)
+            client, source_size(big_source_tree)
         )
     ]
     assert len(chunks) == 2

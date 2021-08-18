@@ -3,12 +3,12 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from flask import Flask, request
+from flask import Flask, abort, request
 
 from swh.scanner.exceptions import LargePayloadExc
 from swh.scanner.policy import QUERY_LIMIT
 
-from .data import unknown_swhids
+from .data import fake_origin, unknown_swhids
 
 
 def create_app(tmp_requests):
@@ -37,5 +37,12 @@ def create_app(tmp_requests):
                 res[swhid]["known"] = True
 
         return res
+
+    @app.route("/graph/randomwalk/<swhid>/ori/", methods=["GET"])
+    def randomwalk(swhid):
+        if swhid in fake_origin.keys():
+            return fake_origin[swhid]
+        else:
+            abort(404)
 
     return app

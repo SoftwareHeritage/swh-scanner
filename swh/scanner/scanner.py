@@ -11,7 +11,8 @@ import aiohttp
 from swh.model.cli import model_of_dir
 from swh.model.from_disk import Directory
 
-from .data import MerkleNodeInfo
+from .client import Client
+from .data import MerkleNodeInfo, add_origin, init_merkle_node_info
 from .output import Output
 from .policy import (
     QUERY_LIMIT,
@@ -24,13 +25,14 @@ from .policy import (
 )
 
 
-async def run(config: Dict[str, Any], policy) -> None:
+async def run(
+    config: Dict[str, Any],
+    policy,
+    source_tree: Directory,
+    nodes_data: MerkleNodeInfo,
+    extra_info: set,
+) -> None:
     """Scan a given source code according to the policy given in input.
-
-    Args:
-        root: the root path to scan
-        api_url: url for the API request
-
     """
     api_url = config["web-api"]["url"]
 
@@ -40,7 +42,14 @@ async def run(config: Dict[str, Any], policy) -> None:
         headers = {}
 
     async with aiohttp.ClientSession(headers=headers, trust_env=True) as session:
-        await policy.run(session, api_url)
+        client = Client(api_url, session)
+        for info in extra_info:
+            if info == "known":
+                await policy.run(client)
+            elif info == "origin":
+                await add_origin(source_tree, nodes_data, client)
+            else:
+                raise Exception(f"The information '{info}' cannot be retrieved")
 
 
 def get_policy_obj(source_tree: Directory, nodes_data: MerkleNodeInfo, policy: str):
@@ -69,16 +78,21 @@ def scan(
     out_fmt: str,
     interactive: bool,
     policy: str,
+    extra_info: set,
 ):
     """Scan a source code project to discover files and directories already
     present in the archive"""
     converted_patterns = [pattern.encode() for pattern in exclude_patterns]
     source_tree = model_of_dir(root_path.encode(), converted_patterns)
+
     nodes_data = MerkleNodeInfo()
+    extra_info.add("known")
+    init_merkle_node_info(source_tree, nodes_data, extra_info)
+
     policy = get_policy_obj(source_tree, nodes_data, policy)
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(run(config, policy))
+    loop.run_until_complete(run(config, policy, source_tree, nodes_data, extra_info))
 
     out = Output(root_path, nodes_data, source_tree)
     if interactive:

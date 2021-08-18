@@ -4,68 +4,14 @@
 # See top-level LICENSE file for more information
 
 import abc
-import asyncio
-import itertools
-from typing import Dict, List, no_type_check
-
-import aiohttp
+from typing import no_type_check
 
 from swh.core.utils import grouper
 from swh.model.from_disk import Directory
-from swh.model.identifiers import CONTENT, DIRECTORY, CoreSWHID
+from swh.model.identifiers import CONTENT, DIRECTORY
 
+from .client import QUERY_LIMIT, Client
 from .data import MerkleNodeInfo
-from .exceptions import error_response
-
-# Maximum number of SWHIDs that can be requested by a single call to the
-# Web API endpoint /known/
-QUERY_LIMIT = 1000
-
-
-async def swhids_discovery(
-    swhids: List[CoreSWHID], session: aiohttp.ClientSession, api_url: str,
-) -> Dict[str, Dict[str, bool]]:
-    """API Request to get information about the SoftWare Heritage persistent
-    IDentifiers (SWHIDs) given in input.
-
-    Args:
-        swhids: a list of CoreSWHID instances
-        api_url: url for the API request
-
-    Returns:
-        A dictionary with:
-
-        key:
-            string SWHID searched
-        value:
-            value['known'] = True if the SWHID is found
-            value['known'] = False if the SWHID is not found
-
-    """
-    endpoint = api_url + "known/"
-    requests = []
-
-    def get_chunk(swhids):
-        for i in range(0, len(swhids), QUERY_LIMIT):
-            yield swhids[i : i + QUERY_LIMIT]
-
-    async def make_request(swhids):
-        swhids = [str(swhid) for swhid in swhids]
-        async with session.post(endpoint, json=swhids) as resp:
-            if resp.status != 200:
-                error_response(resp.reason, resp.status, endpoint)
-
-            return await resp.json()
-
-    if len(swhids) > QUERY_LIMIT:
-        for swhids_chunk in get_chunk(swhids):
-            requests.append(asyncio.create_task(make_request(swhids_chunk)))
-
-        res = await asyncio.gather(*requests)
-        # concatenate list of dictionaries
-        return dict(itertools.chain.from_iterable(e.items() for e in res))
-    else:
-        return await make_request(swhids)
 
 
 def source_size(source_tree: Directory):
@@ -83,15 +29,11 @@ class Policy(metaclass=abc.ABCMeta):
     """representation of a source code project directory in the merkle tree"""
 
     def __init__(self, source_tree: Directory, data: MerkleNodeInfo):
-        self.data = data
         self.source_tree = source_tree
-        for node in source_tree.iter_tree():
-            self.data[node.swhid()] = {"known": None}  # type: ignore
+        self.data = data
 
     @abc.abstractmethod
-    async def run(
-        self, session: aiohttp.ClientSession, api_url: str,
-    ):
+    async def run(self, client: Client):
         """Scan a source code project"""
         raise NotImplementedError("Must implement run method")
 
@@ -102,15 +44,13 @@ class LazyBFS(Policy):
        contents to known.
     """
 
-    async def run(
-        self, session: aiohttp.ClientSession, api_url: str,
-    ):
+    async def run(self, client: Client):
         queue = []
         queue.append(self.source_tree)
 
         while queue:
             swhids = [node.swhid() for node in queue]
-            swhids_res = await swhids_discovery(swhids, session, api_url)
+            swhids_res = await client.known(swhids)
             for node in queue.copy():
                 queue.remove(node)
                 self.data[node.swhid()]["known"] = swhids_res[str(node.swhid())][
@@ -132,13 +72,11 @@ class GreedyBFS(Policy):
        downstream contents of known directories to known.
     """
 
-    async def run(
-        self, session: aiohttp.ClientSession, api_url: str,
-    ):
+    async def run(self, client: Client):
         ssize = source_size(self.source_tree)
         seen = []
 
-        async for nodes_chunk in self.get_nodes_chunks(session, api_url, ssize):
+        async for nodes_chunk in self.get_nodes_chunks(client, ssize):
             for node in nodes_chunk:
                 seen.append(node)
                 if len(seen) == ssize:
@@ -151,9 +89,7 @@ class GreedyBFS(Policy):
                         self.data[sub_node.swhid()]["known"] = True
 
     @no_type_check
-    async def get_nodes_chunks(
-        self, session: aiohttp.ClientSession, api_url: str, ssize: int
-    ):
+    async def get_nodes_chunks(self, client: Client, ssize: int):
         """Query chunks of QUERY_LIMIT nodes at once in order to fill the Web API
            rate limit. It query all the nodes in the case the source code contains
            less than QUERY_LIMIT nodes.
@@ -162,7 +98,7 @@ class GreedyBFS(Policy):
         for nodes_chunk in grouper(nodes, QUERY_LIMIT):
             nodes_chunk = [n for n in nodes_chunk]
             swhids = [node.swhid() for node in nodes_chunk]
-            swhids_res = await swhids_discovery(swhids, session, api_url)
+            swhids_res = await client.known(swhids)
             for node in nodes_chunk:
                 swhid = node.swhid()
                 self.data[swhid]["known"] = swhids_res[str(swhid)]["known"]
@@ -177,9 +113,7 @@ class FilePriority(Policy):
     """
 
     @no_type_check
-    async def run(
-        self, session: aiohttp.ClientSession, api_url: str,
-    ):
+    async def run(self, client: Client):
         # get all the files
         all_contents = list(
             filter(
@@ -190,7 +124,7 @@ class FilePriority(Policy):
 
         # query the backend to get all file contents status
         cnt_swhids = [node.swhid() for node in all_contents]
-        cnt_status_res = await swhids_discovery(cnt_swhids, session, api_url)
+        cnt_status_res = await client.known(cnt_swhids)
         # set all the file contents status
         for cnt in all_contents:
             self.data[cnt.swhid()]["known"] = cnt_status_res[str(cnt.swhid())]["known"]
@@ -215,7 +149,7 @@ class FilePriority(Policy):
         for dir_ in unset_dirs:
             if self.data[dir_.swhid()]["known"] is None:
                 # update directory status
-                dir_status = await swhids_discovery([dir_.swhid()], session, api_url)
+                dir_status = await client.known([dir_.swhid()])
                 dir_known = dir_status[str(dir_.swhid())]["known"]
                 self.data[dir_.swhid()]["known"] = dir_known
                 if dir_known:
@@ -239,9 +173,7 @@ class DirectoryPriority(Policy):
     """
 
     @no_type_check
-    async def run(
-        self, session: aiohttp.ClientSession, api_url: str,
-    ):
+    async def run(self, client: Client):
         # get all directory contents that have at least one file content
         unknown_dirs = list(
             filter(
@@ -253,7 +185,7 @@ class DirectoryPriority(Policy):
 
         for dir_ in unknown_dirs:
             if self.data[dir_.swhid()]["known"] is None:
-                dir_status = await swhids_discovery([dir_.swhid()], session, api_url)
+                dir_status = await client.known([dir_.swhid()])
                 dir_known = dir_status[str(dir_.swhid())]["known"]
                 self.data[dir_.swhid()]["known"] = dir_known
                 # set all the downstream file contents to known
@@ -277,7 +209,7 @@ class DirectoryPriority(Policy):
             )
         )
         empty_dirs_swhids = [n.swhid() for n in empty_dirs]
-        empty_dir_status = await swhids_discovery(empty_dirs_swhids, session, api_url)
+        empty_dir_status = await client.known(empty_dirs_swhids)
 
         # update status of directories that have no file contents
         for dir_ in empty_dirs:
@@ -294,9 +226,7 @@ class DirectoryPriority(Policy):
             )
         )
         unknown_cnts_swhids = [n.swhid() for n in unknown_cnts]
-        unknown_cnts_status = await swhids_discovery(
-            unknown_cnts_swhids, session, api_url
-        )
+        unknown_cnts_status = await client.known(unknown_cnts_swhids)
 
         for cnt in unknown_cnts:
             self.data[cnt.swhid()]["known"] = unknown_cnts_status[str(cnt.swhid())][
@@ -322,11 +252,9 @@ class QueryAll(Policy):
     """
 
     @no_type_check
-    async def run(
-        self, session: aiohttp.ClientSession, api_url: str,
-    ):
+    async def run(self, client: Client):
         all_nodes = [node for node in self.source_tree.iter_tree()]
         all_swhids = [node.swhid() for node in all_nodes]
-        swhids_res = await swhids_discovery(all_swhids, session, api_url)
+        swhids_res = await client.known(all_swhids)
         for node in all_nodes:
             self.data[node.swhid()]["known"] = swhids_res[str(node.swhid())]["known"]

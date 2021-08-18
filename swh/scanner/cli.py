@@ -142,32 +142,50 @@ def scanner(ctx, config_file: Optional[str]):
     type=click.Choice(["auto", "bfs", "greedybfs", "filepriority", "dirpriority"]),
     help="The scan policy.",
 )
+@click.option(
+    "-e",
+    "--extra-info",
+    "extra_info",
+    multiple=True,
+    type=click.Choice(["origin"]),
+    help="Add selected additional information about known software artifacts.",
+)
 @click.pass_context
-def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy):
+def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy, extra_info):
     """Scan a source code project to discover files and directories already
     present in the archive.
 
     The source code project can be checked using different policies that can be set
-    using the -p/--policy option:
+    using the -p/--policy option:\n
+    \b
+      auto: it selects the best policy based on the source code, for codebase(s)
+      with less than 1000 file/dir contents all the nodes will be queried.
 
-    auto: it selects the best policy based on the source code, for codebase(s) with
-    less than 1000 file/dir contents all the nodes will be queried.
+      bfs: scan the source code in the BFS order, checking unknown directories only.
 
-    bfs: scan the source code in the BFS order, checking unknown directories only.
+    \b
+      greedybfs: same as "bfs" policy, but lookup the status of source code artifacts
+      in chunks, in order to minimize the number of Web API round-trips with the
+      archive.
 
-    greedybfs: same as "bfs" policy, but lookup the status of source code artifacts in
-    chunks, in order to minimize the number of Web API round-trips with the archive.
+    \b
+      filepriority: scan all the source code file contents, checking only unset
+      directories. (useful if the codebase contains a lot of source files)
 
-    filepriority: scan all the source code file contents, checking only unset
-    directories. (useful if the codebase contains a lot of source files)
+      dirpriority: scan all the source code directories and check only unknown
+      directory contents.
 
-    dirpriority: scan all the source code directories and check only unknown
-    directory contents.
-    """
+    Other information about software artifacts could be specified with the -e/
+    --extra-info option:\n
+    \b
+      origin: search the origin url of each source code files/dirs using the in-memory
+      compressed graph.
+"""
     import swh.scanner.scanner as scanner
 
     config = setup_config(ctx, api_url)
-    scanner.scan(config, root_path, patterns, out_fmt, interactive, policy)
+    extra_info = set(extra_info)
+    scanner.scan(config, root_path, patterns, out_fmt, interactive, policy, extra_info)
 
 
 @scanner.group("db", help="Manage local knowledge base for swh-scanner")

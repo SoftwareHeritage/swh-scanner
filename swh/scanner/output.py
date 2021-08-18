@@ -93,12 +93,13 @@ class Output:
     def data_as_json(self):
         json = {}
         for node in self.source_tree.iter_tree():
-            node_known = self.nodes_data[node.swhid()]["known"]
             rel_path = os.path.relpath(
                 node.data[self.get_path_name(node)].decode(),
                 self.source_tree.data["path"].decode(),
             )
-            json[rel_path] = {"swhid": str(node.swhid()), "known": node_known}
+            json[rel_path] = {"swhid": str(node.swhid())}
+            for k, v in self.nodes_data[node.swhid()].items():
+                json[rel_path][k] = v
         return json
 
     def print_json(self):

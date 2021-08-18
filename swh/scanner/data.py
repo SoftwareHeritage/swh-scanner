@@ -4,11 +4,15 @@
 # See top-level LICENSE file for more information
 
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from swh.model.exceptions import ValidationError
 from swh.model.from_disk import Directory
 from swh.model.identifiers import CONTENT, DIRECTORY, CoreSWHID
+
+from .client import Client
+
+SUPPORTED_INFO = {"known", "origin"}
 
 
 class MerkleNodeInfo(dict):
@@ -25,6 +29,45 @@ class MerkleNodeInfo(dict):
             raise ValidationError(f"values must be dict, not {type(value)}")
 
         super(MerkleNodeInfo, self).__setitem__(key, value)
+
+
+def init_merkle_node_info(source_tree: Directory, data: MerkleNodeInfo, info: set):
+    """Populate the MerkleNodeInfo with the SWHIDs of the given source tree and the
+       attributes that will be stored.
+    """
+    if not info:
+        raise Exception("Data initialization requires node attributes values.")
+    nodes_info: Dict[str, Optional[str]] = {}
+    for ainfo in info:
+        if ainfo in SUPPORTED_INFO:
+            nodes_info[ainfo] = None
+        else:
+            raise Exception(f"Information {ainfo} is not supported.")
+
+    for node in source_tree.iter_tree():
+        data[node.swhid()] = nodes_info.copy()  # type: ignore
+
+
+async def add_origin(source_tree: Directory, data: MerkleNodeInfo, client: Client):
+    """Store origin information about software artifacts retrieved from the Software
+       Heritage graph service.
+    """
+    queue = []
+    queue.append(source_tree)
+    while queue:
+        for node in queue.copy():
+            queue.remove(node)
+            node_ori = await client.get_origin(node.swhid())
+            if node_ori:
+                data[node.swhid()]["origin"] = node_ori
+                if node.object_type == DIRECTORY:
+                    for sub_node in node.iter_tree():
+                        data[sub_node.swhid()]["origin"] = node_ori  # type: ignore
+            else:
+                if node.object_type == DIRECTORY:
+                    children = [sub_node for sub_node in node.iter_tree()]
+                    children.remove(node)
+                    queue.extend(children)  # type: ignore
 
 
 def get_directory_data(

@@ -13,17 +13,13 @@ SWHIDs can be added directly from an input file.
 from io import TextIOWrapper
 import logging
 from pathlib import Path
-import re
 import sqlite3
 from typing import Iterable
 
 from swh.core.utils import grouper
+from swh.model.swhids import SWHID_RE
 
 from .exceptions import DBError
-
-# XXX copied and simplified from swh.model.identifiers (WIP), replace this in favor of
-# swh.model.identifiers.SWHID_RE when it is landed there
-SWHID_RE = re.compile("^swh:1:(ori|snp|rel|rev|dir|cnt):[0-9a-f]{40}$")
 
 
 class Db:

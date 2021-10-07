@@ -8,7 +8,7 @@ from typing import Dict, Optional, Tuple
 
 from swh.model.exceptions import ValidationError
 from swh.model.from_disk import Directory
-from swh.model.identifiers import CONTENT, DIRECTORY, CoreSWHID
+from swh.model.swhids import CoreSWHID
 
 from .client import Client
 
@@ -60,11 +60,11 @@ async def add_origin(source_tree: Directory, data: MerkleNodeInfo, client: Clien
             node_ori = await client.get_origin(node.swhid())
             if node_ori:
                 data[node.swhid()]["origin"] = node_ori
-                if node.object_type == DIRECTORY:
+                if node.object_type == "directory":
                     for sub_node in node.iter_tree():
                         data[sub_node.swhid()]["origin"] = node_ori  # type: ignore
             else:
-                if node.object_type == DIRECTORY:
+                if node.object_type == "directory":
                     children = [sub_node for sub_node in node.iter_tree()]
                     children.remove(node)
                     queue.extend(children)  # type: ignore
@@ -88,7 +88,7 @@ def get_directory_data(
     ):
         directories = list(
             filter(
-                lambda n: n.object_type == DIRECTORY,
+                lambda n: n.object_type == "directory",
                 map(lambda n: n[1], source_tree.items()),
             )
         )
@@ -112,7 +112,7 @@ def directory_content(node: Directory, nodes_data: MerkleNodeInfo) -> Tuple[int,
     """
     known_cnt = 0
     node_contents = list(
-        filter(lambda n: n.object_type == CONTENT, map(lambda n: n[1], node.items()))
+        filter(lambda n: n.object_type == "content", map(lambda n: n[1], node.items()))
     )
     for sub_node in node_contents:
         if nodes_data[sub_node.swhid()]["known"]:
@@ -137,7 +137,7 @@ def get_content_from(
     directory = source_tree[node_path if node_path != source_tree.data["path"] else b""]
     node_contents = list(
         filter(
-            lambda n: n.object_type == CONTENT, map(lambda n: n[1], directory.items())
+            lambda n: n.object_type == "content", map(lambda n: n[1], directory.items())
         )
     )
     files_data = {}

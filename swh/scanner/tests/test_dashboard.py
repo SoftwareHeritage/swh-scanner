@@ -5,7 +5,7 @@
 
 import dash_html_components as html
 
-from swh.model.identifiers import CoreSWHID, ObjectType
+from swh.model.swhids import CoreSWHID, ObjectType
 from swh.scanner.dashboard.dashboard import generate_table_body
 from swh.scanner.data import MerkleNodeInfo
 

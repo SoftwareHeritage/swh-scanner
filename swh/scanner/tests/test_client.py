@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from swh.model.identifiers import CoreSWHID
+from swh.model.swhids import CoreSWHID
 from swh.scanner.client import Client
 from swh.scanner.exceptions import APIError
 

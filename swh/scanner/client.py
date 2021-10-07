@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp
 
-from swh.model.identifiers import CoreSWHID
+from swh.model.swhids import CoreSWHID
 
 from .exceptions import error_response
 

@@ -7,7 +7,7 @@
 from flask import url_for
 import pytest
 
-from swh.model.identifiers import CONTENT, CoreSWHID, ObjectType
+from swh.model.swhids import CoreSWHID, ObjectType
 from swh.scanner.client import Client
 from swh.scanner.data import MerkleNodeInfo, init_merkle_node_info
 from swh.scanner.policy import (
@@ -145,4 +145,4 @@ async def test_greedy_bfs_get_nodes_chunks(live_server, aiosession, big_source_t
         )
     ]
     assert len(chunks) == 2
-    assert chunks[1][-1].object_type == CONTENT
+    assert chunks[1][-1].object_type == "content"

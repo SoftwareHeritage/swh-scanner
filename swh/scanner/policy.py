@@ -8,7 +8,6 @@ from typing import no_type_check
 
 from swh.core.utils import grouper
 from swh.model.from_disk import Directory
-from swh.model.identifiers import CONTENT, DIRECTORY
 
 from .client import QUERY_LIMIT, Client
 from .data import MerkleNodeInfo
@@ -56,7 +55,7 @@ class LazyBFS(Policy):
                 self.data[node.swhid()]["known"] = swhids_res[str(node.swhid())][
                     "known"
                 ]
-                if node.object_type == DIRECTORY:
+                if node.object_type == "directory":
                     if not self.data[node.swhid()]["known"]:
                         children = [n[1] for n in list(node.items())]
                         queue.extend(children)
@@ -81,7 +80,7 @@ class GreedyBFS(Policy):
                 seen.append(node)
                 if len(seen) == ssize:
                     return
-                if node.object_type == DIRECTORY and self.data[node.swhid()]["known"]:
+                if node.object_type == "directory" and self.data[node.swhid()]["known"]:
                     sub_nodes = [n for n in node.iter_tree(dedup=False)]
                     sub_nodes.remove(node)  # remove root node
                     for sub_node in sub_nodes:
@@ -117,7 +116,7 @@ class FilePriority(Policy):
         # get all the files
         all_contents = list(
             filter(
-                lambda node: node.object_type == CONTENT, self.source_tree.iter_tree()
+                lambda node: node.object_type == "content", self.source_tree.iter_tree()
             )
         )
         all_contents.reverse()  # check deepest node first
@@ -139,7 +138,7 @@ class FilePriority(Policy):
         # (update children directories accordingly)
         unset_dirs = list(
             filter(
-                lambda node: node.object_type == DIRECTORY
+                lambda node: node.object_type == "directory"
                 and self.data[node.swhid()]["known"] is None,
                 self.source_tree.iter_tree(),
             )
@@ -155,7 +154,7 @@ class FilePriority(Policy):
                 if dir_known:
                     sub_dirs = list(
                         filter(
-                            lambda n: n.object_type == DIRECTORY
+                            lambda n: n.object_type == "directory"
                             and self.data[n.swhid()]["known"] is None,
                             dir_.iter_tree(),
                         )
@@ -177,7 +176,8 @@ class DirectoryPriority(Policy):
         # get all directory contents that have at least one file content
         unknown_dirs = list(
             filter(
-                lambda dir_: dir_.object_type == DIRECTORY and self.has_contents(dir_),
+                lambda dir_: dir_.object_type == "directory"
+                and self.has_contents(dir_),
                 self.source_tree.iter_tree(),
             )
         )
@@ -202,7 +202,7 @@ class DirectoryPriority(Policy):
         # get remaining directories that have no file contents
         empty_dirs = list(
             filter(
-                lambda n: n.object_type == DIRECTORY
+                lambda n: n.object_type == "directory"
                 and not self.has_contents(n)
                 and self.data[n.swhid()]["known"] is None,
                 self.source_tree.iter_tree(),
@@ -220,7 +220,7 @@ class DirectoryPriority(Policy):
         # check unknown file contents
         unknown_cnts = list(
             filter(
-                lambda n: n.object_type == CONTENT
+                lambda n: n.object_type == "content"
                 and self.data[n.swhid()]["known"] is None,
                 self.source_tree.iter_tree(),
             )
@@ -243,7 +243,7 @@ class DirectoryPriority(Policy):
     def get_contents(self, dir_: Directory):
         """Get all the contents of a given directory"""
         for _, node in list(dir_.items()):
-            if node.object_type == CONTENT:
+            if node.object_type == "content":
                 yield node
 
 

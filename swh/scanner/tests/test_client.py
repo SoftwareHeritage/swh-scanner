@@ -48,7 +48,9 @@ def test_client_get_origin_correct_api_request(
         f"/?direction=backward&limit=-1&resolve_origins=true"
     )
     mock_aioresponse.get(
-        origin_url, status=200, body=correct_origin_api_response,
+        origin_url,
+        status=200,
+        body=correct_origin_api_response,
     )
 
     client = Client(AIO_URL, aiosession)

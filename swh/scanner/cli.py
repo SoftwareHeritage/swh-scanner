@@ -61,7 +61,9 @@ def setup_config(ctx, api_url):
 
 
 @swh_cli_group.group(
-    name="scanner", context_settings=CONTEXT_SETTINGS, help=SCANNER_HELP,
+    name="scanner",
+    context_settings=CONTEXT_SETTINGS,
+    help=SCANNER_HELP,
 )
 @click.option(
     "-C",
@@ -71,7 +73,8 @@ def setup_config(ctx, api_url):
     help="""YAML configuration file""",
 )
 @click.version_option(
-    version=version("swh.scanner"), prog_name="swh.scanner",
+    version=version("swh.scanner"),
+    prog_name="swh.scanner",
 )
 @click.pass_context
 def scanner(ctx, config_file: Optional[str]):
@@ -179,8 +182,7 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy, extra_
     --extra-info option:\n
     \b
       origin: search the origin url of each source code files/dirs using the in-memory
-      compressed graph.
-"""
+      compressed graph."""
     import swh.scanner.scanner as scanner
 
     config = setup_config(ctx, api_url)

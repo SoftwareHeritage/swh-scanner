@@ -178,7 +178,9 @@ def compute_max_depth(dirs_path: List[Path]) -> int:
 
 
 def generate_df_from_dirs(
-    dirs: Dict[Path, Tuple[int, int]], columns: List[str], max_depth: int,
+    dirs: Dict[Path, Tuple[int, int]],
+    columns: List[str],
+    max_depth: int,
 ) -> pd.DataFrame:
     """Generate a dataframe from the directories given in input.
 

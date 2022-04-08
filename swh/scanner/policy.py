@@ -14,8 +14,7 @@ from .data import MerkleNodeInfo
 
 
 def source_size(source_tree: Directory):
-    """return the size of a source tree as the number of nodes it contains
-    """
+    """return the size of a source tree as the number of nodes it contains"""
     return sum(1 for n in source_tree.iter_tree(dedup=False))
 
 
@@ -39,8 +38,8 @@ class Policy(metaclass=abc.ABCMeta):
 
 class LazyBFS(Policy):
     """Read nodes in the merkle tree using the BFS algorithm.
-       Lookup only directories that are unknown otherwise set all the downstream
-       contents to known.
+    Lookup only directories that are unknown otherwise set all the downstream
+    contents to known.
     """
 
     async def run(self, client: Client):
@@ -68,7 +67,7 @@ class LazyBFS(Policy):
 
 class GreedyBFS(Policy):
     """Query graph nodes in chunks (to maximize the Web API rate limit use) and set the
-       downstream contents of known directories to known.
+    downstream contents of known directories to known.
     """
 
     async def run(self, client: Client):
@@ -90,8 +89,8 @@ class GreedyBFS(Policy):
     @no_type_check
     async def get_nodes_chunks(self, client: Client, ssize: int):
         """Query chunks of QUERY_LIMIT nodes at once in order to fill the Web API
-           rate limit. It query all the nodes in the case the source code contains
-           less than QUERY_LIMIT nodes.
+        rate limit. It query all the nodes in the case the source code contains
+        less than QUERY_LIMIT nodes.
         """
         nodes = self.source_tree.iter_tree(dedup=False)
         for nodes_chunk in grouper(nodes, QUERY_LIMIT):
@@ -106,9 +105,9 @@ class GreedyBFS(Policy):
 
 class FilePriority(Policy):
     """Check the Merkle tree querying all the file contents and set all the upstream
-       directories to unknown in the case a file content is unknown.
-       Finally check all the directories which status is still unknown and set all the
-       sub-directories of known directories to known.
+    directories to unknown in the case a file content is unknown.
+    Finally check all the directories which status is still unknown and set all the
+    sub-directories of known directories to known.
     """
 
     @no_type_check
@@ -165,10 +164,10 @@ class FilePriority(Policy):
 
 class DirectoryPriority(Policy):
     """Check the Merkle tree querying all the directories that have at least one file
-       content and set all the upstream directories to unknown in the case a directory
-       is unknown otherwise set all the downstream contents to known.
-       Finally check the status of empty directories and all the remaining file
-       contents.
+    content and set all the upstream directories to unknown in the case a directory
+    is unknown otherwise set all the downstream contents to known.
+    Finally check the status of empty directories and all the remaining file
+    contents.
     """
 
     @no_type_check
@@ -248,8 +247,7 @@ class DirectoryPriority(Policy):
 
 
 class QueryAll(Policy):
-    """Check the status of every node in the Merkle tree.
-    """
+    """Check the status of every node in the Merkle tree."""
 
     @no_type_check
     async def run(self, client: Client):

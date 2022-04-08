@@ -77,7 +77,7 @@ def source_tree(test_sample_folder):
 @pytest.fixture(scope="function")
 def big_source_tree(tmp_path):
     """Generate a model.from_disk.Directory from a "big" temporary directory
-       (more than 1000 nodes)
+    (more than 1000 nodes)
     """
     # workaround to avoid a RecursionError that could be generated while creating
     # a large number of directories

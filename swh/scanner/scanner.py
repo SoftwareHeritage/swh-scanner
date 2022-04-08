@@ -32,8 +32,7 @@ async def run(
     nodes_data: MerkleNodeInfo,
     extra_info: set,
 ) -> None:
-    """Scan a given source code according to the policy given in input.
-    """
+    """Scan a given source code according to the policy given in input."""
     api_url = config["web-api"]["url"]
 
     if config["web-api"]["auth-token"]:

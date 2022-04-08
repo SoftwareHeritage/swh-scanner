@@ -33,7 +33,7 @@ class MerkleNodeInfo(dict):
 
 def init_merkle_node_info(source_tree: Directory, data: MerkleNodeInfo, info: set):
     """Populate the MerkleNodeInfo with the SWHIDs of the given source tree and the
-       attributes that will be stored.
+    attributes that will be stored.
     """
     if not info:
         raise Exception("Data initialization requires node attributes values.")
@@ -50,7 +50,7 @@ def init_merkle_node_info(source_tree: Directory, data: MerkleNodeInfo, info: se
 
 async def add_origin(source_tree: Directory, data: MerkleNodeInfo, client: Client):
     """Store origin information about software artifacts retrieved from the Software
-       Heritage graph service.
+    Heritage graph service.
     """
     queue = []
     queue.append(source_tree)

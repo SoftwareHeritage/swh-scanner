@@ -49,7 +49,9 @@ def run_app(graph_obj: go, source_tree: Directory, nodes_data: MerkleNodeInfo):
     app = dash.Dash(__name__)
     fig = go.Figure().add_trace(graph_obj)
 
-    fig.update_layout(height=800,)
+    fig.update_layout(
+        height=800,
+    )
 
     table_header = [
         html.Thead(html.Tr([html.Th("KNOWN"), html.Th("FILE NAME"), html.Th("SWHID")]))
@@ -60,7 +62,10 @@ def run_app(graph_obj: go, source_tree: Directory, nodes_data: MerkleNodeInfo):
             html.Div(
                 [
                     html.Div(
-                        [dcc.Graph(id="sunburst_chart", figure=fig),], className="col",
+                        [
+                            dcc.Graph(id="sunburst_chart", figure=fig),
+                        ],
+                        className="col",
                     ),
                     html.Div(
                         [

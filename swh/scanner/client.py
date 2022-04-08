@@ -29,16 +29,14 @@ GRAPH_RANDOMWALK_EP = "graph/randomwalk/"
 
 
 class Client:
-    """Manage requests to the Software Heritage Web API.
-    """
+    """Manage requests to the Software Heritage Web API."""
 
     def __init__(self, api_url: str, session: aiohttp.ClientSession):
         self.api_url = api_url
         self.session = session
 
     async def get_origin(self, swhid: CoreSWHID) -> Optional[Any]:
-        """Walk the compressed graph to discover the origin of a given swhid
-        """
+        """Walk the compressed graph to discover the origin of a given swhid"""
         endpoint = (
             f"{self.api_url}{GRAPH_RANDOMWALK_EP}{str(swhid)}/ori/?direction="
             f"backward&limit=-1&resolve_origins=true"

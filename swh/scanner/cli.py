@@ -107,7 +107,7 @@ def scanner(ctx, config_file: Optional[str]):
 
 
 @scanner.command(name="scan")
-@click.argument("root_path", required=True, type=click.Path(exists=True))
+@click.argument("root_path", default=".", type=click.Path(exists=True))
 @click.option(
     "-u",
     "--api-url",

@@ -158,6 +158,17 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy, extra_
     """Scan a source code project to discover files and directories already
     present in the archive.
 
+    The command can provide different output using the --output-format option:\n
+    \b
+      text: display the scan result as a text based tree-like view of all the
+            file, using color to indicate the file status.
+
+      json: write all collected data on standard output as JSON
+
+      json: write all collected data on standard output as Newline Delimited JSON
+
+      sunburst: produce a dynamic chart as .html file. (in $PWD/chart.html)
+
     The source code project can be checked using different policies that can be set
     using the -p/--policy option:\n
     \b

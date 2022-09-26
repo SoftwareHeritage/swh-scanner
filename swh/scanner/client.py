@@ -79,10 +79,12 @@ class Client:
         """
         requests = []
 
+        swh_ids = [str(swhid) for swhid in swhids]
+
         if len(swhids) <= QUERY_LIMIT:
-            return await self._make_request(swhids)
+            return await self._make_request(swh_ids)
         else:
-            for swhids_chunk in _get_chunk(swhids):
+            for swhids_chunk in _get_chunk(swh_ids):
                 task = asyncio.create_task(self._make_request(swhids_chunk))
                 requests.append(task)
 
@@ -92,7 +94,6 @@ class Client:
 
     async def _make_request(self, swhids):
         endpoint = self.api_url + KNOWN_EP
-        swhids = [str(swhid) for swhid in swhids]
         async with self.session.post(endpoint, json=swhids) as resp:
             if resp.status != 200:
                 error_response(resp.reason, resp.status, endpoint)

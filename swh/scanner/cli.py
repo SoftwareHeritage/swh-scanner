@@ -131,7 +131,9 @@ def scanner(ctx, config_file: Optional[str]):
     "out_fmt",
     default="text",
     show_default=True,
-    type=click.Choice(["text", "json", "ndjson", "sunburst"], case_sensitive=False),
+    type=click.Choice(
+        ["summary", "text", "json", "ndjson", "sunburst"], case_sensitive=False
+    ),
     help="The output format",
 )
 @click.option(
@@ -160,6 +162,8 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy, extra_
 
     The command can provide different output using the --output-format option:\n
     \b
+      summary: display a general summary of what the scanner found
+
       text: display the scan result as a text based tree-like view of all the
             file, using color to indicate the file status.
 

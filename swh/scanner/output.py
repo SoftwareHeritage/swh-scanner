@@ -40,7 +40,9 @@ class Output:
         self.source_tree = source_tree
 
     def show(self, mode=DEFAULT_OUTPUT):
-        if mode == "text":
+        if mode == "summary":
+            self.summary()
+        elif mode == "text":
             isatty = sys.stdout.isatty()
             self.print_text(isatty)
         elif mode == "sunburst":
@@ -89,6 +91,53 @@ class Output:
                 rel_path = colorize(rel_path, Color.GREEN)
 
         print(f"{begin}{rel_path}{end}")
+
+    def summary(self):
+        directories_with_known_files = set()
+
+        total_files = 0
+        total_directories = 0
+        known_files = 0
+        full_known_directories = 0
+        partially_known_directories = 0
+
+        contents = []
+        directories = []
+
+        for node in self.source_tree.iter_tree():
+            if node.object_type == "content":
+                contents.append(node)
+            elif node.object_type == "directory":
+                directories.append(node)
+            else:
+                assert False, "unreachable"
+
+        total_files = len(contents)
+        for c in contents:
+            if self.nodes_data[c.swhid()]["known"]:
+                known_files += 1
+                path = c.data[self.get_path_name(c)]
+                dir_name = os.path.dirname(path)
+                directories_with_known_files.add(dir_name)
+
+        total_directories = len(directories)
+        for d in directories:
+            if self.nodes_data[d.swhid()]["known"]:
+                full_known_directories += 1
+            else:
+                path = d.data[self.get_path_name(d)]
+                if path in directories_with_known_files:
+                    partially_known_directories += 1
+
+        kp = known_files * 100 // total_files
+        fkp = full_known_directories * 100 // total_directories
+        pkp = partially_known_directories * 100 // total_directories
+        print(f"Files:             {total_files:10d}")
+        print(f"            known: {known_files:10d} ({kp:3d}%)")
+        print(f"directories:       {total_directories:10d}")
+        print(f"      fully-known: {full_known_directories:10d} ({fkp:3d}%)")
+        print(f"  partially-known: {partially_known_directories:10d} ({pkp:3d}%)")
+        print("(see other --output-format for more details)")
 
     def data_as_json(self):
         json = {}

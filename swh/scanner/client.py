@@ -88,12 +88,12 @@ class Client:
 
                 return await resp.json()
 
-        if len(swhids) > QUERY_LIMIT:
+        if len(swhids) <= QUERY_LIMIT:
+            return await make_request(swhids)
+        else:
             for swhids_chunk in _get_chunk(swhids):
                 requests.append(asyncio.create_task(make_request(swhids_chunk)))
 
             res = await asyncio.gather(*requests)
             # concatenate list of dictionaries
             return dict(itertools.chain.from_iterable(e.items() for e in res))
-        else:
-            return await make_request(swhids)

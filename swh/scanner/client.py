@@ -41,6 +41,7 @@ class Client:
     def __init__(self, api_url: str, session: aiohttp.ClientSession):
         self.api_url = api_url
         self.session = session
+        self._known_endpoint = self.api_url + KNOWN_EP
 
     async def get_origin(self, swhid: CoreSWHID) -> Optional[Any]:
         """Walk the compressed graph to discover the origin of a given swhid"""
@@ -93,7 +94,7 @@ class Client:
             return dict(itertools.chain.from_iterable(e.items() for e in res))
 
     async def _make_request(self, swhids):
-        endpoint = self.api_url + KNOWN_EP
+        endpoint = self._known_endpoint
         async with self.session.post(endpoint, json=swhids) as resp:
             if resp.status != 200:
                 error_response(resp.reason, resp.status, endpoint)

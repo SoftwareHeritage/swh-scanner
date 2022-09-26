@@ -11,7 +11,7 @@ from swh.scanner.policy import QUERY_LIMIT
 from .data import fake_origin, unknown_swhids
 
 
-def create_app(tmp_requests):
+def create_app(tmp_requests, tmp_accesses):
     app = Flask(__name__)
 
     @app.route("/")
@@ -24,6 +24,9 @@ def create_app(tmp_requests):
         with open(tmp_requests, "a") as f:
             for swhid in swhids:
                 f.write(swhid + "\n")
+
+        with open(tmp_accesses, "a") as f:
+            f.write(f"{len(swhids)}\n")
 
         if len(swhids) > QUERY_LIMIT:
             raise LargePayloadExc(

@@ -21,6 +21,7 @@ from .policy import (
     GreedyBFS,
     LazyBFS,
     QueryAll,
+    RandomDirSamplingPriority,
     source_size,
 )
 
@@ -66,6 +67,8 @@ def get_policy_obj(source_tree: Directory, nodes_data: MerkleNodeInfo, policy: s
         return FilePriority(source_tree, nodes_data)
     elif policy == "dirpriority":
         return DirectoryPriority(source_tree, nodes_data)
+    elif policy == "randomdir":
+        return RandomDirSamplingPriority(source_tree, nodes_data)
     else:
         raise Exception(f"policy '{policy}' not found")
 

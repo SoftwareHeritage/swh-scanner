@@ -248,7 +248,9 @@ def login(ctx, force):
     "--policy",
     default="auto",
     show_default=True,
-    type=click.Choice(["auto", "bfs", "greedybfs", "filepriority", "dirpriority"]),
+    type=click.Choice(
+        ["auto", "bfs", "greedybfs", "filepriority", "dirpriority", "randomdir"]
+    ),
     help="The scan policy.",
 )
 @click.option(
@@ -296,6 +298,8 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy, extra_
 
       dirpriority: scan all the source code directories and check only unknown
       directory contents.
+
+      randomdir: scan the source code using a random Merkle search on directories.
 
     Other information about software artifacts could be specified with the -e/
     --extra-info option:\n

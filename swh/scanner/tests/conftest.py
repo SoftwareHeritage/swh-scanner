@@ -144,12 +144,21 @@ def test_swhids_sample(tmp_path):
 
 @pytest.fixture(scope="session")
 def tmp_requests(tmpdir_factory):
+    """Logs each SWHID per line in every request made to the `known` endpoint"""
     requests_file = tmpdir_factory.mktemp("data").join("requests.json")
     return requests_file
 
 
 @pytest.fixture(scope="session")
-def app(tmp_requests):
+def tmp_accesses(tmpdir_factory):
+    """Logs each request made to the `known` endpoint, writing the number
+    of SWHIDs queried, one per line."""
+    requests_file = tmpdir_factory.mktemp("data").join("accesses.json")
+    return requests_file
+
+
+@pytest.fixture(scope="session")
+def app(tmp_requests, tmp_accesses):
     """Flask backend API (used by live_server)."""
-    app = create_app(tmp_requests)
+    app = create_app(tmp_requests, tmp_accesses)
     return app

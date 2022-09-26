@@ -28,6 +28,13 @@ KNOWN_EP = "known/"
 GRAPH_RANDOMWALK_EP = "graph/randomwalk/"
 
 
+
+def _get_chunk(swhids):
+    """slice a list of `swhids` into smaller list of size QUERY_LIMIT"""
+    for i in range(0, len(swhids), QUERY_LIMIT):
+        yield swhids[i : i + QUERY_LIMIT]
+
+
 class Client:
     """Manage requests to the Software Heritage Web API."""
 
@@ -73,10 +80,6 @@ class Client:
         endpoint = self.api_url + KNOWN_EP
         requests = []
 
-        def get_chunk(swhids):
-            for i in range(0, len(swhids), QUERY_LIMIT):
-                yield swhids[i : i + QUERY_LIMIT]
-
         async def make_request(swhids):
             swhids = [str(swhid) for swhid in swhids]
             async with self.session.post(endpoint, json=swhids) as resp:
@@ -86,7 +89,7 @@ class Client:
                 return await resp.json()
 
         if len(swhids) > QUERY_LIMIT:
-            for swhids_chunk in get_chunk(swhids):
+            for swhids_chunk in _get_chunk(swhids):
                 requests.append(asyncio.create_task(make_request(swhids_chunk)))
 
             res = await asyncio.gather(*requests)

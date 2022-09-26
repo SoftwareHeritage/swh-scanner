@@ -129,7 +129,7 @@ def scanner(ctx, config_file: Optional[str]):
     "-f",
     "--output-format",
     "out_fmt",
-    default="text",
+    default="summary",
     show_default=True,
     type=click.Choice(
         ["summary", "text", "json", "ndjson", "sunburst"], case_sensitive=False

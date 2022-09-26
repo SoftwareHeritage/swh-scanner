@@ -77,23 +77,24 @@ class Client:
                 value['known'] = False if the SWHID is not found
 
         """
-        endpoint = self.api_url + KNOWN_EP
         requests = []
 
-        async def make_request(swhids):
-            swhids = [str(swhid) for swhid in swhids]
-            async with self.session.post(endpoint, json=swhids) as resp:
-                if resp.status != 200:
-                    error_response(resp.reason, resp.status, endpoint)
-
-                return await resp.json()
-
         if len(swhids) <= QUERY_LIMIT:
-            return await make_request(swhids)
+            return await self._make_request(swhids)
         else:
             for swhids_chunk in _get_chunk(swhids):
-                requests.append(asyncio.create_task(make_request(swhids_chunk)))
+                task = asyncio.create_task(self._make_request(swhids_chunk))
+                requests.append(task)
 
             res = await asyncio.gather(*requests)
             # concatenate list of dictionaries
             return dict(itertools.chain.from_iterable(e.items() for e in res))
+
+    async def _make_request(self, swhids):
+        endpoint = self.api_url + KNOWN_EP
+        swhids = [str(swhid) for swhid in swhids]
+        async with self.session.post(endpoint, json=swhids) as resp:
+            if resp.status != 200:
+                error_response(resp.reason, resp.status, endpoint)
+
+            return await resp.json()

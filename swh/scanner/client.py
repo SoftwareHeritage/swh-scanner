@@ -95,8 +95,12 @@ class Client:
 
     async def _make_request(self, swhids):
         endpoint = self._known_endpoint
-        async with self.session.post(endpoint, json=swhids) as resp:
-            if resp.status != 200:
-                error_response(resp.reason, resp.status, endpoint)
 
-            return await resp.json()
+        success = False
+
+        while not success:
+            async with self.session.post(endpoint, json=swhids) as resp:
+                if resp.status != 200:
+                    error_response(resp.reason, resp.status, endpoint)
+
+                return await resp.json()

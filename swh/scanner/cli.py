@@ -140,8 +140,9 @@ def scanner(ctx, config_file: Optional[str]):
 def login(ctx, force):
     """Perform the necessary step to log yourself in the API
 
-    For now, this open the URL for API tokens, prompt to save it in the config
-    file."""
+    You will need to first create an account before running this operation. To
+    create an account, visit: https://archive.softwareheritage.org/
+    """
     context = ctx.obj
 
     # Check we are actually talking to the Software Heritage itself.
@@ -164,24 +165,35 @@ def login(ctx, force):
             ctx.exit()
         click.echo(click.style("Continuing because of `--force`.", fg="yellow"))
 
-    # Obtain a valid token through a Human accomplice
-    valid_token = False
-    click.echo(
-        "Please open the following URL and login to the "
-        "Software Heritage Archive: \n\n"
-        "https://archive.softwareheritage.org/oidc/profile/#tokens\n",
-    )
-    while not valid_token:
-        token = input("Paste one of your valid tokens here:\n")
-        # TODO (better) escaping
-        token = token.strip().replace('"', "").replace("'", "")
-        if not token.startswith("ey"):  # `{` is `ey` in base64
-            # TODO more checks?
-            msg = "Token is invalid, please retry\n"
-            click.echo(click.style(msg, fg="red"), file=sys.stderr)
-            continue
-        # TODO add endpoint to SWH web UI to check if auth is valid?
-        valid_token = True
+    # Obtain a valid token through the API
+    #
+    # Coming from the swh auth generate-token code
+    # (this command might eventually move there)
+    from getpass import getpass
+    from swh.auth.keycloak import KeycloakError, keycloak_error_message
+    from swh.auth.keycloak import KeycloakOpenIDConnect
+
+    msg = "Please enter your SWH Archive credentials"
+    click.echo(click.style(msg, fg="yellow"))
+    msg = "If you do not already have an account, create one one at:"
+    click.echo(click.style(msg, fg="yellow"))
+    msg = "    https://archive.softwareheritage.org/"
+    click.echo(click.style(msg, fg="yellow"))
+    username = click.prompt("username")
+    password = getpass()
+    try:
+        url = "https://auth.softwareheritage.org/auth/"
+        realm = "SoftwareHeritage"
+        client = "swh-web"
+        oidc_client = KeycloakOpenIDConnect(url, realm, client)
+        scope = "openid offline_access"
+        oidc_info = oidc_client.login(username, password, scope)
+        token = oidc_info["refresh_token"]
+        msg = "token retrieved successfully"
+        click.echo(click.style(msg, fg="green"))
+    except KeycloakError as ke:
+        print(keycloak_error_message(ke))
+        click.exit(1)
 
     # Write the new token into the file.
     web_api_config["auth-token"] = token

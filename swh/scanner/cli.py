@@ -129,6 +129,71 @@ def scanner(ctx, config_file: Optional[str]):
     ctx.obj["config"] = conf
 
 
+@scanner.command(name="login")
+@click.option(
+    "-f",
+    "--force/--no-force",
+    default=False,
+    help="Proceed even if a token is already present in the config",
+)
+@click.pass_context
+def login(ctx, force):
+    """Perform the necessary step to log yourself in the API
+
+    For now, this open the URL for API tokens, prompt to save it in the config
+    file."""
+    context = ctx.obj
+
+    # Check we are actually talking to the Software Heritage itself.
+    web_api_config = context["config"]["web-api"]
+    current_url = web_api_config["url"]
+    config_path = context["config_path"]
+    if current_url != SWH_API_ROOT:
+        msg = "`swh scanner login` only works with the Software Heritage API\n"
+        click.echo(click.style(msg, fg="red"), file=sys.stderr)
+        msg = f"Configured in '%s' as web-api.url={current_url}\n"
+        msg %= click.format_filename(bytes(config_path))
+        click.echo(click.style(msg, fg="red"), file=sys.stderr)
+        ctx.exit(1)
+
+    # Check for an existing value in the configuration
+    if web_api_config.get("auth-token") is not None:
+        click.echo(click.style("You appear to already be logged in.", fg="green"))
+        if not force:
+            click.echo("Hint: use `--force` to overwrite the current token")
+            ctx.exit()
+        click.echo(click.style("Continuing because of `--force`.", fg="yellow"))
+
+    # Obtain a valid token through a Human accomplice
+    valid_token = False
+    click.echo(
+        "Please open the following URL and login to the "
+        "Software Heritage Archive: \n\n"
+        "https://archive.softwareheritage.org/oidc/profile/#tokens\n",
+    )
+    while not valid_token:
+        token = input("Paste one of your valid tokens here:\n")
+        # TODO (better) escaping
+        token = token.strip().replace('"', "").replace("'", "")
+        if not token.startswith("ey"):  # `{` is `ey` in base64
+            # TODO more checks?
+            msg = "Token is invalid, please retry\n"
+            click.echo(click.style(msg, fg="red"), file=sys.stderr)
+            continue
+        # TODO add endpoint to SWH web UI to check if auth is valid?
+        valid_token = True
+
+    # Write the new token into the file.
+    web_api_config["auth-token"] = token
+    # TODO use ruamel.yaml to preserve comments in config file
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(yaml.safe_dump(context["config"]))
+    msg = "\nConfiguration file '%s' written successfully."
+    msg %= click.format_filename(bytes(config_path))
+    click.echo(click.style(msg, fg="green"))
+    click.echo("`swh scanner` will now be authenticated with the new token.")
+
+
 @scanner.command(name="scan")
 @click.argument("root_path", default=".", type=click.Path(exists=True))
 @click.option(

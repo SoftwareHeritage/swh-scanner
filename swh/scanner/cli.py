@@ -6,6 +6,8 @@
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
 import os
+from pathlib import Path
+import sys
 from typing import Any, Dict, Optional
 
 import click
@@ -25,9 +27,10 @@ BACKEND_DEFAULT_PORT = 5011
 CONFIG_ENVVAR = "SWH_CONFIG_FILE"
 DEFAULT_CONFIG_PATH = os.path.join(click.get_app_dir("swh"), "global.yml")
 
+SWH_API_ROOT = "https://archive.softwareheritage.org/api/1/"
 DEFAULT_CONFIG: Dict[str, Any] = {
     "web-api": {
-        "url": "https://archive.softwareheritage.org/api/1/",
+        "url": SWH_API_ROOT,
         "auth-token": None,
     }
 }
@@ -58,6 +61,23 @@ def setup_config(ctx, api_url):
         config["web-api"]["url"] = api_url
 
     return config
+
+
+def check_auth(config):
+    """check there is some authentication configured
+
+    Issue a warning otherwise"""
+    web_api_conf = config["web-api"]
+    if web_api_conf["url"] == SWH_API_ROOT and not web_api_conf.get("auth-token"):
+        # Only warn for the production API
+        #
+        # XXX We should probably warn at the time of the creation of the HTTP
+        # Client, after checking if the token is actually valid.
+        msg = "Warning: you are not authenticated with the Software Heritage API\n"
+        msg += "login to get a higher rate-limit"
+        click.echo(click.style(msg, fg="red"), file=sys.stderr)
+        msg = "See `swh scanner login -h` for more information."
+        click.echo(click.style(msg, fg="yellow"), file=sys.stderr)
 
 
 @swh_cli_group.group(
@@ -101,8 +121,11 @@ def scanner(ctx, config_file: Optional[str]):
     if config_file is not None:
         conf = config.read_raw_config(config.config_basepath(config_file))
         conf = config.merge_configs(DEFAULT_CONFIG, conf)
+    else:
+        config_file = DEFAULT_CONFIG_PATH
 
     ctx.ensure_object(dict)
+    ctx.obj["config_path"] = Path(config_file)
     ctx.obj["config"] = conf
 
 
@@ -201,6 +224,7 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy, extra_
     import swh.scanner.scanner as scanner
 
     config = setup_config(ctx, api_url)
+    check_auth(config)
     extra_info = set(extra_info)
     scanner.scan(config, root_path, patterns, out_fmt, interactive, policy, extra_info)
 

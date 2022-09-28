@@ -70,6 +70,25 @@ def get_policy_obj(source_tree: Directory, nodes_data: MerkleNodeInfo, policy: s
         raise Exception(f"policy '{policy}' not found")
 
 
+# here is a set of directory we should disregard
+#
+# TODO: make its usage configurable
+# TODO: make it extensible through configuration
+COMMON_EXCLUDE_PATTERNS = [
+    b".bzr",
+    b".coverage",
+    b"*.egg-info",
+    b".eggs",
+    b".git",
+    b".hg",
+    b".mypy_cache",
+    b"__pycache__",
+    b".svn",
+    b".tox",
+]
+COMMON_EXCLUDE_PATTERNS.extend([b"*/" + p for p in COMMON_EXCLUDE_PATTERNS])
+
+
 def scan(
     config: Dict[str, Any],
     root_path: str,
@@ -82,6 +101,7 @@ def scan(
     """Scan a source code project to discover files and directories already
     present in the archive"""
     converted_patterns = [pattern.encode() for pattern in exclude_patterns]
+    converted_patterns.extend(COMMON_EXCLUDE_PATTERNS)
     source_tree = model_of_dir(root_path.encode(), converted_patterns)
 
     nodes_data = MerkleNodeInfo()

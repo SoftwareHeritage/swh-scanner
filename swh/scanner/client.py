@@ -12,6 +12,7 @@ This module could be removed when
 
 import asyncio
 import itertools
+import logging
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -20,6 +21,8 @@ import aiohttp
 from swh.model.swhids import CoreSWHID
 
 from .exceptions import error_response
+
+logger = logging.getLogger(__name__)
 
 # Maximum number of SWHIDs that can be requested by a single call to the
 # Web API endpoint /known/
@@ -53,7 +56,11 @@ def _parse_limit_header(response) -> Tuple[Optional[int], Optional[int], Optiona
 class Client:
     """Manage requests to the Software Heritage Web API."""
 
-    def __init__(self, api_url: str, session: aiohttp.ClientSession):
+    def __init__(
+        self,
+        api_url: str,
+        session: aiohttp.ClientSession,
+    ):
         self._sleep = 0
         self.api_url = api_url
         self.session = session
@@ -114,48 +121,75 @@ class Client:
 
         The extra argument can be used to transmit the X-RateLimit information
         from the server.  This will be used to adjust the request rate"""
+        is_dbg = logger.isEnabledFor(logging.DEBUG)
         self._sleep = 0
         factor = 0
-        if limit is not None and remaining is not None and reset is not None:
-            current = time.time()
+        current = time.time()
+        if is_dbg:
+            dbg_msg = f"HTTP GOOD {current:.2f}:"
+        if limit is None or remaining is None or reset is None:
+            if is_dbg:
+                dbg_msg += " no rate limit data;"
+        else:
             time_windows = reset - current
-            if time_windows <= 0:
-                return
-            used_up = remaining / limit
-            if remaining <= 0:
-                # no more credit, we can sit up and wait.
-                #
-                # XXX we should warn the user. This can get very long.
-                self._sleep = time_windows
-                factor = -1
-            elif 0.6 < used_up:
-                # let us not limit the first flight of request.
-                factor = 0
-            else:
-                # the deeper we consume the credit the higher is the rate
-                # limiting, let's put a brake on our current rate the lower we get
-                #
-                # (The factor range from 1 to 1000)
-                factor = (0.4 + used_up) ** -1.5
-            if factor >= 0:
-                self._sleep = ((time_windows / remaining)) * factor
+            if is_dbg:
+                dbg_msg += f" requests={remaining}/{limit}"
+                dbg_msg += f" reset-in={time_windows:.2f}"
+            if time_windows > 0:
+                used_up = remaining / limit
+                if remaining <= 0:
+                    # no more credit, we can sit up and wait.
+                    #
+                    # XXX we should warn the user. This can get very long.
+                    self._sleep = time_windows
+                    factor = -1
+                elif 0.6 < used_up:
+                    # let us not limit the first flight of request.
+                    factor = 0
+                else:
+                    # the deeper we consume the credit the higher is the rate
+                    # limiting, let's put a brake on our current rate the lower we get
+                    #
+                    # (The factor range from 1 to 1000)
+                    factor = (0.4 + used_up) ** -1.5
+                if factor >= 0:
+                    self._sleep = ((time_windows / remaining)) * factor
+        if is_dbg:
+            dbg_msg += f"; sleep={self._sleep:.3f}"
+            logger.debug(dbg_msg)
 
     def _mark_failure(self, limit=None, remaining=None, reset=None):
         """call when a request failed, this will reduce the request rate.
 
         The extra argument can be used to transmit the X-RateLimit information
         from the server.  This will be used to adjust the request rate"""
-        if remaining is not None and reset is not None and remaining <= 0:
-            current = time.time()
-            wait_for = reset - current
-            wait_for *= 1.1  # Add some margin to please the rate limiting code
-            if wait_for > 0 and wait_for >= self._sleep:
-                self._sleep = wait_for
-                return
-        if self._sleep <= 0:
-            self._sleep = 1
+        is_dbg = logger.isEnabledFor(logging.DEBUG)
+        current = time.time()
+        if is_dbg:
+            dbg_msg = f"HTTP BAD  {current:.2f}:"
+        time_set = False
+        if remaining is None or reset is None:
+            if is_dbg:
+                dbg_msg += " no rate limit data"
         else:
-            self._sleep *= 2
+            wait_for = reset - current
+            if is_dbg:
+                dbg_msg += f" requests={remaining}/{limit}"
+                dbg_msg += f" reset-in={wait_for:.2f}"
+            if remaining <= 0:
+                # Add some margin to please the rate limiting code
+                wait_for *= 1.1
+                if wait_for > 0 and wait_for >= self._sleep:
+                    self._sleep = wait_for
+                    time_set = True
+        if not time_set:
+            if self._sleep <= 0:
+                self._sleep = 1
+            else:
+                self._sleep *= 2
+        if is_dbg:
+            dbg_msg += "; sleep={self._sleep:.3f}"
+            logger.debug(dbg_msg)
 
     async def _make_request(self, swhids):
         endpoint = self._known_endpoint

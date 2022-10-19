@@ -170,8 +170,12 @@ def login(ctx, force):
     # Coming from the swh auth generate-token code
     # (this command might eventually move there)
     from getpass import getpass
-    from swh.auth.keycloak import KeycloakError, keycloak_error_message
-    from swh.auth.keycloak import KeycloakOpenIDConnect
+
+    from swh.auth.keycloak import (
+        KeycloakError,
+        KeycloakOpenIDConnect,
+        keycloak_error_message,
+    )
 
     msg = "Please enter your SWH Archive credentials"
     click.echo(click.style(msg, fg="yellow"))

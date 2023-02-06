@@ -155,4 +155,4 @@ class Output:
         print(json.dumps(self.data_as_json(), indent=4, sort_keys=True))
 
     def print_ndjson(self):
-        print(ndjson.dumps({k: v} for k, v in self.data_as_json().items()))
+        print(ndjson.dumps({k: v} for k, v in self.data_as_json().items()), flush=True)

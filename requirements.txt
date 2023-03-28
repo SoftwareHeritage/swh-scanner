@@ -7,7 +7,7 @@ ndjson
 plotly
 pandas
 numpy
-dash
+dash >= 2
 dash_bootstrap_components
 flask
 dulwich

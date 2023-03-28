@@ -3,7 +3,7 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import dash_html_components as html
+from dash import html
 
 from swh.model.swhids import CoreSWHID, ObjectType
 from swh.scanner.dashboard.dashboard import generate_table_body

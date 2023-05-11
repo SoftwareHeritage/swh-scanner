@@ -104,22 +104,22 @@ def scanner(ctx, config_file: Optional[str]):
     # read_raw_config do not fail if file does not exist, so check it beforehand
     # while enforcing loading priority
     if config_file:
-        if not config.config_exists(config_file):
+        if not config.exists_accessible(config_file):
             raise click.BadParameter(
                 f"File '{config_file}' cannot be opened.", param_hint="--config-file"
             )
     elif env_config_path:
-        if not config.config_exists(env_config_path):
+        if not config.exists_accessible(env_config_path):
             raise click.BadParameter(
                 f"File '{env_config_path}' cannot be opened.", param_hint=CONFIG_ENVVAR
             )
         config_file = env_config_path
-    elif config.config_exists(DEFAULT_CONFIG_PATH):
+    elif config.exists_accessible(DEFAULT_CONFIG_PATH):
         config_file = DEFAULT_CONFIG_PATH
 
     conf = DEFAULT_CONFIG
     if config_file is not None:
-        conf = config.read_raw_config(config.config_basepath(config_file))
+        conf = config.read_raw_config(config_file)
         conf = config.merge_configs(DEFAULT_CONFIG, conf)
     else:
         config_file = DEFAULT_CONFIG_PATH

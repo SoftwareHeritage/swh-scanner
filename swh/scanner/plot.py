@@ -144,7 +144,7 @@ def build_hierarchical_df(
 
         df_tree_list.append(df_tree)
 
-    complete_df = complete_df.append(df_tree_list, ignore_index=True)
+    complete_df = pd.concat([complete_df, *df_tree_list], ignore_index=True)
 
     # create the main parent
     total_contents = dirs_dataframe[contents_col].sum()
@@ -155,7 +155,7 @@ def build_hierarchical_df(
         dict(id=root_name, parent="", contents=total_contents, known=total_avg)
     )
 
-    complete_df = complete_df.append(total, ignore_index=True)
+    complete_df = pd.concat([complete_df, total.to_frame().T], ignore_index=True)
 
     return complete_df
 

@@ -13,7 +13,7 @@ from swh.model.from_disk import Directory
 
 from .client import Client
 from .data import MerkleNodeInfo, add_origin, init_merkle_node_info
-from .output import Output
+from .output import get_output_class
 from .policy import (
     QUERY_LIMIT,
     DirectoryPriority,
@@ -116,8 +116,7 @@ def scan(
     loop = asyncio.get_event_loop()
     loop.run_until_complete(run(config, policy, source_tree, nodes_data, extra_info))
 
-    out = Output(root_path, nodes_data, source_tree)
     if interactive:
-        out.show("interactive")
-    else:
-        out.show(out_fmt)
+        out_fmt = "interactive"
+
+    get_output_class(out_fmt)(root_path, nodes_data, source_tree).show()

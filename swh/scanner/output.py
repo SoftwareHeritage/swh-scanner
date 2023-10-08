@@ -3,6 +3,7 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+from abc import ABC, abstractmethod
 from enum import Enum
 import json
 import os
@@ -18,6 +19,7 @@ from .data import MerkleNodeInfo, get_directory_data
 from .plot import generate_sunburst, offline_plot
 
 DEFAULT_OUTPUT = "text"
+OUTPUT_MAP = {}
 
 
 class Color(Enum):
@@ -31,68 +33,50 @@ def colorize(text: str, color: Color):
     return color.value + text + Color.END.value
 
 
-class Output:
+def _register(name):
+    """decorator to register an output class under mode `name`"""
+
+    def dec(cls):
+        OUTPUT_MAP[name] = cls
+        return cls
+
+    return dec
+
+
+def get_output_class(mode=DEFAULT_OUTPUT):
+    """return the output class that correspond to `mode`"""
+    cls = OUTPUT_MAP.get(mode)
+    if cls is None:
+        raise Exception(f"mode {mode} is not an output format")
+    return cls
+
+
+class BaseOutput(ABC):
+    """base class for object able to display scan result"""
+
     def __init__(
-        self, root_path: str, nodes_data: MerkleNodeInfo, source_tree: Directory
+        self,
+        root_path: str,
+        nodes_data: MerkleNodeInfo,
+        source_tree: Directory,
     ):
         self.root_path = root_path
         self.nodes_data = nodes_data
         self.source_tree = source_tree
 
-    def show(self, mode=DEFAULT_OUTPUT):
-        if mode == "summary":
-            self.summary()
-        elif mode == "text":
-            isatty = sys.stdout.isatty()
-            self.print_text(isatty)
-        elif mode == "sunburst":
-            directory_data = get_directory_data(
-                self.root_path, self.source_tree, self.nodes_data
-            )
-            sunburst_figure = generate_sunburst(directory_data, self.root_path)
-            offline_plot(sunburst_figure)
-        elif mode == "interactive":
-            directory_data = get_directory_data(
-                self.root_path, self.source_tree, self.nodes_data
-            )
-            sunburst_figure = generate_sunburst(directory_data, self.root_path)
-            run_app(sunburst_figure, self.source_tree, self.nodes_data)
-        elif mode == "json":
-            self.print_json()
-        elif mode == "ndjson":
-            self.print_ndjson()
-        else:
-            raise Exception(f"mode {mode} is not an output format")
-
     def get_path_name(self, node):
         return "path" if "path" in node.data.keys() else "data"
 
-    def print_text(self, isatty: bool) -> None:
-        def compute_level(node):
-            node_path = str(node.data[self.get_path_name(node)]).split("/")
-            source_path = str(self.source_tree.data["path"]).split("/")
-            return len(node_path) - len(source_path)
+    @abstractmethod
+    def show(self):
+        pass
 
-        for node in self.source_tree.iter_tree():
-            self.print_node(node, isatty, compute_level(node))
 
-    def print_node(self, node: Any, isatty: bool, level: int) -> None:
-        rel_path = os.path.basename(node.data[self.get_path_name(node)])
-        rel_path = rel_path.decode()
-        begin = "│   " * level
-        end = "/" if node.object_type == "directory" else ""
+@_register("summary")
+class SummaryOuput(BaseOutput):
+    """display a summary of the scan results"""
 
-        if isatty:
-            if not self.nodes_data[node.swhid()]["known"]:
-                rel_path = colorize(rel_path, Color.RED)
-            elif node.object_type == "directory":
-                rel_path = colorize(rel_path, Color.BLUE)
-            elif node.object_type == "content":
-                rel_path = colorize(rel_path, Color.GREEN)
-
-        print(f"{begin}{rel_path}{end}")
-
-    def summary(self):
+    def show(self):
         directories_with_known_files = set()
 
         total_files = 0
@@ -139,6 +123,45 @@ class Output:
         print(f"  partially-known: {partially_known_directories:10d} ({pkp:3d}%)")
         print("(see other --output-format for more details)")
 
+
+@_register("text")
+class TextOuput(BaseOutput):
+    """display an exhaustive result of the scan in text form
+
+    note: as soon as the scan target something larger than a toy project, the
+    usability of this mode is poor."""
+
+    def show(self) -> None:
+        isatty = sys.stdout.isatty()
+        for node in self.source_tree.iter_tree():
+            self.print_node(node, isatty, self._compute_level(node))
+
+    def _compute_level(self, node: Any):
+        node_path = str(node.data[self.get_path_name(node)]).split("/")
+        source_path = str(self.source_tree.data["path"]).split("/")
+        return len(node_path) - len(source_path)
+
+    def print_node(self, node: Any, isatty: bool, level: int) -> None:
+        rel_path = os.path.basename(node.data[self.get_path_name(node)])
+        rel_path = rel_path.decode()
+        begin = "│   " * level
+        end = "/" if node.object_type == "directory" else ""
+
+        if isatty:
+            if not self.nodes_data[node.swhid()]["known"]:
+                rel_path = colorize(rel_path, Color.RED)
+            elif node.object_type == "directory":
+                rel_path = colorize(rel_path, Color.BLUE)
+            elif node.object_type == "content":
+                rel_path = colorize(rel_path, Color.GREEN)
+
+        print(f"{begin}{rel_path}{end}")
+
+
+@_register("json")
+class JsonOuput(BaseOutput):
+    """display the scan result in json"""
+
     def data_as_json(self):
         json = {}
         for node in self.source_tree.iter_tree():
@@ -151,8 +174,40 @@ class Output:
                 json[rel_path][k] = v
         return json
 
-    def print_json(self):
+    def show(self):
         print(json.dumps(self.data_as_json(), indent=4, sort_keys=True))
 
-    def print_ndjson(self):
+
+@_register("nbjson")
+class NDJsonTextOuput(JsonOuput):
+    """display the scan result in newline-delimited json"""
+
+    def show(self):
         print(ndjson.dumps({k: v} for k, v in self.data_as_json().items()), flush=True)
+
+
+@_register("sunburst")
+class SunburstOuput(BaseOutput):
+    """display the scan result as a sunburst plot
+
+    note: as soon as the scan target something larger than a toy project, the
+    usability of this mode is poor."""
+
+    def _make_sunburst(self):
+        directory_data = get_directory_data(
+            self.root_path, self.source_tree, self.nodes_data
+        )
+        return generate_sunburst(directory_data, self.root_path)
+
+    def show(self):
+        sunburst_figure = self._make_sunburst()
+        offline_plot(sunburst_figure)
+
+
+@_register("interactive")
+class InteractiveSunburstOuput(SunburstOuput):
+    """display the scan result as an interactive sunburst plot"""
+
+    def show(self):
+        sunburst_figure = self._make_sunburst()
+        run_app(sunburst_figure, self.source_tree, self.nodes_data)

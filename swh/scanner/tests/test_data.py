@@ -3,7 +3,9 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+from dataclasses import dataclass
 from pathlib import Path
+import subprocess
 
 from flask import url_for
 import pytest
@@ -15,6 +17,7 @@ from swh.scanner.data import (
     add_origin,
     directory_content,
     get_directory_data,
+    get_vcs_ignore_patterns,
     has_dirs,
     init_merkle_node_info,
 )
@@ -71,3 +74,124 @@ def test_directory_content(source_tree, nodes_data):
 
 def test_has_dirs(source_tree):
     assert has_dirs(source_tree)
+
+
+@dataclass
+class DummyCommandResult:
+    """Acts as a command result, as if we just called to a subprocess."""
+
+    stdout: bytes
+
+
+def test_get_vcs_ignore_patterns_no_vcs(mocker):
+    mock = mocker.patch("swh.scanner.data.vcs_detected")
+    mock.return_value = False
+    assert get_vcs_ignore_patterns() == []
+    assert mock.call_count == 3
+
+
+def test_get_vcs_ignore_patterns_vcs_error(mocker):
+    detected_mock = mocker.patch("swh.scanner.data.vcs_detected")
+    detected_mock.return_value = True
+    mock = mocker.patch("swh.scanner.data._call_vcs")
+    mock.side_effect = [
+        subprocess.CalledProcessError(1, "git"),
+        subprocess.CalledProcessError(255, "hg"),
+        subprocess.CalledProcessError(1, "svn"),
+    ]
+    assert get_vcs_ignore_patterns() == []
+    assert detected_mock.call_count == 3
+    assert mock.call_count == 3
+
+
+def test_get_vcs_ignore_patterns_git(mocker):
+    detected_mock = mocker.patch("swh.scanner.data.vcs_detected")
+    detected_mock.side_effect = [
+        True,
+    ]
+    mock = mocker.patch("swh.scanner.data._call_vcs")
+    mock.side_effect = [
+        DummyCommandResult(b"M myfile\0!! Some_Folder/\0!! file with spaces"),
+    ]
+    res = get_vcs_ignore_patterns()
+    assert detected_mock.call_count == 1
+    assert mock.call_count == 1
+    assert res == [b"Some_Folder", b"file with spaces"]
+
+
+def test_get_vcs_ignore_patterns_hg(mocker):
+    # Mercurial answers
+    detected_mock = mocker.patch("swh.scanner.data.vcs_detected")
+    detected_mock.side_effect = [
+        False,  # Git
+        True,  # Mercurial
+    ]
+    mock = mocker.patch("swh.scanner.data._call_vcs")
+    mock.side_effect = [
+        DummyCommandResult(b"myfile\0Other_File\0file with spaces"),
+    ]
+    res = get_vcs_ignore_patterns()
+    assert detected_mock.call_count == 2
+    assert mock.call_count == 1
+    assert res == [b"myfile", b"Other_File", b"file with spaces"]
+
+
+def test_get_vcs_ignore_patterns_svn(mocker):
+    # SVN answers
+    detected_mock = mocker.patch("swh.scanner.data.vcs_detected")
+    detected_mock.side_effect = [
+        False,  # Git
+        False,  # Mercurial
+        True,  # SVN
+    ]
+    mock = mocker.patch("swh.scanner.data._call_vcs")
+    mock.side_effect = [
+        DummyCommandResult(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<status>
+<target
+path=".">
+<entry
+path="myfile/with/nested/things">
+<wc-status
+item="ignored"
+props="none">
+</wc-status>
+</entry>
+<entry
+path="myfile/with/nested/external">
+<wc-status
+item="external"
+props="none">
+</wc-status>
+</entry>
+<entry
+path="Other_File">
+<wc-status
+item="ignored"
+props="none">
+</wc-status>
+</entry>
+<entry
+path="Should not appear">
+<wc-status
+item="modified"
+props="none">
+</wc-status>
+</entry>
+<entry
+path="file with spaces">
+<wc-status
+item="ignored"
+props="none">
+</wc-status>
+</entry>
+</target>
+</status>
+"""
+        ),
+    ]
+    res = get_vcs_ignore_patterns()
+    assert detected_mock.call_count == 3
+    assert mock.call_count == 1
+    assert res == [b"myfile/with/nested/things", b"Other_File", b"file with spaces"]

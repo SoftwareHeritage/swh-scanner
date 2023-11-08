@@ -3,8 +3,11 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import logging
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+import subprocess
+from typing import Callable, Dict, List, Optional, Tuple
+from xml.etree import ElementTree
 
 from swh.model.exceptions import ValidationError
 from swh.model.from_disk import Directory
@@ -13,6 +16,8 @@ from swh.model.swhids import CoreSWHID
 from .client import Client
 
 SUPPORTED_INFO = {"known", "origin"}
+
+logger = logging.getLogger(__name__)
 
 
 class MerkleNodeInfo(dict):
@@ -148,3 +153,125 @@ def get_content_from(
         files_data[node.data[path_name]] = node_info
 
     return files_data
+
+
+def _call_vcs(command, cwd: Optional[Path], **cmd_kwargs):
+    """Separate function for ease of overriding in tests"""
+    return subprocess.run(
+        command, check=True, capture_output=True, cwd=cwd, **cmd_kwargs
+    )
+
+
+def get_git_ignore_patterns(cwd: Optional[Path]):
+    try:
+        res = _call_vcs(["git", "status", "--ignored", "--no-renames", "-z"], cwd)
+    except subprocess.CalledProcessError as e:
+        logger.debug("Failed to call out to git [%d]: %s", e.stderr)
+        return False, []
+
+    patterns = []
+    stdout = res.stdout
+    if not stdout:
+        # No status output, so no ignored files
+        return True, []
+    # The `-z` CLI flag gives us a stable, null byte-separated output
+    lines = stdout.split(b"\0")
+    for line in lines:
+        if not line:
+            continue
+        status, name = line.split(b" ", 1)
+        if status != b"!!":
+            # skip non-ignored files
+            continue
+        patterns.append(name.rstrip(b"/"))
+
+    return True, patterns
+
+
+def get_hg_ignore_patterns(cwd: Optional[Path]):
+    try:
+        res = _call_vcs(
+            ["hg", "status", "--ignored", "--no-status", "-0"],
+            cwd,
+            env={"HGPLAIN": "1"},
+        )
+    except subprocess.CalledProcessError as e:
+        logger.debug("Failed to call out to hg [%d]: %s", e.returncode, e.stderr)
+        return False, []
+
+    stdout = res.stdout
+    if not stdout:
+        # No status output, so no ignored files
+        return True, []
+
+    # The `-0` CLI flag gives us a stable, null byte-separated output
+    patterns = [line for line in stdout.split(b"\0") if line]
+
+    return True, patterns
+
+
+def get_svn_ignore_patterns(cwd: Optional[Path]):
+    try:
+        res = _call_vcs(["svn", "status", "--no-ignore", "--xml"], cwd)
+    except subprocess.CalledProcessError as e:
+        logger.debug("Failed to call out to svn [%d]: %s", e.returncode, e.stderr)
+        return False, []
+
+    patterns = []
+    stdout = res.stdout
+    if not stdout:
+        # No status output, so no ignored files
+        return True, []
+    # We've asked for XML output since it's easily parsable and stable, unlike
+    # the normal Subversion output.
+    root = ElementTree.fromstring(stdout)
+    status = root.find("target")
+    assert status is not None
+    for entry in status:
+        path = entry.attrib["path"]
+        wc_status = entry.find("wc-status")
+        assert wc_status is not None
+        entry_status = wc_status.attrib["item"]
+        if entry_status == "ignored":
+            # SVN uses UTF8 for all paths
+            patterns.append(path.encode())
+
+    return True, patterns
+
+
+# Associates a Version Control System to its on-disk folder and a method of
+# getting its ignore patterns.
+VCS_IGNORE_PATTERNS_METHODS: Dict[
+    str, Tuple[str, Callable[[Optional[Path]], Tuple[bool, List[bytes]]]]
+] = {
+    "git": (".git", get_git_ignore_patterns),
+    "hg": (".hg", get_hg_ignore_patterns),
+    "svn": (".svn", get_svn_ignore_patterns),
+}
+
+
+def vcs_detected(folder_path: str) -> bool:
+    try:
+        return Path(folder_path).is_dir()
+    except Exception as e:
+        logger.debug("Got an exception while looking for %s: %s", folder_path, e)
+        return False
+
+
+def get_vcs_ignore_patterns(cwd: Optional[Path] = None) -> List[bytes]:
+    """Return a list of all patterns to ignore according to the VCS used for
+    the project being scanned, if any."""
+    ignore_patterns = []
+
+    for vcs, (folder_path, method) in VCS_IGNORE_PATTERNS_METHODS.items():
+        if vcs_detected(folder_path):
+            logger.debug("Trying to get ignore patterns from '%s'", vcs)
+            success, patterns = method(cwd)
+            if success:
+                logger.debug("Successfully obtained ignore patterns from '%s'", vcs)
+                ignore_patterns.extend(patterns)
+                break
+    else:
+        logger.debug("No VCS found in the current working directory")
+
+    return ignore_patterns

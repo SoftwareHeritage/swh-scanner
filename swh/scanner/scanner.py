@@ -12,7 +12,12 @@ from swh.model.cli import model_of_dir
 from swh.model.from_disk import Directory
 
 from .client import Client
-from .data import MerkleNodeInfo, add_origin, init_merkle_node_info
+from .data import (
+    MerkleNodeInfo,
+    add_origin,
+    get_vcs_ignore_patterns,
+    init_merkle_node_info,
+)
 from .output import get_output_class
 from .policy import (
     QUERY_LIMIT,
@@ -105,6 +110,8 @@ def scan(
     present in the archive"""
     converted_patterns = [pattern.encode() for pattern in exclude_patterns]
     converted_patterns.extend(COMMON_EXCLUDE_PATTERNS)
+    vcs_ignore_patterns = get_vcs_ignore_patterns()
+    converted_patterns.extend(vcs_ignore_patterns)
     source_tree = model_of_dir(root_path.encode(), converted_patterns)
 
     nodes_data = MerkleNodeInfo()

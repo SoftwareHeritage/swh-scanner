@@ -120,8 +120,7 @@ def scan(
 
     policy = get_policy_obj(source_tree, nodes_data, policy)
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run(config, policy, source_tree, nodes_data, extra_info))
+    asyncio.run(run(config, policy, source_tree, nodes_data, extra_info))
 
     if interactive:
         out_fmt = "interactive"

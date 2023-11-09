@@ -2,11 +2,16 @@
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
+from swh.model.swhids import CoreSWHID
 
-correct_known_api_response = {
+correct_known_web_api_response = {
     "swh:1:dir:17d207da3804cc60a77cba58e76c3b2f767cb112": {"known": False},
     "swh:1:dir:01fa282bb80be5907505d44b4692d3fa40fad140": {"known": True},
     "swh:1:dir:4b825dc642cb6eb9a060e54bf8d69288fbee4904": {"known": True},
+}
+
+correct_known_client_api_response = {
+    CoreSWHID.from_string(k): v for (k, v) in correct_known_web_api_response.items()
 }
 
 correct_origin_api_response = "https://bitbucket.org/chubbymaggie/bindead.git"

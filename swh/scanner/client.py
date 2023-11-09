@@ -83,7 +83,7 @@ class Client:
 
         return res
 
-    async def known(self, swhids: List[CoreSWHID]) -> Dict[str, Dict[str, bool]]:
+    async def known(self, swhids: List[CoreSWHID]) -> Dict[CoreSWHID, Dict[str, bool]]:
         """API Request to get information about the SoftWare Heritage persistent
         IDentifiers (SWHIDs) given in input.
 
@@ -106,7 +106,8 @@ class Client:
         swh_ids = [str(swhid) for swhid in swhids]
 
         if len(swhids) <= QUERY_LIMIT:
-            return await self._make_request(swh_ids)
+            res = await self._make_request(swh_ids)
+            all_res = res.items()
         else:
             for swhids_chunk in _get_chunk(swh_ids):
                 task = asyncio.create_task(self._make_request(swhids_chunk))
@@ -114,7 +115,8 @@ class Client:
 
             res = await asyncio.gather(*requests)
             # concatenate list of dictionaries
-            return dict(itertools.chain.from_iterable(e.items() for e in res))
+            all_res = itertools.chain.from_iterable(e.items() for e in res)
+        return {CoreSWHID.from_string(k): v for k, v in all_res}
 
     def _mark_success(self, limit=None, remaining=None, reset=None):
         """call when a request is successfully made, this will adjust the rate

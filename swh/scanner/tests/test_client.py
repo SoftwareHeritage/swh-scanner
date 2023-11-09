@@ -11,7 +11,11 @@ from swh.model.swhids import CoreSWHID
 from swh.scanner.client import Client
 from swh.scanner.exceptions import APIError
 
-from .data import correct_known_api_response, correct_origin_api_response
+from .data import (
+    correct_known_client_api_response,
+    correct_known_web_api_response,
+    correct_origin_api_response,
+)
 
 AIO_URL = "http://example.org/api/"
 KNOWN_URL = f"{AIO_URL}known/"
@@ -23,13 +27,13 @@ def test_client_known_correct_api_request(mock_aioresponse, event_loop, aiosessi
         KNOWN_URL,
         status=200,
         content_type="application/json",
-        body=json.dumps(correct_known_api_response),
+        body=json.dumps(correct_known_web_api_response),
     )
 
     client = Client(AIO_URL, aiosession)
     actual_result = event_loop.run_until_complete(client.known([]))
 
-    assert correct_known_api_response == actual_result
+    assert correct_known_client_api_response == actual_result
 
 
 def test_client_known_raise_apierror(mock_aioresponse, event_loop, aiosession):

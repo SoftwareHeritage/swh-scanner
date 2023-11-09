@@ -83,7 +83,7 @@ class WebAPIConnection(discovery.ArchiveDiscoveryInterface):
         # Ignore mypy complaining about string being passed, since `known`
         # transforms them to string immediately.
         res = await self.client.known([self.sha_to_swhid[o] for o in shas])  # type: ignore
-        return [self.swhid_to_sha[k] for k, v in res.items() if not v["known"]]
+        return [k.object_id for k, v in res.items() if not v["known"]]
 
 
 class RandomDirSamplingPriority(Policy):

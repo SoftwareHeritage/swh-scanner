@@ -13,6 +13,7 @@ from .data import fake_origin, unknown_swhids
 
 def create_app(tmp_requests, tmp_accesses):
     app = Flask(__name__)
+    app.config["SERVER_NAME"] = "localhost"
 
     @app.route("/")
     def index():

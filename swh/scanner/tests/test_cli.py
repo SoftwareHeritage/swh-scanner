@@ -3,11 +3,13 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import json
 import os
 from pathlib import Path
 from unittest.mock import Mock, call
 
 from click.testing import CliRunner
+from flask import url_for
 import pytest
 
 import swh.scanner.cli as cli
@@ -148,3 +150,74 @@ def test_db_option(cli_runner, swhids_input_file, tmp_path):
         ],
     )
     assert res.exit_code == 0
+
+
+def test_ignore_vcs_patterns(cli_runner, live_server, datadir, mocker):
+    api_url = url_for("index", _external=True)
+    mocker.patch("swh.scanner.scanner.COMMON_EXCLUDE_PATTERNS", [])
+    vcs_mock = mocker.patch("swh.scanner.scanner.get_vcs_ignore_patterns")
+    vcs_mock.side_effect = [[]]
+
+    res = cli_runner.invoke(
+        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+    )
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+
+    # No filtering gives all results back
+    assert output.keys() == {
+        ".",
+        "global.yml",
+        "global2.yml",
+        "sample-folder-policy.tgz",
+        "sample-folder.tgz",
+    }
+
+    vcs_mock.side_effect = [[b"global.yml", b"sample-folder-policy.tgz"]]
+
+    res = cli_runner.invoke(
+        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+    )
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+    # Filtering via VCS works
+    assert output.keys() == {
+        ".",
+        "global2.yml",
+        "sample-folder.tgz",
+    }
+
+
+def test_global_excluded_patterns(cli_runner, live_server, datadir, mocker):
+    api_url = url_for("index", _external=True)
+
+    res = cli_runner.invoke(
+        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+    )
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+
+    # No filtering gives all results back
+    assert output.keys() == {
+        ".",
+        "global.yml",
+        "global2.yml",
+        "sample-folder-policy.tgz",
+        "sample-folder.tgz",
+    }
+
+    mocker.patch("swh.scanner.scanner.COMMON_EXCLUDE_PATTERNS", [b"sample*"])
+    vcs_mock = mocker.patch("swh.scanner.scanner.get_vcs_ignore_patterns")
+    vcs_mock.side_effect = [[]]
+
+    res = cli_runner.invoke(
+        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+    )
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+    # Filtering via common exclude patterns works
+    assert output.keys() == {
+        ".",
+        "global.yml",
+        "global2.yml",
+    }

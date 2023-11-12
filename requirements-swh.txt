@@ -2,3 +2,4 @@
 swh.core >= 0.3
 swh.model >= 6.5.0
 swh.auth
+swh.web.client

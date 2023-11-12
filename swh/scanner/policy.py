@@ -10,8 +10,8 @@ from typing import Iterable, List, no_type_check
 from swh.model import discovery, from_disk
 from swh.model.from_disk import model
 from swh.model.model import Sha1Git
+from swh.web.client.client import WebAPIClient
 
-from .client import Client
 from .data import MerkleNodeInfo
 
 
@@ -32,7 +32,7 @@ class Policy(metaclass=abc.ABCMeta):
         self.data = data
 
     @abc.abstractmethod
-    async def run(self, client: Client):
+    async def run(self, client: WebAPIClient):
         """Scan a source code project"""
         raise NotImplementedError("Must implement run method")
 
@@ -45,7 +45,7 @@ class WebAPIConnection(discovery.ArchiveDiscoveryInterface):
         contents: List[model.Content],
         skipped_contents: List[model.SkippedContent],
         directories: List[model.Directory],
-        client: Client,
+        client: WebAPIClient,
     ) -> None:
         self.contents = contents
         self.skipped_contents = skipped_contents
@@ -82,7 +82,7 @@ class WebAPIConnection(discovery.ArchiveDiscoveryInterface):
     async def _missing(self, shas: List[Sha1Git]) -> List[Sha1Git]:
         # Ignore mypy complaining about string being passed, since `known`
         # transforms them to string immediately.
-        res = await self.client.known([self.sha_to_swhid[o] for o in shas])  # type: ignore
+        res = self.client.known([self.sha_to_swhid[o] for o in shas])
         return [k.object_id for k, v in res.items() if not v["known"]]
 
 
@@ -93,7 +93,7 @@ class RandomDirSamplingPriority(Policy):
     """
 
     @no_type_check
-    async def run(self, client: Client):
+    async def run(self, client: WebAPIClient):
         contents, skipped_contents, directories = from_disk.iter_directory(
             self.source_tree
         )

@@ -3,8 +3,8 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from swh.scanner.client import QUERY_LIMIT
 from swh.scanner.db import Db
+from swh.web.client.client import KNOWN_QUERY_LIMIT
 
 from .data import present_swhids
 
@@ -14,7 +14,7 @@ def test_db_create_from(tmp_path, test_swhids_sample):
 
     db = Db(tmp_dbfile)
     cur = db.conn.cursor()
-    db.create_from(test_swhids_sample, QUERY_LIMIT, cur)
+    db.create_from(test_swhids_sample, KNOWN_QUERY_LIMIT, cur)
 
     for swhid in present_swhids:
         cur = db.conn.cursor()
@@ -29,7 +29,7 @@ def test_db_create_from_one_not_present(tmp_path, test_swhids_sample):
 
     db = Db(tmp_dbfile)
     cur = db.conn.cursor()
-    db.create_from(test_swhids_sample, QUERY_LIMIT, cur)
+    db.create_from(test_swhids_sample, KNOWN_QUERY_LIMIT, cur)
 
     for swhid in swhids:
         cur = db.conn.cursor()

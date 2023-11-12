@@ -12,8 +12,7 @@ from xml.etree import ElementTree
 from swh.model.exceptions import ValidationError
 from swh.model.from_disk import Directory
 from swh.model.swhids import CoreSWHID
-
-from .client import Client
+from swh.web.client.client import WebAPIClient
 
 SUPPORTED_INFO = {"known", "origin"}
 
@@ -53,7 +52,11 @@ def init_merkle_node_info(source_tree: Directory, data: MerkleNodeInfo, info: se
         data[node.swhid()] = nodes_info.copy()  # type: ignore
 
 
-async def add_origin(source_tree: Directory, data: MerkleNodeInfo, client: Client):
+async def add_origin(
+    source_tree: Directory,
+    data: MerkleNodeInfo,
+    client: WebAPIClient,
+):
     """Store origin information about software artifacts retrieved from the Software
     Heritage graph service.
     """
@@ -62,7 +65,7 @@ async def add_origin(source_tree: Directory, data: MerkleNodeInfo, client: Clien
     while queue:
         for node in queue.copy():
             queue.remove(node)
-            node_ori = await client.get_origin(node.swhid())
+            node_ori = client.get_origin(node.swhid())
             if node_ori:
                 data[node.swhid()]["origin"] = node_ori
                 if node.object_type == "directory":

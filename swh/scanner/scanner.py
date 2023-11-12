@@ -6,12 +6,10 @@
 import asyncio
 from typing import Any, Dict, Iterable
 
-import aiohttp
-
 from swh.model.cli import model_of_dir
 from swh.model.from_disk import Directory
+from swh.web.client.client import WebAPIClient
 
-from .client import Client
 from .data import (
     MerkleNodeInfo,
     add_origin,
@@ -32,7 +30,7 @@ async def run(
     """Scan a given source code according to the policy given in input."""
     api_url = config["web-api"]["url"]
 
-    headers = {}
+    kwargs = {}
     # TODO: Better retrieve realm and client id directly from the oidc client?
     if "keycloak" in config:
         realm_name = config["keycloak"].get("realm_name")
@@ -44,17 +42,16 @@ async def run(
             and config["keycloak_tokens"][realm_name][client_id]
         ):
             auth_token = config["keycloak_tokens"][realm_name][client_id]
-            headers = {"Authorization": f"Bearer {auth_token}"}
+            kwargs["bearer_token"] = auth_token
 
-    async with aiohttp.ClientSession(headers=headers, trust_env=True) as session:
-        client = Client(api_url, session)
-        for info in extra_info:
-            if info == "known":
-                await policy.run(client)
-            elif info == "origin":
-                await add_origin(source_tree, nodes_data, client)
-            else:
-                raise Exception(f"The information '{info}' cannot be retrieved")
+    client = WebAPIClient(api_url=api_url, **kwargs)
+    for info in extra_info:
+        if info == "known":
+            await policy.run(client)
+        elif info == "origin":
+            await add_origin(source_tree, nodes_data, client)
+        else:
+            raise Exception(f"The information '{info}' cannot be retrieved")
 
 
 # here is a set of directory we should disregard

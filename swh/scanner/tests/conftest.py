@@ -14,11 +14,14 @@ from aioresponses import aioresponses
 import pytest
 
 from swh.model.cli import model_of_dir
-from swh.scanner.client import QUERY_LIMIT
 from swh.scanner.data import MerkleNodeInfo
+from swh.web.client.client import KNOWN_QUERY_LIMIT
+from swh.web.client.tests.conftest import web_api_mock
 
 from .data import present_swhids
 from .flask_api import create_app
+
+web_api_mock
 
 
 @pytest.fixture
@@ -84,7 +87,7 @@ def big_source_tree(tmp_path):
     sys.setrecursionlimit(1100)
     dir_ = tmp_path / "big-directory"
     sub_dirs = dir_
-    for i in range(0, QUERY_LIMIT + 1):
+    for i in range(0, KNOWN_QUERY_LIMIT + 1):
         sub_dirs = sub_dirs / "dir"
     sub_dirs.mkdir(parents=True, exist_ok=True)
     file_ = sub_dirs / "file.org"

@@ -5,8 +5,8 @@
 
 from flask import Flask, abort, request
 
-from swh.scanner.client import QUERY_LIMIT
 from swh.scanner.exceptions import LargePayloadExc
+from swh.web.client.client import KNOWN_QUERY_LIMIT
 
 from .data import fake_origin, unknown_swhids
 
@@ -29,10 +29,10 @@ def create_app(tmp_requests, tmp_accesses):
         with open(tmp_accesses, "a") as f:
             f.write(f"{len(swhids)}\n")
 
-        if len(swhids) > QUERY_LIMIT:
+        if len(swhids) > KNOWN_QUERY_LIMIT:
             raise LargePayloadExc(
                 f"The maximum number of SWHIDs this endpoint can receive is "
-                f"{QUERY_LIMIT}"
+                f"{KNOWN_QUERY_LIMIT}"
             )
 
         res = {swhid: {"known": False} for swhid in swhids}

@@ -7,9 +7,9 @@
 from flask import url_for
 
 from swh.model.swhids import CoreSWHID, ObjectType
-from swh.scanner.client import Client
 from swh.scanner.data import MerkleNodeInfo, init_merkle_node_info
 from swh.scanner.policy import RandomDirSamplingPriority
+from swh.web.client.client import WebAPIClient
 
 
 def get_backend_swhids_order(tmp_requests):
@@ -28,12 +28,11 @@ def get_backend_known_requests(tmp_accesses):
 
 def test_randomdir_policy(
     live_server,
-    event_loop,
-    aiosession,
     big_source_tree,
     tmp_requests,
     tmp_accesses,
     mocker,
+    event_loop,
 ):
     # This is harder to test with exact assertions due to the random nature
     # of our sampling algorithm and everything else that can be random.
@@ -47,7 +46,7 @@ def test_randomdir_policy(
     nodes_data = MerkleNodeInfo()
     init_merkle_node_info(big_source_tree, nodes_data, {"known"})
     policy = RandomDirSamplingPriority(big_source_tree, nodes_data)
-    client = Client(api_url, aiosession)
+    client = WebAPIClient(api_url)
     event_loop.run_until_complete(policy.run(client))
 
     backend_swhids_requests = get_backend_swhids_order(tmp_requests)
@@ -72,7 +71,7 @@ def test_randomdir_policy(
     nodes_data = MerkleNodeInfo()
     init_merkle_node_info(big_source_tree, nodes_data, {"known"})
     policy = RandomDirSamplingPriority(big_source_tree, nodes_data)
-    client = Client(api_url, aiosession)
+    client = WebAPIClient(api_url)
     event_loop.run_until_complete(policy.run(client))
 
     assert all(v["known"] is True for k, v in policy.data.items())

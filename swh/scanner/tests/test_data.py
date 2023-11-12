@@ -11,7 +11,6 @@ from flask import url_for
 import pytest
 
 from swh.model.exceptions import ValidationError
-from swh.scanner.client import Client
 from swh.scanner.data import (
     MerkleNodeInfo,
     add_origin,
@@ -21,6 +20,7 @@ from swh.scanner.data import (
     has_dirs,
     init_merkle_node_info,
 )
+from swh.web.client.client import WebAPIClient
 
 from .data import fake_origin
 
@@ -48,10 +48,10 @@ def test_init_merkle_not_supported_node_info(source_tree):
         init_merkle_node_info(source_tree, nodes_data, {"unsupported_info"})
 
 
-def test_add_origin(event_loop, live_server, aiosession, source_tree, nodes_data):
+def test_add_origin(event_loop, live_server, source_tree, nodes_data):
     api_url = url_for("index", _external=True)
     init_merkle_node_info(source_tree, nodes_data, {"known", "origin"})
-    client = Client(api_url, aiosession)
+    client = WebAPIClient(api_url)
 
     event_loop.run_until_complete(add_origin(source_tree, nodes_data, client))
     for node, attrs in nodes_data.items():

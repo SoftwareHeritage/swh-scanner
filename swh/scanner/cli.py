@@ -7,6 +7,7 @@ import os
 
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
+import logging
 from typing import Any, Dict, Optional
 
 import click
@@ -215,8 +216,23 @@ def login(ctx, username: str, token: str):
     type=click.Choice(["origin"]),
     help="Add selected additional information about known software artifacts.",
 )
+@click.option(
+    "--debug-http",
+    "debug_http",
+    type=bool,
+    help="show debug information about the http request",
+)
 @click.pass_context
-def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, extra_info):
+def scan(
+    ctx,
+    root_path,
+    api_url,
+    patterns,
+    out_fmt,
+    interactive,
+    extra_info,
+    debug_http,
+):
     """Scan a source code project to discover files and directories already
     present in the archive.
 
@@ -257,6 +273,10 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, extra_info):
         ctx.obj["config"]["web-api"]["url"] = api_url
 
     web_api_url = ctx.obj["config"]["web-api"]["url"]
+
+    if debug_http:
+        http_logger = logging.getLogger("swh.web.client.client")
+        http_logger.setLevel(logging.DEBUG)
 
     # Check authentication only for production URL
     if web_api_url == SWH_API_ROOT:

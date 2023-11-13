@@ -18,16 +18,14 @@ def test_app(app):
     assert not app.debug
 
 
-def test_scanner_result(live_server, event_loop, source_tree):
+def test_scanner_result(live_server, source_tree):
     api_url = url_for("index", _external=True)
     config = {"web-api": {"url": api_url, "auth-token": None}}
 
     nodes_data = MerkleNodeInfo()
     init_merkle_node_info(source_tree, nodes_data, {"known"})
     policy = RandomDirSamplingPriority(source_tree, nodes_data)
-    event_loop.run_until_complete(
-        run(config, policy, source_tree, nodes_data, {"known"})
-    )
+    run(config, policy, source_tree, nodes_data, {"known"})
     for node in source_tree.iter_tree():
         if str(node.swhid()) in unknown_swhids:
             assert nodes_data[node.swhid()]["known"] is False

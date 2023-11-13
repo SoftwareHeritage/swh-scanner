@@ -3,7 +3,6 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import asyncio
 from typing import Any, Dict, Iterable
 
 from swh.model.cli import model_of_dir
@@ -20,7 +19,7 @@ from .output import get_output_class
 from .policy import RandomDirSamplingPriority
 
 
-async def run(
+def run(
     config: Dict[str, Any],
     policy,
     source_tree: Directory,
@@ -47,9 +46,9 @@ async def run(
     client = WebAPIClient(api_url=api_url, **kwargs)
     for info in extra_info:
         if info == "known":
-            await policy.run(client)
+            policy.run(client)
         elif info == "origin":
-            await add_origin(source_tree, nodes_data, client)
+            add_origin(source_tree, nodes_data, client)
         else:
             raise Exception(f"The information '{info}' cannot be retrieved")
 
@@ -95,7 +94,7 @@ def scan(
 
     policy = RandomDirSamplingPriority(source_tree, nodes_data)
 
-    asyncio.run(run(config, policy, source_tree, nodes_data, extra_info))
+    run(config, policy, source_tree, nodes_data, extra_info)
 
     if interactive:
         out_fmt = "interactive"

@@ -48,12 +48,12 @@ def test_init_merkle_not_supported_node_info(source_tree):
         init_merkle_node_info(source_tree, nodes_data, {"unsupported_info"})
 
 
-def test_add_origin(event_loop, live_server, source_tree, nodes_data):
+def test_add_origin(live_server, source_tree, nodes_data):
     api_url = url_for("index", _external=True)
     init_merkle_node_info(source_tree, nodes_data, {"known", "origin"})
     client = WebAPIClient(api_url)
 
-    event_loop.run_until_complete(add_origin(source_tree, nodes_data, client))
+    add_origin(source_tree, nodes_data, client)
     for node, attrs in nodes_data.items():
         assert attrs["origin"] == fake_origin[str(source_tree.swhid())]
 

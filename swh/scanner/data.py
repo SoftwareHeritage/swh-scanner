@@ -52,7 +52,7 @@ def init_merkle_node_info(source_tree: Directory, data: MerkleNodeInfo, info: se
         data[node.swhid()] = nodes_info.copy()  # type: ignore
 
 
-async def add_origin(
+def add_origin(
     source_tree: Directory,
     data: MerkleNodeInfo,
     client: WebAPIClient,

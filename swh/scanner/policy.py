@@ -32,7 +32,7 @@ class Policy(metaclass=abc.ABCMeta):
         self.data = data
 
     @abc.abstractmethod
-    async def run(self, client: WebAPIClient):
+    def run(self, client: WebAPIClient):
         """Scan a source code project"""
         raise NotImplementedError("Must implement run method")
 
@@ -64,22 +64,22 @@ class WebAPIConnection(discovery.ArchiveDiscoveryInterface):
             self.sha_to_swhid[directory.id] = swhid
             self.swhid_to_sha[swhid] = directory.id
 
-    async def content_missing(self, contents: List[Sha1Git]) -> List[Sha1Git]:
+    def content_missing(self, contents: List[Sha1Git]) -> List[Sha1Git]:
         """List content missing from the archive by sha1"""
-        return await self._missing(contents)
+        return self._missing(contents)
 
-    async def skipped_content_missing(
+    def skipped_content_missing(
         self, skipped_contents: List[Sha1Git]
     ) -> Iterable[Sha1Git]:
         """List skipped content missing from the archive by sha1"""
         # TODO what should we do about skipped contents?
         return skipped_contents
 
-    async def directory_missing(self, directories: List[Sha1Git]) -> Iterable[Sha1Git]:
+    def directory_missing(self, directories: List[Sha1Git]) -> Iterable[Sha1Git]:
         """List directories missing from the archive by sha1"""
-        return await self._missing(directories)
+        return self._missing(directories)
 
-    async def _missing(self, shas: List[Sha1Git]) -> List[Sha1Git]:
+    def _missing(self, shas: List[Sha1Git]) -> List[Sha1Git]:
         # Ignore mypy complaining about string being passed, since `known`
         # transforms them to string immediately.
         res = self.client.known([self.sha_to_swhid[o] for o in shas])
@@ -93,7 +93,7 @@ class RandomDirSamplingPriority(Policy):
     """
 
     @no_type_check
-    async def run(self, client: WebAPIClient):
+    def run(self, client: WebAPIClient):
         contents, skipped_contents, directories = from_disk.iter_directory(
             self.source_tree
         )
@@ -105,11 +105,9 @@ class RandomDirSamplingPriority(Policy):
         # From this call site, we are relying on this behavior in order to
         # *actually* be a random directory sampling policy, but any change away
         # from under us in `filter_known_objects` should trigger a test failure.
-        get_unknowns = discovery.filter_known_objects(
-            WebAPIConnection(contents, skipped_contents, directories, client),
-        )
-
-        unknowns = set(itertools.chain(*await get_unknowns))
+        connection = WebAPIConnection(contents, skipped_contents, directories, client)
+        get_unknowns = discovery.filter_known_objects(connection)
+        unknowns = set(itertools.chain(*get_unknowns))
 
         for obj in itertools.chain(contents, skipped_contents, directories):
             self.data[obj.swhid()]["known"] = obj not in unknowns

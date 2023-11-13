@@ -32,7 +32,6 @@ def test_randomdir_policy(
     tmp_requests,
     tmp_accesses,
     mocker,
-    event_loop,
 ):
     # This is harder to test with exact assertions due to the random nature
     # of our sampling algorithm and everything else that can be random.
@@ -47,7 +46,7 @@ def test_randomdir_policy(
     init_merkle_node_info(big_source_tree, nodes_data, {"known"})
     policy = RandomDirSamplingPriority(big_source_tree, nodes_data)
     client = WebAPIClient(api_url)
-    event_loop.run_until_complete(policy.run(client))
+    policy.run(client)
 
     backend_swhids_requests = get_backend_swhids_order(tmp_requests)
     # Check that we only query directories in the case where all directories
@@ -72,7 +71,7 @@ def test_randomdir_policy(
     init_merkle_node_info(big_source_tree, nodes_data, {"known"})
     policy = RandomDirSamplingPriority(big_source_tree, nodes_data)
     client = WebAPIClient(api_url)
-    event_loop.run_until_complete(policy.run(client))
+    policy.run(client)
 
     assert all(v["known"] is True for k, v in policy.data.items())
 

@@ -5,9 +5,9 @@
 
 from flask import Flask, request
 
+from .client import QUERY_LIMIT
 from .db import Db
 from .exceptions import LargePayloadExc
-from .policy import QUERY_LIMIT
 
 
 def create_app(db: Db):

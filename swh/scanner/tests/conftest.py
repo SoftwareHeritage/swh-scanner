@@ -14,8 +14,8 @@ from aioresponses import aioresponses
 import pytest
 
 from swh.model.cli import model_of_dir
+from swh.scanner.client import QUERY_LIMIT
 from swh.scanner.data import MerkleNodeInfo
-from swh.scanner.policy import QUERY_LIMIT
 
 from .data import present_swhids
 from .flask_api import create_app

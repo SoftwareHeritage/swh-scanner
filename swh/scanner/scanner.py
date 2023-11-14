@@ -19,14 +19,7 @@ from .data import (
     init_merkle_node_info,
 )
 from .output import get_output_class
-from .policy import (
-    DirectoryPriority,
-    FilePriority,
-    GreedyBFS,
-    LazyBFS,
-    QueryAll,
-    RandomDirSamplingPriority,
-)
+from .policy import RandomDirSamplingPriority
 
 
 async def run(
@@ -55,25 +48,6 @@ async def run(
                 raise Exception(f"The information '{info}' cannot be retrieved")
 
 
-def get_policy_obj(source_tree: Directory, nodes_data: MerkleNodeInfo, policy: str):
-    if policy == "auto":
-        return RandomDirSamplingPriority(source_tree, nodes_data)
-    elif policy == "all":
-        QueryAll(source_tree, nodes_data)
-    elif policy == "bfs":
-        return LazyBFS(source_tree, nodes_data)
-    elif policy == "greedybfs":
-        return GreedyBFS(source_tree, nodes_data)
-    elif policy == "filepriority":
-        return FilePriority(source_tree, nodes_data)
-    elif policy == "dirpriority":
-        return DirectoryPriority(source_tree, nodes_data)
-    elif policy == "randomdir":
-        return RandomDirSamplingPriority(source_tree, nodes_data)
-    else:
-        raise Exception(f"policy '{policy}' not found")
-
-
 # here is a set of directory we should disregard
 #
 # TODO: make its usage configurable
@@ -99,7 +73,6 @@ def scan(
     exclude_patterns: Iterable[str],
     out_fmt: str,
     interactive: bool,
-    policy: str,
     extra_info: set,
 ):
     """Scan a source code project to discover files and directories already
@@ -114,7 +87,7 @@ def scan(
     extra_info.add("known")
     init_merkle_node_info(source_tree, nodes_data, extra_info)
 
-    policy = get_policy_obj(source_tree, nodes_data, policy)
+    policy = RandomDirSamplingPriority(source_tree, nodes_data)
 
     asyncio.run(run(config, policy, source_tree, nodes_data, extra_info))
 

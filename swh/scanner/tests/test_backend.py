@@ -4,8 +4,8 @@
 # See top-level LICENSE file for more information
 
 from swh.scanner.backend import create_app
+from swh.scanner.client import QUERY_LIMIT
 from swh.scanner.db import Db
-from swh.scanner.policy import QUERY_LIMIT
 
 from .data import present_swhids
 

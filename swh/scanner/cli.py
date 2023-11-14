@@ -243,16 +243,6 @@ def login(ctx, force):
     "-i", "--interactive", is_flag=True, help="Show the result in a dashboard"
 )
 @click.option(
-    "-p",
-    "--policy",
-    default="auto",
-    show_default=True,
-    type=click.Choice(
-        ["auto", "bfs", "greedybfs", "filepriority", "dirpriority", "randomdir", "all"]
-    ),
-    help="The scan policy.",
-)
-@click.option(
     "-e",
     "--extra-info",
     "extra_info",
@@ -261,7 +251,7 @@ def login(ctx, force):
     help="Add selected additional information about known software artifacts.",
 )
 @click.pass_context
-def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy, extra_info):
+def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, extra_info):
     """Scan a source code project to discover files and directories already
     present in the archive.
 
@@ -278,28 +268,6 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy, extra_
 
       sunburst: produce a dynamic chart as .html file. (in $PWD/chart.html)
 
-    The source code project can be checked using different policies that can be set
-    using the -p/--policy option:\n
-    \b
-      auto: same as randomdir
-
-      bfs: querie all nodes.
-      bfs: scan the source code in the BFS order, checking unknown directories only.
-
-    \b
-      greedybfs: same as "bfs" policy, but lookup the status of source code artifacts
-      in chunks, in order to minimize the number of Web API round-trips with the
-      archive.
-
-    \b
-      filepriority: scan all the source code file contents, checking only unset
-      directories. (useful if the codebase contains a lot of source files)
-
-      dirpriority: scan all the source code directories and check only unknown
-      directory contents.
-
-      randomdir: scan the source code using a random Merkle search on directories.
-
     Other information about software artifacts could be specified with the -e/
     --extra-info option:\n
     \b
@@ -310,7 +278,7 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy, extra_
     config = setup_config(ctx, api_url)
     check_auth(config)
     extra_info = set(extra_info)
-    scanner.scan(config, root_path, patterns, out_fmt, interactive, policy, extra_info)
+    scanner.scan(config, root_path, patterns, out_fmt, interactive, extra_info)
 
 
 @scanner.group("db", help="Manage local knowledge base for swh-scanner")

@@ -5,8 +5,8 @@
 
 from flask import Flask, abort, request
 
+from swh.scanner.client import QUERY_LIMIT
 from swh.scanner.exceptions import LargePayloadExc
-from swh.scanner.policy import QUERY_LIMIT
 
 from .data import fake_origin, unknown_swhids
 

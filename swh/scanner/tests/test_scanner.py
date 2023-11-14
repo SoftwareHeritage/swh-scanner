@@ -7,7 +7,13 @@ from flask import url_for
 import pytest
 
 from swh.scanner.data import MerkleNodeInfo, init_merkle_node_info
-from swh.scanner.policy import DirectoryPriority, FilePriority, LazyBFS, QueryAll
+from swh.scanner.policy import (
+    DirectoryPriority,
+    FilePriority,
+    LazyBFS,
+    QueryAll,
+    RandomDirSamplingPriority,
+)
 from swh.scanner.scanner import get_policy_obj, run
 
 from .data import unknown_swhids
@@ -19,13 +25,10 @@ def test_app(app):
 
 
 def test_get_policy_obj_auto(source_tree, nodes_data):
-    assert isinstance(get_policy_obj(source_tree, nodes_data, "auto"), QueryAll)
-
-
-def test_get_policy_obj_bfs(big_source_tree, nodes_data):
-    # check that the policy object is the LazyBFS if the source tree contains more than
-    # 1000 nodes
-    assert isinstance(get_policy_obj(big_source_tree, nodes_data, "auto"), LazyBFS)
+    assert isinstance(
+        get_policy_obj(source_tree, nodes_data, "auto"),
+        RandomDirSamplingPriority,
+    )
 
 
 def test_scanner_result_bfs(live_server, event_loop, source_tree):

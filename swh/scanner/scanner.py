@@ -20,14 +20,12 @@ from .data import (
 )
 from .output import get_output_class
 from .policy import (
-    QUERY_LIMIT,
     DirectoryPriority,
     FilePriority,
     GreedyBFS,
     LazyBFS,
     QueryAll,
     RandomDirSamplingPriority,
-    source_size,
 )
 
 
@@ -59,11 +57,9 @@ async def run(
 
 def get_policy_obj(source_tree: Directory, nodes_data: MerkleNodeInfo, policy: str):
     if policy == "auto":
-        return (
-            QueryAll(source_tree, nodes_data)
-            if source_size(source_tree) <= QUERY_LIMIT
-            else LazyBFS(source_tree, nodes_data)
-        )
+        return RandomDirSamplingPriority(source_tree, nodes_data)
+    elif policy == "all":
+        QueryAll(source_tree, nodes_data)
     elif policy == "bfs":
         return LazyBFS(source_tree, nodes_data)
     elif policy == "greedybfs":

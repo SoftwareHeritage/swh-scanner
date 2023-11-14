@@ -248,7 +248,7 @@ def login(ctx, force):
     default="auto",
     show_default=True,
     type=click.Choice(
-        ["auto", "bfs", "greedybfs", "filepriority", "dirpriority", "randomdir"]
+        ["auto", "bfs", "greedybfs", "filepriority", "dirpriority", "randomdir", "all"]
     ),
     help="The scan policy.",
 )
@@ -281,9 +281,9 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, policy, extra_
     The source code project can be checked using different policies that can be set
     using the -p/--policy option:\n
     \b
-      auto: it selects the best policy based on the source code, for codebase(s)
-      with less than 1000 file/dir contents all the nodes will be queried.
+      auto: same as randomdir
 
+      bfs: querie all nodes.
       bfs: scan the source code in the BFS order, checking unknown directories only.
 
     \b

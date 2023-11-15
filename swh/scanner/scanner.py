@@ -32,10 +32,19 @@ async def run(
     """Scan a given source code according to the policy given in input."""
     api_url = config["web-api"]["url"]
 
-    if config["web-api"]["auth-token"]:
-        headers = {"Authorization": f"Bearer {config['web-api']['auth-token']}"}
-    else:
-        headers = {}
+    headers = {}
+    # TODO: Better retrieve realm and client id directly from the oidc client?
+    if "keycloak" in config:
+        realm_name = config["keycloak"].get("realm_name")
+        client_id = config["keycloak"].get("client_id")
+        if (
+            realm_name
+            and client_id
+            and "keycloak_tokens" in config
+            and config["keycloak_tokens"][realm_name][client_id]
+        ):
+            auth_token = config["keycloak_tokens"][realm_name][client_id]
+            headers = {"Authorization": f"Bearer {auth_token}"}
 
     async with aiohttp.ClientSession(headers=headers, trust_env=True) as session:
         client = Client(api_url, session)

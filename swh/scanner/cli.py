@@ -3,81 +3,114 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import os
+
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
-import os
-from pathlib import Path
-import sys
 from typing import Any, Dict, Optional
 
 import click
+from click.exceptions import FileError
 from importlib_metadata import version
-import yaml
 
+from swh.auth.cli import DEFAULT_CONFIG as DEFAULT_AUTH_CONFIG
 from swh.core import config
 from swh.core.cli import CONTEXT_SETTINGS
 from swh.core.cli import swh as swh_cli_group
+from swh.core.config import SWH_GLOBAL_CONFIG
 
 from .exceptions import DBError
 
 # Config for the "serve" option
 BACKEND_DEFAULT_PORT = 5011
 
-# All generic config code should reside in swh.core.config
-CONFIG_ENVVAR = "SWH_CONFIG_FILE"
-DEFAULT_CONFIG_PATH = os.path.join(click.get_app_dir("swh"), "global.yml")
-
+DEFAULT_CONFIG_PATH = os.path.join(click.get_app_dir("swh"), SWH_GLOBAL_CONFIG)
 SWH_API_ROOT = "https://archive.softwareheritage.org/api/1/"
-DEFAULT_CONFIG: Dict[str, Any] = {
+DEFAULT_WEB_API_CONFIG: Dict[str, Any] = {
     "web-api": {
         "url": SWH_API_ROOT,
-        "auth-token": None,
+    }
+}
+DEFAULT_SCANNER_CONFIG: Dict[str, Any] = {
+    "scanner": {
+        "server": {
+            "port": BACKEND_DEFAULT_PORT,
+        }
     }
 }
 
 
-CONFIG_FILE_HELP = f"""Configuration file:
-
-\b
-The CLI option or the environment variable will fail if invalid.
-CLI option is checked first.
-Then, environment variable {CONFIG_ENVVAR} is checked.
-Then, if cannot load the default path, a set of default values are used.
-Default config path is {DEFAULT_CONFIG_PATH}.
-Default config values are:
-
-\b
-{yaml.dump(DEFAULT_CONFIG)}"""
-SCANNER_HELP = f"""Software Heritage Scanner tools.
-
-{CONFIG_FILE_HELP}"""
+def get_default_config():
+    # Default Scanner configuration
+    # Merge AUTH, WEB_API, SCANNER defaults config
+    DEFAULT_CONFIG = config.merge_configs(DEFAULT_AUTH_CONFIG, DEFAULT_WEB_API_CONFIG)
+    cfg = config.merge_configs(DEFAULT_CONFIG, DEFAULT_SCANNER_CONFIG)
+    return cfg
 
 
-def setup_config(ctx, api_url):
-    config = ctx.obj["config"]
-    if api_url:
-        if not api_url.endswith("/"):
-            api_url += "/"
-        config["web-api"]["url"] = api_url
-
-    return config
+def get_default_config_path():
+    # Default Scanner configuration file path
+    return DEFAULT_CONFIG_PATH
 
 
-def check_auth(config):
-    """check there is some authentication configured
+SCANNER_HELP = """Software Heritage Scanner tools
+
+Scan a source code project to discover files and directories existing in the
+Software Heritage archive.
+"""
+
+
+def invoke_auth(ctx, auth, config_file):
+    # Invoke swh.auth.cli.auth command to get an OIDC client
+    # The invoked `auth` command manage the configuration file mechanism
+    # TODO: Do we need / want to pass args for each OIDC params?
+
+    # If `config_file` is set via env or option, raise if the path does not exists
+    if config.config_path(config_file) is None:
+        source = ctx.get_parameter_source("config_file") or None
+        if source and source.name != "DEFAULT":
+            raise FileError(config_file, hint=f"From {source.name}")
+        ctx.invoke(auth)
+    else:
+        ctx.invoke(auth, config_file=config_file)
+
+
+def check_auth(ctx):
+    """Check there is some authentication configured
 
     Issue a warning otherwise"""
-    web_api_conf = config["web-api"]
-    if web_api_conf["url"] == SWH_API_ROOT and not web_api_conf.get("auth-token"):
-        # Only warn for the production API
-        #
-        # XXX We should probably warn at the time of the creation of the HTTP
-        # Client, after checking if the token is actually valid.
+
+    assert "config" in ctx.obj
+    assert "oidc_client" in ctx.obj
+
+    config = ctx.obj["config"]
+    oidc_client = ctx.obj["oidc_client"]
+    realm_name = oidc_client.realm_name
+    client_id = oidc_client.client_id
+
+    # Check auth for `production` url only
+    if "keycloak_tokens" in config and config["keycloak_tokens"][realm_name][client_id]:
+        auth_token = config["keycloak_tokens"][realm_name][client_id]
+        from swh.auth.keycloak import KeycloakError, keycloak_error_message
+
+        # Ensure authentication token is valid
+        try:
+            oidc_client.refresh_token(refresh_token=auth_token)["access_token"]
+            # TODO: Display more OIDC information (username, realm, client_id)?
+            msg = f'Authenticated to "{ oidc_client.server_url }".'
+            click.echo(click.style(msg, fg="green"))
+        except KeycloakError as ke:
+            msg = "Error while verifying your authentication configuration."
+            click.echo(click.style(msg, fg="yellow"))
+            msg = "Run `swh scanner login` to configure or verify authentication."
+            click.echo(click.style(msg))
+            ctx.fail(keycloak_error_message(ke))
+    else:
         msg = "Warning: you are not authenticated with the Software Heritage API\n"
-        msg += "login to get a higher rate-limit"
-        click.echo(click.style(msg, fg="red"), file=sys.stderr)
-        msg = "See `swh scanner login -h` for more information."
-        click.echo(click.style(msg, fg="yellow"), file=sys.stderr)
+        msg += "Log in to get a higher rate-limit."
+        click.echo(click.style(msg, fg="yellow"))
+        msg = "Run `swh scanner login` to configure or verify authentication."
+        click.echo(click.style(msg))
 
 
 @swh_cli_group.group(
@@ -88,9 +121,11 @@ def check_auth(config):
 @click.option(
     "-C",
     "--config-file",
-    default=None,
-    type=click.Path(exists=False, dir_okay=False, path_type=str),
-    help="""YAML configuration file""",
+    default=get_default_config_path,
+    type=click.Path(dir_okay=False, path_type=str),
+    help=f"Configuration file path. [default:{get_default_config_path()}]",
+    envvar="SWH_CONFIG_FILENAME",
+    show_default=False,
 )
 @click.version_option(
     version=version("swh.scanner"),
@@ -98,115 +133,45 @@ def check_auth(config):
 )
 @click.pass_context
 def scanner(ctx, config_file: Optional[str]):
-    env_config_path = os.environ.get(CONFIG_ENVVAR)
 
-    # read_raw_config do not fail if file does not exist, so check it beforehand
-    # while enforcing loading priority
-    if config_file:
-        if not config.exists_accessible(config_file):
-            raise click.BadParameter(
-                f"File '{config_file}' cannot be opened.", param_hint="--config-file"
-            )
-    elif env_config_path:
-        if not config.exists_accessible(env_config_path):
-            raise click.BadParameter(
-                f"File '{env_config_path}' cannot be opened.", param_hint=CONFIG_ENVVAR
-            )
-        config_file = env_config_path
-    elif config.exists_accessible(DEFAULT_CONFIG_PATH):
-        config_file = DEFAULT_CONFIG_PATH
-
-    conf = DEFAULT_CONFIG
-    if config_file is not None:
-        conf = config.read_raw_config(config_file)
-        conf = config.merge_configs(DEFAULT_CONFIG, conf)
-    else:
-        config_file = DEFAULT_CONFIG_PATH
+    from swh.auth.cli import auth
 
     ctx.ensure_object(dict)
-    ctx.obj["config_path"] = Path(config_file)
-    ctx.obj["config"] = conf
+
+    # Get Scanner default config
+    cfg = get_default_config()
+
+    # Invoke auth CLI command to get an OIDC client
+    # It will load configuration file if any and populate a ctx 'config' object
+    invoke_auth(ctx, auth, config_file)
+    assert ctx.obj["config"]
+
+    # Merge scanner defaults with config object
+    ctx.obj["config"] = config.merge_configs(cfg, ctx.obj["config"])
+    assert ctx.obj["oidc_client"]
 
 
 @scanner.command(name="login")
 @click.option(
-    "-f",
-    "--force/--no-force",
-    default=False,
-    help="Proceed even if a token is already present in the config",
+    "--username",
+    "username",
+    default=None,
+    help=("OpenID username"),
+)
+@click.option(
+    "--token",
+    "token",
+    default=None,
+    help=("A valid OpenId connect token to authenticate to"),
 )
 @click.pass_context
-def login(ctx, force):
-    """Perform the necessary step to log yourself in the API
-
-    You will need to first create an account before running this operation. To
-    create an account, visit: https://archive.softwareheritage.org/
+def login(ctx, username: str, token: str):
+    """Authentication configuration guide for Swh Api services.
+    Helps in verifying authentication credentials
     """
-    context = ctx.obj
+    from swh.auth.cli import auth_config
 
-    # Check we are actually talking to the Software Heritage itself.
-    web_api_config = context["config"]["web-api"]
-    current_url = web_api_config["url"]
-    config_path = context["config_path"]
-    if current_url != SWH_API_ROOT:
-        msg = "`swh scanner login` only works with the Software Heritage API\n"
-        click.echo(click.style(msg, fg="red"), file=sys.stderr)
-        msg = f"Configured in '%s' as web-api.url={current_url}\n"
-        msg %= click.format_filename(bytes(config_path))
-        click.echo(click.style(msg, fg="red"), file=sys.stderr)
-        ctx.exit(1)
-
-    # Check for an existing value in the configuration
-    if web_api_config.get("auth-token") is not None:
-        click.echo(click.style("You appear to already be logged in.", fg="green"))
-        if not force:
-            click.echo("Hint: use `--force` to overwrite the current token")
-            ctx.exit()
-        click.echo(click.style("Continuing because of `--force`.", fg="yellow"))
-
-    # Obtain a valid token through the API
-    #
-    # Coming from the swh auth generate-token code
-    # (this command might eventually move there)
-    from getpass import getpass
-
-    from swh.auth.keycloak import (
-        KeycloakError,
-        KeycloakOpenIDConnect,
-        keycloak_error_message,
-    )
-
-    msg = "Please enter your SWH Archive credentials"
-    click.echo(click.style(msg, fg="yellow"))
-    msg = "If you do not already have an account, create one one at:"
-    click.echo(click.style(msg, fg="yellow"))
-    msg = "    https://archive.softwareheritage.org/"
-    click.echo(click.style(msg, fg="yellow"))
-    username = click.prompt("username")
-    password = getpass()
-    try:
-        url = "https://auth.softwareheritage.org/auth/"
-        realm = "SoftwareHeritage"
-        client = "swh-web"
-        oidc_client = KeycloakOpenIDConnect(url, realm, client)
-        scope = "openid offline_access"
-        oidc_info = oidc_client.login(username, password, scope)
-        token = oidc_info["refresh_token"]
-        msg = "token retrieved successfully"
-        click.echo(click.style(msg, fg="green"))
-    except KeycloakError as ke:
-        print(keycloak_error_message(ke))
-        click.exit(1)
-
-    # Write the new token into the file.
-    web_api_config["auth-token"] = token
-    # TODO use ruamel.yaml to preserve comments in config file
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(yaml.safe_dump(context["config"]))
-    msg = "\nConfiguration file '%s' written successfully."
-    msg %= click.format_filename(bytes(config_path))
-    click.echo(click.style(msg, fg="green"))
-    click.echo("`swh scanner` will now be authenticated with the new token.")
+    ctx.forward(auth_config)
 
 
 @scanner.command(name="scan")
@@ -275,10 +240,21 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, extra_info):
       compressed graph."""
     import swh.scanner.scanner as scanner
 
-    config = setup_config(ctx, api_url)
-    check_auth(config)
+    assert "url" in ctx.obj["config"]["web-api"]
+    # override config with command parameters if provided
+    if api_url is not None:
+        ctx.obj["config"]["web-api"]["url"] = api_url
+
+    web_api_url = ctx.obj["config"]["web-api"]["url"]
+
+    # Check authentication only for production URL
+    if web_api_url == SWH_API_ROOT:
+        check_auth(ctx)
+
     extra_info = set(extra_info)
-    scanner.scan(config, root_path, patterns, out_fmt, interactive, extra_info)
+    scanner.scan(
+        ctx.obj["config"], root_path, patterns, out_fmt, interactive, extra_info
+    )
 
 
 @scanner.group("db", help="Manage local knowledge base for swh-scanner")

@@ -1,3 +1,12 @@
 web-api:
-    url: "https://example.com/api/1"
-    auth-token: "dummy"
+  url: https://example.com/api/1/
+scanner:
+  server:
+    port: 9001
+keycloak:
+  client_id: client-test
+  realm_name: realm-test
+  server_url: http://keycloak:8080/keycloak/auth/
+keycloak_tokens:
+  realm-test:
+    client-test: xxxtokenxxx

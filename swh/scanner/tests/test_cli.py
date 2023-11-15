@@ -1,52 +1,68 @@
-# Copyright (C) 2020  The Software Heritage developers
+# Copyright (C) 2020-2023  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
 import json
+from dataclasses import dataclass
 import os
 from pathlib import Path
+import shutil
 from unittest.mock import Mock, call
 
+from click.exceptions import FileError
 from click.testing import CliRunner
 from flask import url_for
 import pytest
 
-import swh.scanner.cli as cli
-import swh.scanner.scanner as scanner
+from swh.auth.keycloak import KeycloakError
+from swh.core import config as config_mod
+from swh.scanner import cli, scanner
 
 from .data import present_swhids
 
-DATADIR = Path(__file__).absolute().parent / "data"
-CONFIG_PATH_GOOD = str(DATADIR / "global.yml")
-CONFIG_PATH_GOOD2 = str(DATADIR / "global2.yml")  # alternative to global.yml
-ROOTPATH_GOOD = str(DATADIR)
+DEFAULT_TEST_CONFIG = {
+    "keycloak": {
+        "client_id": "client-test",
+        "realm_name": "realm-test",
+        "server_url": "http://keycloak:8080/keycloak/auth/",
+    },
+    "web-api": {
+        "url": "https://example.com/api/1/",
+    },
+    "scanner": {
+        "server": {
+            "port": 9001,
+        }
+    },
+}
+
+EXPECTED_TEST_CONFIG = DEFAULT_TEST_CONFIG.copy()
+EXPECTED_TEST_CONFIG["keycloak_tokens"] = {"realm-test": {"client-test": "xxxtokenxxx"}}
 
 
-@pytest.fixture(scope="function")
-def m_scanner(mocker):
-    """Returns a mock swh.scanner.scanner object with all attributes mocked"""
-    # Customizable mock of scanner module
-    # Fortunately, noop is the default behavior for all methods
-    scanner_mock = Mock(scanner)
-    yield mocker.patch("swh.scanner.scanner", scanner_mock)
+@pytest.fixture
+def scan_paths(tmp_path):
+    """Create some temporary contents to scan"""
+    scan_paths = {}
+    # One unknown file
+    unknown = tmp_path / "to_scan" / "unknown"
+    scan_paths["unknown"] = str(unknown)
+    unknown.mkdir(parents=True)
+    unknown_file = unknown / "README"
+    unknown_file.touch()
+    unknown_file.write_text("Unknown\n")
+    # One known file
+    known = tmp_path / "to_scan" / "known"
+    scan_paths["known"] = str(known)
+    known.mkdir(parents=True)
+    known_file = known / "README"
+    known_file.touch()
+    known_file.write_text("Known\n")
+    return scan_paths
 
 
-@pytest.fixture(scope="function")
-def spy_configopen(mocker):
-    """Returns a mock of open builtin scoped to swh.core.config"""
-    yield mocker.patch("swh.core.config.open", wraps=open)
-
-
-@pytest.fixture(scope="function")
-def cli_runner(monkeypatch, tmp_path):
-    """Return a CliRunner with default environment variable SWH_CONFIG_FILE unset"""
-    BAD_CONFIG_PATH = str(tmp_path / "missing")
-    monkeypatch.setattr(cli, "DEFAULT_CONFIG_PATH", BAD_CONFIG_PATH)
-    return CliRunner(env={"SWH_CONFIG_FILE": None})
-
-
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def swhids_input_file(tmp_path):
     swhids_input_file = Path(os.path.join(tmp_path, "input_file.txt"))
 
@@ -57,87 +73,348 @@ def swhids_input_file(tmp_path):
     return swhids_input_file
 
 
-# TEST BEGIN
+@pytest.fixture
+def user_credentials():
+    return {"username": "foo", "password": "bar"}
 
-# For nominal code paths, check that the right config file is loaded
-# scanner is mocked to not run actual scan, config loading is mocked to check its usage
+
+@pytest.fixture()
+def default_test_config_path(tmp_path):
+    # Set Swh global config file path to a temp directory
+    cfg_file = tmp_path / "global.yml"
+    return cfg_file
 
 
-def test_smoke(cli_runner):
-    """Break if basic functionality breaks"""
-    res = cli_runner.invoke(cli.scanner, ["scan", "-h"])
+@pytest.fixture()
+def cli_runner(monkeypatch, default_test_config_path):
+    """Return a Click CliRunner
+
+    Unset env SWH_CONFIG_FILENAME
+    Set default config path to a temp directory
+    """
+    monkeypatch.delenv("SWH_CONFIG_FILENAME", raising=False)
+    monkeypatch.setattr(cli, "DEFAULT_CONFIG_PATH", default_test_config_path)
+    return CliRunner()
+
+
+@pytest.fixture()
+def m_scanner(mocker):
+    """Returns a mock swh.scanner.scanner object with all attributes mocked"""
+    # Customizable mock of scanner module
+    # Fortunately, noop is the default behavior for all methods
+    scanner_mock = Mock(scanner)
+    yield mocker.patch("swh.scanner.scanner", scanner_mock)
+
+
+@pytest.fixture()
+def spy_configopen(mocker):
+    """Returns a mock of open builtin scoped to swh.core.config"""
+    yield mocker.patch("swh.core.config.open", wraps=open)
+
+
+@dataclass
+class FakeOidcClient:
+    realm_name: str
+    client_id: str
+    oidc_success: bool
+
+    def login(self, username, password, scope):
+        assert username == "foo"
+        assert password == "bar"
+        return {"refresh_token": "xxxtokenxxx"}
+
+    def userinfo(self, access_token):
+        assert access_token == "access-token-test"
+        return {"preferred_username": "foo"}
+
+    def refresh_token(self, refresh_token):
+        if self.oidc_success:
+            return {"access_token": "access-token-test"}
+
+        raise KeycloakError
+
+
+def fake_invoke_auth(oidc_success):
+    def fake_invoke_auth_inner(ctx, auth, config_file):
+
+        if config_mod.config_path(config_file) is None:
+            source = ctx.get_parameter_source("config_file") or None
+            if source and source.name != "DEFAULT":
+                raise FileError(config_file, hint=f"From {source.name}")
+
+            realm_name = DEFAULT_TEST_CONFIG["keycloak"]["realm_name"]
+            client_id = DEFAULT_TEST_CONFIG["keycloak"]["client_id"]
+            ctx.obj["config"] = DEFAULT_TEST_CONFIG
+        else:
+            config = config_mod.read_raw_config(config_file)
+            realm_name = config["keycloak"]["realm_name"]
+            assert realm_name == "realm-test"
+            client_id = config["keycloak"]["client_id"]
+            assert client_id == "client-test"
+            ctx.obj["config"] = config
+
+        ctx.obj["config_file"] = config_file
+        ctx.obj["oidc_client"] = FakeOidcClient(realm_name, client_id, oidc_success)
+
+    return fake_invoke_auth_inner
+
+
+@pytest.fixture(scope="function")
+def oidc_success(mocker):
+    oidc_mock = mocker.patch("swh.scanner.cli.invoke_auth")
+    oidc_mock.side_effect = fake_invoke_auth(oidc_success=True)
+    yield oidc_mock
+
+
+@pytest.fixture(scope="function")
+def oidc_fail(mocker):
+    oidc_mock = mocker.patch("swh.scanner.cli.invoke_auth")
+    oidc_mock.side_effect = fake_invoke_auth(oidc_success=False)
+    yield oidc_mock
+
+
+def test_smoke(cli_runner, oidc_fail):
+    """Break if basic functionality
+    breaks
+
+        swh scanner
+        swh scanner --help
+
+    """
+    res = cli_runner.invoke(cli.scanner)
+    res_h = cli_runner.invoke(cli.scanner, ["--help"])
+
     assert res.exit_code == 0
+    assert res_h.exit_code == 0
+    assert res.output.startswith("Usage: scanner [OPTIONS] COMMAND [ARGS]")
+    assert res.output == res_h.output
 
 
-def test_config_path_option_bad(cli_runner, tmp_path):
-    """Test bad option no envvar bad default"""
-    CONFPATH_BAD = str(tmp_path / "missing")
-    res = cli_runner.invoke(cli.scanner, ["-C", CONFPATH_BAD, "scan", ROOTPATH_GOOD])
-    assert res.exit_code != 0
+def test_smoke_scan(cli_runner, oidc_fail):
+    """Scanner scan command
+    help
 
+        swh scanner scan --help
 
-def test_default_config_path(cli_runner, m_scanner, spy_configopen, monkeypatch):
-    """Test no option no envvar good default"""
-    monkeypatch.setattr(cli, "DEFAULT_CONFIG_PATH", CONFIG_PATH_GOOD)
-    res = cli_runner.invoke(cli.scanner, ["scan", ROOTPATH_GOOD])
+    """
+    res = cli_runner.invoke(cli.scanner, ["scan", "--help"])
+
     assert res.exit_code == 0
-    assert spy_configopen.call_args == call(CONFIG_PATH_GOOD)
-    assert m_scanner.scan.call_count == 1
+    assert res.output.startswith("Usage: scanner scan [OPTIONS] [ROOT_PATH]")
 
 
-def test_root_no_config(cli_runner, m_scanner, spy_configopen):
-    """Test no config = no option no envvar bad default, good root"""
-    res = cli_runner.invoke(cli.scanner, ["scan", ROOTPATH_GOOD])
-    assert res.exit_code == 0
-    assert spy_configopen.call_count == 0
-    assert m_scanner.scan.call_count == 1
+def test_scan_config_default_success(
+    cli_runner, scan_paths, m_scanner, oidc_fail, spy_configopen
+):
+    """Ensure scanner default configuration
 
+    Unexisting default global configuration file
+    No OIDC authentication
 
-def test_root_bad(cli_runner, tmp_path):
-    """Test no option no envvar bad default bad root"""
-    ROOTPATH_BAD = str(tmp_path / "missing")
-    res = cli_runner.invoke(cli.scanner, ["scan", ROOTPATH_BAD])
-    assert res.exit_code != 0
+        swh scanner scan /some-path
 
-
-def test_config_path_envvar_good(cli_runner, m_scanner, spy_configopen):
-    """Test no option good envvar bad default good root"""
-    cli_runner.env["SWH_CONFIG_FILE"] = CONFIG_PATH_GOOD
-    res = cli_runner.invoke(cli.scanner, ["scan", ROOTPATH_GOOD])
-    assert res.exit_code == 0
-    assert spy_configopen.call_args == call(CONFIG_PATH_GOOD)
-    assert m_scanner.scan.call_count == 1
-
-
-def test_config_path_envvar_bad(cli_runner, tmp_path):
-    """Test no option bad envvar bad default good root"""
-    CONFPATH_BAD = str(tmp_path / "missing")
-    cli_runner.env["SWH_CONFIG_FILE"] = CONFPATH_BAD
-    res = cli_runner.invoke(cli.scanner, ["scan", ROOTPATH_GOOD])
-    assert res.exit_code != 0
-
-
-def test_config_path_option_envvar(cli_runner, m_scanner, spy_configopen):
-    """Test good option good envvar bad default good root
-    Check that option has precedence over envvar"""
-    cli_runner.env["SWH_CONFIG_FILE"] = CONFIG_PATH_GOOD2
+    """
     res = cli_runner.invoke(
-        cli.scanner, ["-C", CONFIG_PATH_GOOD, "scan", ROOTPATH_GOOD]
+        cli.scanner,
+        ["scan", scan_paths["known"]],
     )
+    positional, named = m_scanner.scan.call_args
     assert res.exit_code == 0
-    assert spy_configopen.call_args == call(CONFIG_PATH_GOOD)
-    assert m_scanner.scan.call_count == 1
+    assert positional[0] == DEFAULT_TEST_CONFIG
+    assert spy_configopen.call_args is None
+    oidc_fail.assert_called_once()
+    m_scanner.scan.assert_called_once()
 
 
-def test_api_url_option(cli_runner, m_scanner):
-    """Test no config good root good url"""
+def test_scan_config_with_configuration_file_set_by_env_success(
+    monkeypatch,
+    cli_runner,
+    datadir,
+    default_test_config_path,
+    scan_paths,
+    m_scanner,
+    oidc_success,
+    spy_configopen,
+):
+    """Ensure scanner configuration when global configuration file exists and
+    is set by env (SWH_CONFIG_FILENAME)
+
+        export SWH_CONFIG_FILENAME=~/.config/swh/global.yml
+        swh scanner scan /some-path
+
+    """
+    # Put valid configuration in default global configuration file
+    shutil.copyfile(Path(datadir) / "global.yml", default_test_config_path)
+
+    # Set env SWH_CONFIG_FILENAME
+    monkeypatch.setenv("SWH_CONFIG_FILENAME", str(default_test_config_path))
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        ["scan", scan_paths["known"]],
+    )
+    positional, named = m_scanner.scan.call_args
+
+    assert res.exit_code == 0
+    assert positional[0] == EXPECTED_TEST_CONFIG
+    assert spy_configopen.call_args == call(str(default_test_config_path))
+    oidc_success.assert_called_once()
+    m_scanner.scan.assert_called_once()
+
+
+def test_scan_config_with_unexisting_configuration_file_set_by_env_fail(
+    monkeypatch,
+    cli_runner,
+    tmp_path,
+    scan_paths,
+    m_scanner,
+    oidc_fail,
+):
+    """Ensure scanner configuration fail when SWH_CONFIG_FILENAME env is set
+    with an unexisting path
+
+        export SWH_CONFIG_FILENAME=nowhere.yml
+        swh scanner scan /some-path
+
+    """
+    unexisting_path = tmp_path / "nowhere.yml"
+    # Set env SWH_CONFIG_FILENAME
+    monkeypatch.setenv("SWH_CONFIG_FILENAME", str(unexisting_path))
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        ["scan", scan_paths["known"]],
+    )
+    assert res.exit_code != 0
+    assert res.output.startswith(f"Error: Could not open file '{unexisting_path}'")
+
+
+def test_scan_config_with_default_global_configuration_file_success(
+    cli_runner,
+    datadir,
+    default_test_config_path,
+    scan_paths,
+    m_scanner,
+    oidc_success,
+    spy_configopen,
+):
+    """Ensure scanner configuration when a valid global configuration file
+    exists
+
+        swh scanner scan /some-path
+
+    """
+    # Put valid configuration in default global configuration file
+    shutil.copyfile(Path(datadir) / "global.yml", default_test_config_path)
+    res = cli_runner.invoke(
+        cli.scanner,
+        ["scan", scan_paths["known"]],
+    )
+
+    positional, named = m_scanner.scan.call_args
+
+    assert res.exit_code == 0
+    assert positional[0] == EXPECTED_TEST_CONFIG
+    assert spy_configopen.call_args == call(str(default_test_config_path))
+    oidc_success.assert_called_once()
+    m_scanner.scan.assert_called_once()
+
+
+def test_scan_config_with_option_configuration_file_success(
+    cli_runner,
+    tmp_path,
+    datadir,
+    default_test_config_path,
+    scan_paths,
+    m_scanner,
+    oidc_success,
+    spy_configopen,
+):
+    """Ensure scanner configuration when config_file option is set to an existing
+    and valid configuration file
+
+        swh scanner --config-file my_config.yml scan /some-path
+
+    """
+    config_file = str(tmp_path / "my_config.yml")
+    shutil.copyfile(Path(datadir) / "global.yml", config_file)
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        ["--config-file", config_file, "scan", scan_paths["known"]],
+    )
+
+    positional, named = m_scanner.scan.call_args
+
+    assert res.exit_code == 0
+    assert positional[0] == EXPECTED_TEST_CONFIG
+    assert spy_configopen.call_args == call(config_file)
+    oidc_success.assert_called_once()
+    m_scanner.scan.assert_called_once()
+
+
+def test_scan_config_with_option_configuration_file_error(
+    cli_runner,
+    tmp_path,
+    datadir,
+    default_test_config_path,
+    scan_paths,
+    oidc_fail,
+    spy_configopen,
+):
+    """Ensure scanner raise when config_file option is set to an unexisting
+    one
+
+        swh scanner --config-file nowhere.yml scan /some-path
+
+    """
+    # unexisting file
+    unexisting_path = str(tmp_path / "nowhere.yml")
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        ["--config-file", unexisting_path, "scan", scan_paths["known"]],
+    )
+
+    assert res.exit_code != 0
+    assert spy_configopen.call_args is None
+    assert res.output.startswith(f"Error: Could not open file '{unexisting_path}'")
+
+
+def test_scan_api_url_option_success(cli_runner, oidc_fail, m_scanner, scan_paths):
+    """Test no config good root good url
+
+    swh scanner scan --api-url https://example.com/api/1 scan /some-path
+
+    """
     API_URL = "https://example.com/api/1"  # without trailing "/"
-    res = cli_runner.invoke(cli.scanner, ["scan", ROOTPATH_GOOD, "-u", API_URL])
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        ["scan", scan_paths["known"], "-u", API_URL],
+    )
+
+    positional, named = m_scanner.scan.call_args
+
     assert res.exit_code == 0
-    assert m_scanner.scan.call_count == 1
+    assert m_scanner.scan.called_once()
+    assert positional[0]["web-api"]["url"] == API_URL
 
 
-def test_db_option(cli_runner, swhids_input_file, tmp_path):
+def test_smoke_db(cli_runner, oidc_fail):
+    """Scanner db
+    command
+
+        swh scanner db --help
+
+    """
+    res = cli_runner.invoke(cli.scanner, ["db", "--help"])
+
+    assert res.exit_code == 0
+    assert res.output.startswith("Usage: scanner db [OPTIONS] COMMAND [ARGS]")
+
+
+def test_db_option(cli_runner, oidc_fail, swhids_input_file, tmp_path):
     res = cli_runner.invoke(
         cli.scanner,
         [
@@ -221,3 +498,84 @@ def test_global_excluded_patterns(cli_runner, live_server, datadir, mocker):
         "global.yml",
         "global2.yml",
     }
+
+
+def test_smoke_login(cli_runner, oidc_fail):
+    """Scanner login
+    command
+
+        swh scanner login --help
+
+    """
+    res = cli_runner.invoke(cli.scanner, ["login", "--help"])
+
+    assert res.exit_code == 0
+    assert res.output.startswith("Usage: scanner login [OPTIONS]")
+
+
+def test_login_default_success(mocker, cli_runner, user_credentials, oidc_success):
+    """Login command forward to swh auth config command
+    Test only command options forwarding here
+
+        swh scanner login
+
+    """
+    mock_getpass = mocker.patch("getpass.getpass")
+    mock_getpass.return_value = user_credentials["password"]
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        [
+            "login",
+        ],
+        input=f"{user_credentials['username']}\nno\n",
+    )
+    assert res.exit_code == 0
+    assert (
+        f"Token verification success for username {user_credentials['username']}"
+        in res.output
+    )
+
+
+def test_login_option_username_success(
+    mocker, cli_runner, user_credentials, oidc_success
+):
+    """Test login command with username
+    option
+
+        swh scanner login --username foo
+
+    """
+    mock_getpass = mocker.patch("getpass.getpass")
+    mock_getpass.return_value = user_credentials["password"]
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        ["login", "--username", user_credentials["username"]],
+        input="no\n",
+    )
+    assert res.exit_code == 0
+    assert (
+        f"Token verification success for username {user_credentials['username']}"
+        in res.output
+    )
+
+
+def test_login_option_token_success(mocker, cli_runner, user_credentials, oidc_success):
+    """Test login command with token
+    option
+
+        swh scanner login --token xxx-token-xxx
+
+    """
+    res = cli_runner.invoke(
+        cli.scanner,
+        ["login", "--token", "xxx-token-xxx"],
+        input="verify\nno\n",
+    )
+
+    assert res.exit_code == 0
+    assert (
+        f"Token verification success for username {user_credentials['username']}"
+        in res.output
+    )

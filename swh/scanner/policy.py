@@ -5,7 +5,7 @@
 
 import abc
 import itertools
-from typing import Iterable, List, no_type_check
+from typing import Any, Callable, Iterable, List, Optional, no_type_check
 
 from swh.model import discovery, from_disk
 from swh.model.from_disk import model
@@ -27,14 +27,25 @@ class Policy(metaclass=abc.ABCMeta):
     source_tree: from_disk.Directory
     """representation of a source code project directory in the merkle tree"""
 
-    def __init__(self, source_tree: from_disk.Directory, data: MerkleNodeInfo):
+    def __init__(
+        self,
+        source_tree: from_disk.Directory,
+        data: MerkleNodeInfo,
+        has_info_callback: Optional[Callable[[Any], None]] = None,
+    ):
         self.source_tree = source_tree
         self.data = data
+        self._has_info_callback = has_info_callback
 
     @abc.abstractmethod
     def run(self, client: WebAPIClient):
         """Scan a source code project"""
         raise NotImplementedError("Must implement run method")
+
+    def _set_info(self, obj, known):
+        self.data[obj.swhid()]["known"] = known
+        if self._has_info_callback is not None:
+            self._has_info_callback(obj)
 
 
 class WebAPIConnection(discovery.ArchiveDiscoveryInterface):
@@ -106,8 +117,12 @@ class RandomDirSamplingPriority(Policy):
         # *actually* be a random directory sampling policy, but any change away
         # from under us in `filter_known_objects` should trigger a test failure.
         connection = WebAPIConnection(contents, skipped_contents, directories, client)
-        get_unknowns = discovery.filter_known_objects(connection)
+        get_unknowns = discovery.filter_known_objects(
+            connection,
+            update_info_callback=self._set_info,
+        )
         unknowns = set(itertools.chain(*get_unknowns))
 
+        # double check the result
         for obj in itertools.chain(contents, skipped_contents, directories):
-            self.data[obj.swhid()]["known"] = obj not in unknowns
+            assert self.data[obj.swhid()]["known"] == (obj not in unknowns)

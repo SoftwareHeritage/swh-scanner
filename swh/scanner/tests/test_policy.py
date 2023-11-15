@@ -26,6 +26,15 @@ def get_backend_known_requests(tmp_accesses):
     return [int(call.strip()) for call in calls]
 
 
+def _setup_base(source_tree):
+    api_url = url_for("index", _external=True)
+    client = WebAPIClient(api_url)
+    nodes_data = MerkleNodeInfo()
+    init_merkle_node_info(source_tree, nodes_data, {"known"})
+
+    return client, nodes_data
+
+
 def test_randomdir_policy(
     live_server,
     big_source_tree,
@@ -40,12 +49,10 @@ def test_randomdir_policy(
 
     open(tmp_requests, "w").close()
     open(tmp_accesses, "w").close()
-    api_url = url_for("index", _external=True)
 
-    nodes_data = MerkleNodeInfo()
-    init_merkle_node_info(big_source_tree, nodes_data, {"known"})
+    client, nodes_data = _setup_base(big_source_tree)
+
     policy = RandomDirSamplingPriority(big_source_tree, nodes_data)
-    client = WebAPIClient(api_url)
     policy.run(client)
 
     backend_swhids_requests = get_backend_swhids_order(tmp_requests)
@@ -62,15 +69,22 @@ def test_randomdir_policy(
     backend_known_requests = get_backend_known_requests(tmp_accesses)
     assert [1000] == backend_known_requests
 
+
+def test_randomdir_policy_small_request(
+    live_server,
+    big_source_tree,
+    tmp_requests,
+    tmp_accesses,
+    mocker,
+):
+
     # Test with smaller sample sizes to actually trigger the random sampling
     open(tmp_requests, "w").close()
     open(tmp_accesses, "w").close()
     mocker.patch("swh.scanner.policy.discovery.SAMPLE_SIZE", 10)
+    client, nodes_data = _setup_base(big_source_tree)
 
-    nodes_data = MerkleNodeInfo()
-    init_merkle_node_info(big_source_tree, nodes_data, {"known"})
     policy = RandomDirSamplingPriority(big_source_tree, nodes_data)
-    client = WebAPIClient(api_url)
     policy.run(client)
 
     assert all(v["known"] is True for k, v in policy.data.items())
@@ -79,3 +93,33 @@ def test_randomdir_policy(
     backend_known_requests = get_backend_known_requests(tmp_accesses)
     assert len(backend_known_requests) >= 2
     assert all(length <= 10 for length in backend_known_requests)
+
+
+def test_randomdir_policy_info_callback(
+    live_server,
+    big_source_tree,
+    tmp_requests,
+    tmp_accesses,
+    mocker,
+):
+
+    # Test with smaller sample sizes to actually trigger the random sampling
+    open(tmp_requests, "w").close()
+    open(tmp_accesses, "w").close()
+    client, nodes_data = _setup_base(big_source_tree)
+
+    # set to gather all the item that got a callback ping
+    updated = set()
+
+    def gather(obj):
+        updated.add(obj.swhid())
+
+    policy = RandomDirSamplingPriority(
+        big_source_tree,
+        nodes_data,
+        has_info_callback=gather,
+    )
+    policy.run(client)
+
+    assert all(v["known"] is True for k, v in policy.data.items())
+    assert updated == set(policy.data.keys())

@@ -1,7 +1,6 @@
 .. _swh-scanner:
 
-Software Heritage - Code Scanner
-================================
+.. include:: README.rst
 
 Source code scanner using the
 `Software Heritage <https://www.softwareheritage.org/>`_

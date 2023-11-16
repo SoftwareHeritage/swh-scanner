@@ -1,0 +1,6 @@
+Software Heritage - Code Scanner
+================================
+
+Source code scanner to analyze code bases and compare them with source code
+artifacts archived by Software Heritage.
+

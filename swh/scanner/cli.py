@@ -98,7 +98,6 @@ def check_auth(config):
 )
 @click.pass_context
 def scanner(ctx, config_file: Optional[str]):
-
     env_config_path = os.environ.get(CONFIG_ENVVAR)
 
     # read_raw_config do not fail if file does not exist, so check it beforehand

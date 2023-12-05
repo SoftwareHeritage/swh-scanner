@@ -178,7 +178,7 @@ class JsonOuput(BaseOutput):
         print(json.dumps(self.data_as_json(), indent=4, sort_keys=True))
 
 
-@_register("nbjson")
+@_register("ndjson")
 class NDJsonTextOuput(JsonOuput):
     """display the scan result in newline-delimited json"""
 

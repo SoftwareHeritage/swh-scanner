@@ -35,7 +35,8 @@ DEFAULT_SCANNER_CONFIG: Dict[str, Any] = {
     "scanner": {
         "server": {
             "port": BACKEND_DEFAULT_PORT,
-        }
+        },
+        "exclude": [],
     }
 }
 
@@ -133,7 +134,6 @@ def check_auth(ctx):
 )
 @click.pass_context
 def scanner(ctx, config_file: Optional[str]):
-
     from swh.auth.cli import auth
 
     ctx.ensure_object(dict)
@@ -237,11 +237,22 @@ def scan(ctx, root_path, api_url, patterns, out_fmt, interactive, extra_info):
     --extra-info option:\n
     \b
       origin: search the origin url of each source code files/dirs using the in-memory
-      compressed graph."""
+      compressed graph.
+
+    Global exclusion patterns can be set with the repeatable -x/--exclude option:\n
+    \b
+      pattern: glob pattern (e.g., ``*.git`` to exclude all .git directories)
+    """
     import swh.scanner.scanner as scanner
 
-    assert "url" in ctx.obj["config"]["web-api"]
     # override config with command parameters if provided
+    assert "exclude" in ctx.obj["config"]["scanner"]
+    if patterns is not None:
+        ctx.obj["config"]["scanner"]["exclude"].extend(patterns)
+
+    patterns = ctx.obj["config"]["scanner"]["exclude"]
+
+    assert "url" in ctx.obj["config"]["web-api"]
     if api_url is not None:
         ctx.obj["config"]["web-api"]["url"] = api_url
 

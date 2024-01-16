@@ -3,8 +3,8 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import json
 from dataclasses import dataclass
+import json
 import os
 from pathlib import Path
 import shutil
@@ -14,6 +14,7 @@ from click.exceptions import FileError
 from click.testing import CliRunner
 from flask import url_for
 import pytest
+import yaml
 
 from swh.auth.keycloak import KeycloakError
 from swh.core import config as config_mod
@@ -33,7 +34,8 @@ DEFAULT_TEST_CONFIG = {
     "scanner": {
         "server": {
             "port": 9001,
-        }
+        },
+        "exclude": [],
     },
 }
 
@@ -136,7 +138,6 @@ class FakeOidcClient:
 
 def fake_invoke_auth(oidc_success):
     def fake_invoke_auth_inner(ctx, auth, config_file):
-
         if config_mod.config_path(config_file) is None:
             source = ctx.get_parameter_source("config_file") or None
             if source and source.name != "DEFAULT":
@@ -498,6 +499,44 @@ def test_global_excluded_patterns(cli_runner, live_server, datadir, mocker):
         "global.yml",
         "global2.yml",
     }
+
+
+def test_global_excluded_patterns_from_default_config_file(
+    cli_runner, live_server, datadir, mocker, default_test_config_path
+):
+    # Put valid configuration in default global configuration file
+    shutil.copyfile(Path(datadir) / "global.yml", default_test_config_path)
+
+    api_url = url_for("index", _external=True)
+
+    res = cli_runner.invoke(
+        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+    )
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+
+    # No filtering gives all results back
+    assert output.keys() == {
+        ".",
+        "global.yml",
+        "global2.yml",
+        "sample-folder-policy.tgz",
+        "sample-folder.tgz",
+    }
+
+    cfg = yaml.safe_load(default_test_config_path.read_text())
+    # Add exclusion patterns to configuration file
+    cfg["scanner"]["exclude"] = ["*.ci", "global.yml", "*policy.tgz"]
+    default_test_config_path.write_text(yaml.safe_dump(cfg))
+
+    res = cli_runner.invoke(
+        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+    )
+
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+    # Filtering via common exclude patterns works
+    assert output.keys() == {".", "global2.yml", "sample-folder.tgz"}
 
 
 def test_smoke_login(cli_runner, oidc_fail):

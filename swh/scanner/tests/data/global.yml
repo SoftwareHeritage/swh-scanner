@@ -3,6 +3,7 @@ web-api:
 scanner:
   server:
     port: 9001
+  exclude: []
 keycloak:
   client_id: client-test
   realm_name: realm-test

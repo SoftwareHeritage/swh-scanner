@@ -539,6 +539,47 @@ def test_global_excluded_patterns_from_default_config_file(
     assert output.keys() == {".", "global2.yml", "sample-folder.tgz"}
 
 
+def test_disable_global_excluded_patterns_arg(cli_runner, live_server, datadir, mocker):
+    api_url = url_for("index", _external=True)
+
+    # Add a file and directory that common exclusion patterns should ignore
+    x_file = Path(datadir) / "test.x_file"
+    x_file.touch()
+    x_dir = Path(datadir) / "x_dir"
+    x_dir.mkdir(parents=True, exist_ok=True)
+
+    mocker.patch("swh.scanner.scanner.COMMON_EXCLUDE_PATTERNS", [b"*.x_file", b"x_dir"])
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        [
+            "scan",
+            "--disable-global-patterns",
+            "--output-format",
+            "json",
+            datadir,
+            "-u",
+            api_url,
+        ],
+    )
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+
+    # No filtering gives all results back + the non ignored ones
+    assert output.keys() == {
+        ".",
+        "global.yml",
+        "global2.yml",
+        "sample-folder-policy.tgz",
+        "sample-folder.tgz",
+        "test.x_file",
+        "x_dir",
+    }
+    # Cleanup
+    x_file.unlink()
+    x_dir.rmdir()
+
+
 def test_smoke_login(cli_runner, oidc_fail):
     """Scanner login
     command

@@ -3,11 +3,10 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import os
-
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
 import logging
+import os
 from typing import Any, Dict, Optional
 
 import click
@@ -222,6 +221,12 @@ def login(ctx, username: str, token: str):
     type=bool,
     help="show debug information about the http request",
 )
+@click.option(
+    "--disable-global-patterns",
+    "disable_global_patterns",
+    is_flag=True,
+    help="Disable common and global exclusion patterns.",
+)
 @click.pass_context
 def scan(
     ctx,
@@ -232,6 +237,7 @@ def scan(
     interactive,
     extra_info,
     debug_http,
+    disable_global_patterns,
 ):
     """Scan a source code project to discover files and directories already
     present in the archive.
@@ -255,14 +261,21 @@ def scan(
       origin: search the origin url of each source code files/dirs using the in-memory
       compressed graph.
 
-    Global exclusion patterns can be set with the repeatable -x/--exclude option:\n
+    Exclusion patterns can be set with the repeatable -x/--exclude option:\n
     \b
       pattern: glob pattern (e.g., ``*.git`` to exclude all .git directories)
+
+    Common default exclusion patterns and exclusion patterns defined in your global
+    SWH configuration file can be disabled using the --disable-global-patterns option.\n
     """
     import swh.scanner.scanner as scanner
 
     # override config with command parameters if provided
     assert "exclude" in ctx.obj["config"]["scanner"]
+
+    if disable_global_patterns:
+        ctx.obj["config"]["scanner"]["exclude"] = []
+
     if patterns is not None:
         ctx.obj["config"]["scanner"]["exclude"].extend(patterns)
 
@@ -284,7 +297,13 @@ def scan(
 
     extra_info = set(extra_info)
     scanner.scan(
-        ctx.obj["config"], root_path, patterns, out_fmt, interactive, extra_info
+        ctx.obj["config"],
+        root_path,
+        patterns,
+        out_fmt,
+        interactive,
+        extra_info,
+        disable_global_patterns,
     )
 
 

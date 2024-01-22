@@ -3,7 +3,7 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, List
 
 from swh.model.cli import model_of_dir
 from swh.model.from_disk import Directory
@@ -53,11 +53,7 @@ def run(
             raise Exception(f"The information '{info}' cannot be retrieved")
 
 
-# here is a set of directory we should disregard
-#
-# TODO: make its usage configurable
-# TODO: make it extensible through configuration
-COMMON_EXCLUDE_PATTERNS = [
+COMMON_EXCLUDE_PATTERNS: List[bytes] = [
     b".bzr",
     b".coverage",
     b"*.egg-info",
@@ -79,11 +75,13 @@ def scan(
     out_fmt: str,
     interactive: bool,
     extra_info: set,
+    disable_global_patterns: bool,
 ):
     """Scan a source code project to discover files and directories already
     present in the archive"""
     converted_patterns = [pattern.encode() for pattern in exclude_patterns]
-    converted_patterns.extend(COMMON_EXCLUDE_PATTERNS)
+    if not disable_global_patterns:
+        converted_patterns.extend(COMMON_EXCLUDE_PATTERNS)
     vcs_ignore_patterns = get_vcs_ignore_patterns()
     converted_patterns.extend(vcs_ignore_patterns)
     source_tree = model_of_dir(root_path.encode(), converted_patterns)

@@ -64,6 +64,14 @@ def scan_paths(tmp_path):
     return scan_paths
 
 
+@pytest.fixture
+def tmp_data(tmp_path, datadir):
+    """Copy the tests/data directory to a temporary one
+    for further manipulation purpose"""
+    root_path = tmp_path / "data"
+    return shutil.copytree(datadir, root_path)
+
+
 @pytest.fixture()
 def swhids_input_file(tmp_path):
     swhids_input_file = Path(os.path.join(tmp_path, "input_file.txt"))
@@ -126,6 +134,13 @@ def exclude_templates(tmp_path, mocker):
     scanner_mock.side_effect = [templates]
 
     return templates
+
+
+@pytest.fixture()
+def per_project_test_config_path(tmp_path):
+    # Set per project config file path to a temp directory
+    per_project_cfg_file = tmp_path / "swh.scanner.project.yml"
+    return per_project_cfg_file
 
 
 @pytest.fixture()
@@ -630,13 +645,15 @@ def test_global_excluded_patterns_from_default_config_file(
     assert output.keys() == {".", "global2.yml", "sample-folder.tgz"}
 
 
-def test_disable_global_excluded_patterns_arg(cli_runner, live_server, datadir, mocker):
+def test_disable_global_excluded_patterns_arg(
+    cli_runner, live_server, mocker, tmp_data
+):
     api_url = url_for("index", _external=True)
 
     # Add a file and directory that common exclusion patterns should ignore
-    x_file = Path(datadir) / "test.x_file"
+    x_file = tmp_data / "test.x_file"
     x_file.touch()
-    x_dir = Path(datadir) / "x_dir"
+    x_dir = tmp_data / "x_dir"
     x_dir.mkdir(parents=True, exist_ok=True)
 
     mocker.patch("swh.scanner.scanner.COMMON_EXCLUDE_PATTERNS", [b"*.x_file", b"x_dir"])
@@ -648,7 +665,7 @@ def test_disable_global_excluded_patterns_arg(cli_runner, live_server, datadir, 
             "--disable-global-patterns",
             "--output-format",
             "json",
-            datadir,
+            str(tmp_data),
             "-u",
             api_url,
         ],
@@ -666,9 +683,78 @@ def test_disable_global_excluded_patterns_arg(cli_runner, live_server, datadir, 
         "test.x_file",
         "x_dir",
     }
-    # Cleanup
-    x_file.unlink()
-    x_dir.rmdir()
+
+
+def test_excluded_per_project_configuration_file_option(
+    cli_runner,
+    live_server,
+    datadir,
+    mocker,
+    default_test_config_path,
+    per_project_test_config_path,
+):
+    api_url = url_for("index", _external=True)
+    project_cfg = {"scanner": {"exclude": ["*.tgz"]}}
+    per_project_test_config_path.write_text(yaml.safe_dump(project_cfg))
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        [
+            "scan",
+            "--output-format",
+            "json",
+            datadir,
+            "-u",
+            api_url,
+            "--project-config-file",
+            str(per_project_test_config_path),
+        ],
+    )
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+
+    # The .tgz files has been excluded from project configuration file
+    assert output.keys() == {
+        ".",
+        "global.yml",
+        "global2.yml",
+    }
+
+
+def test_excluded_per_project_configuration_file_default_path(
+    cli_runner,
+    live_server,
+    tmp_data,
+    mocker,
+    default_test_config_path,
+):
+    api_url = url_for("index", _external=True)
+    per_project_cfg_file_default_path = tmp_data / "swh.scanner.project.yml"
+    per_project_cfg_file_default_path.touch()
+
+    project_cfg = {"scanner": {"exclude": ["*.tgz"]}}
+    per_project_cfg_file_default_path.write_text(yaml.safe_dump(project_cfg))
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        [
+            "scan",
+            "--output-format",
+            "json",
+            str(tmp_data),
+            "-u",
+            api_url,
+        ],
+    )
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+
+    # The .tgz files has been excluded from project configuration file
+    assert output.keys() == {
+        ".",
+        "global.yml",
+        "global2.yml",
+    }
 
 
 def test_exclude_template_arg_fail(cli_runner, live_server, datadir):

@@ -267,6 +267,13 @@ def login(ctx, username: str, token: str):
     is_flag=True,
     help="Disable vcs ignore detection for exclusion patterns",
 )
+@click.option(
+    "-c",
+    "--project-config-file",
+    type=click.Path(dir_okay=False, path_type=str),
+    help="Project Configuration file path.",
+    show_default=False,
+)
 @click.pass_context
 def scan(
     ctx,
@@ -280,6 +287,7 @@ def scan(
     debug_http,
     disable_global_patterns,
     disable_vcs_patterns,
+    project_config_file: Optional[str],
 ):
     """Scan a source code project to discover files and directories already
     present in the archive.
@@ -313,6 +321,8 @@ def scan(
     Version control system ignore files detection for exclusion (e.g. .gitignore,
     .hgignore, svn ignore file) can be disabled using the --disable-vcs-patterns option. \n
     """
+    from pathlib import Path
+
     import swh.scanner.scanner as scanner
 
     # override config with command parameters if provided
@@ -333,6 +343,19 @@ def scan(
 
     if patterns is not None:
         ctx.obj["config"]["scanner"]["exclude"].extend(patterns)
+
+    if project_config_file:
+        project_cfg_path = Path(project_config_file)
+    else:
+        project_cfg_path = Path(root_path) / "swh.scanner.project.yml"
+
+    if project_cfg_path.exists():
+        ctx.obj["config"] = config.merge_configs(
+            ctx.obj["config"], config.read_raw_config(str(project_cfg_path))
+        )
+        # Exclude from scan the per project configuration file if it is within root path
+        if str(project_cfg_path.parent) in str(root_path):
+            ctx.obj["config"]["scanner"]["exclude"].extend([str(project_cfg_path)])
 
     patterns = ctx.obj["config"]["scanner"]["exclude"]
 

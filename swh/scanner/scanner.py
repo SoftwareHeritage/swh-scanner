@@ -76,14 +76,16 @@ def scan(
     interactive: bool,
     extra_info: set,
     disable_global_patterns: bool,
+    disable_vcs_patterns: bool,
 ):
     """Scan a source code project to discover files and directories already
     present in the archive"""
     converted_patterns = [pattern.encode() for pattern in exclude_patterns]
     if not disable_global_patterns:
         converted_patterns.extend(COMMON_EXCLUDE_PATTERNS)
-    vcs_ignore_patterns = get_vcs_ignore_patterns()
-    converted_patterns.extend(vcs_ignore_patterns)
+    if not disable_vcs_patterns:
+        vcs_ignore_patterns = get_vcs_ignore_patterns()
+        converted_patterns.extend(vcs_ignore_patterns)
     source_tree = model_of_dir(root_path.encode(), converted_patterns)
 
     nodes_data = MerkleNodeInfo()

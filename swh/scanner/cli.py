@@ -227,6 +227,12 @@ def login(ctx, username: str, token: str):
     is_flag=True,
     help="Disable common and global exclusion patterns.",
 )
+@click.option(
+    "--disable-vcs-patterns",
+    "disable_vcs_patterns",
+    is_flag=True,
+    help="Disable vcs ignore detection for exclusion patterns",
+)
 @click.pass_context
 def scan(
     ctx,
@@ -238,6 +244,7 @@ def scan(
     extra_info,
     debug_http,
     disable_global_patterns,
+    disable_vcs_patterns,
 ):
     """Scan a source code project to discover files and directories already
     present in the archive.
@@ -267,6 +274,9 @@ def scan(
 
     Common default exclusion patterns and exclusion patterns defined in your global
     SWH configuration file can be disabled using the --disable-global-patterns option.\n
+
+    Version control system ignore files detection for exclusion (e.g. .gitignore,
+    .hgignore, svn ignore file) can be disabled using the --disable-vcs-patterns option. \n
     """
     import swh.scanner.scanner as scanner
 
@@ -304,6 +314,7 @@ def scan(
         interactive,
         extra_info,
         disable_global_patterns,
+        disable_vcs_patterns,
     )
 
 

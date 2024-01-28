@@ -3,14 +3,15 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+from collections import deque
 import logging
 from pathlib import Path
 import subprocess
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union, cast
 from xml.etree import ElementTree
 
 from swh.model.exceptions import ValidationError
-from swh.model.from_disk import Directory
+from swh.model.from_disk import Content, Directory
 from swh.model.swhids import CoreSWHID
 from swh.web.client.client import WebAPIClient
 
@@ -52,6 +53,9 @@ def init_merkle_node_info(source_tree: Directory, data: MerkleNodeInfo, info: se
         data[node.swhid()] = nodes_info.copy()  # type: ignore
 
 
+_IN_MEM_NODE = Union[Directory, Content]
+
+
 def add_origin(
     source_tree: Directory,
     data: MerkleNodeInfo,
@@ -60,22 +64,29 @@ def add_origin(
     """Store origin information about software artifacts retrieved from the Software
     Heritage graph service.
     """
-    queue = []
-    queue.append(source_tree)
+    seen: set[_IN_MEM_NODE] = set()
+    queue: deque[_IN_MEM_NODE] = deque([source_tree])
     while queue:
-        for node in queue.copy():
-            queue.remove(node)
-            node_ori = client.get_origin(node.swhid())
-            if node_ori:
-                data[node.swhid()]["origin"] = node_ori
-                if node.object_type == "directory":
-                    for sub_node in node.iter_tree():
-                        data[sub_node.swhid()]["origin"] = node_ori  # type: ignore
-            else:
-                if node.object_type == "directory":
-                    children = [sub_node for sub_node in node.iter_tree()]
-                    children.remove(node)
-                    queue.extend(children)  # type: ignore
+        node = queue.popleft()
+        if node in seen:
+            continue
+        seen.add(node)
+        node_ori = client.get_origin(node.swhid())
+        if node_ori:
+            data[node.swhid()]["origin"] = node_ori
+            if node.object_type == "directory":
+                for sub_node in node.iter_tree():
+                    # XXX swh.model probably need to improve so that we don't
+                    # have to deal with this here.
+                    sub_node = cast(_IN_MEM_NODE, sub_node)
+                    if sub_node in seen:
+                        continue
+                    seen.add(sub_node)
+                    data[sub_node.swhid()]["origin"] = node_ori
+        else:
+            if node.object_type == "directory":
+                # add children to the queue.
+                queue.extend(node.values())
 
 
 def get_directory_data(

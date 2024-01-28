@@ -14,10 +14,33 @@ correct_known_client_api_response = {
     CoreSWHID.from_string(k): v for (k, v) in correct_known_web_api_response.items()
 }
 
-correct_origin_api_response = "https://bitbucket.org/chubbymaggie/bindead.git"
 
-sample_folder_root_swhid = "swh:1:dir:0a7b61ef5780b03aa274d11069564980246445ce"
-fake_origin = {sample_folder_root_swhid: correct_origin_api_response}
+sample_A_folder_root_swhid = "swh:1:dir:0a7b61ef5780b03aa274d11069564980246445ce"
+sample_A_release_swhid = "swh:1:rel:0b3a2a741d10607ab16ef75809564980246445ce"
+sample_A_revision_swhid = "swh:1:rev:10607ab16ef75809560b3a2a741d4980246445ce"
+sample_A_origin = "https://bitbucket.org/chubbymaggie/bindead.git"
+
+sample_B_content_swhid = "swh:1:cnt:68769579c3eaadbe555379b9c3538e6628bae1eb"
+sample_B_revision_swhid = "swh:1:rev:10607ab1741d46ef75809560b3a2a980246445ce"
+sample_B_origin = "https://github.com/babar/celeste.git"
+
+fake_origin = {
+    sample_A_folder_root_swhid: sample_A_origin,
+    sample_A_release_swhid: sample_A_origin,
+    sample_A_revision_swhid: sample_A_origin,
+    sample_B_content_swhid: sample_B_origin,
+    sample_B_revision_swhid: sample_B_origin,
+}
+
+fake_release = {
+    sample_A_folder_root_swhid: sample_A_release_swhid,
+}
+
+fake_revision = {
+    sample_A_folder_root_swhid: sample_A_revision_swhid,
+    sample_A_release_swhid: sample_A_revision_swhid,
+    sample_B_content_swhid: sample_B_revision_swhid,
+}
 
 present_swhids = [
     "swh:1:cnt:7c4c57ba9ff496ad179b8f65b1d286edbda34c9a",  # quotes.md

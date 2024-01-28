@@ -13,6 +13,7 @@ from typing import Any
 import ndjson
 
 from swh.model.from_disk import Directory
+from swh.model.swhids import CoreSWHID, ExtendedSWHID, QualifiedSWHID
 
 from .dashboard.dashboard import run_app
 from .data import MerkleNodeInfo, get_directory_data
@@ -158,6 +159,14 @@ class TextOuput(BaseOutput):
         print(f"{begin}{rel_path}{end}")
 
 
+class SWHIDEncoder(json.JSONEncoder):
+    def default(self, value):
+        if isinstance(value, (CoreSWHID, ExtendedSWHID, QualifiedSWHID)):
+            return str(value)
+        else:
+            return super().default(value)
+
+
 @_register("json")
 class JsonOuput(BaseOutput):
     """display the scan result in json"""
@@ -175,7 +184,14 @@ class JsonOuput(BaseOutput):
         return json
 
     def show(self):
-        print(json.dumps(self.data_as_json(), indent=4, sort_keys=True))
+        print(
+            json.dumps(
+                self.data_as_json(),
+                indent=4,
+                sort_keys=True,
+                cls=SWHIDEncoder,
+            )
+        )
 
 
 @_register("ndjson")

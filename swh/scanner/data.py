@@ -8,12 +8,14 @@ import logging
 from os import path
 from pathlib import Path
 import subprocess
-from typing import Callable, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 from xml.etree import ElementTree
+
+import requests
 
 from swh.model.exceptions import ValidationError
 from swh.model.from_disk import Content, Directory
-from swh.model.swhids import CoreSWHID
+from swh.model.swhids import CoreSWHID, ObjectType
 from swh.web.client.client import WebAPIClient
 
 SUPPORTED_INFO = {"known", "origin"}
@@ -54,6 +56,143 @@ def init_merkle_node_info(source_tree: Directory, data: MerkleNodeInfo, info: se
         data[node.swhid()] = nodes_info.copy()  # type: ignore
 
 
+def _get_leaf(
+    client,
+    node: str,
+    return_types: str,
+    direction="forward",
+    edges="*",
+    resolve_origins=True,
+) -> Optional[str]:
+    """internal function used by _get_provenance_info"""
+    query = (
+        f"graph/leaves/{node}/?direction={direction}"
+        f"&edges={edges}"
+        f"&return_types={return_types}"
+        f"&max_matching_nodes=1"
+    )
+    if resolve_origins:
+        query += "&resolve_origins=true"
+    try:
+        with client._call(query, http_method="get") as r:
+            value = r.text.rstrip("\n")
+    except requests.HTTPError as fail:
+        # the graph raise 404 for unknown node so we have catch 404 for now
+        # https://gitlab.softwareheritage.org/swh/devel/swh-graph/-/issues/4763
+        if fail.response.status_code not in (400, 404):
+            raise
+        return None
+    if not value:  # empty result
+        return None
+    return value
+
+
+def _get_provenance_info(client, swhid: CoreSWHID) -> Dict[str, Dict[str, Any]]:
+    """find a revision, release and origin containing this content or directory
+
+    Revision and Release might not be found, we prioritize finding a
+    Release over finding a Revision when possible.
+
+    note: The quality of the result is not guaranteed whatsoever. Since the
+    definition of "best" likely vary from one usage to the next, this API
+    will evolve in the futur when this notion get better defined.
+
+    For example, if we are looking for provenance information to detect
+    prior art. We search for the first appearance of a content. So the
+    "best answer" is the oldest content, something a bit tricky to
+    determine as we can't fully trust the date of revision. On the other
+    hand, if we try to known which library are used and at which version,
+    to detect CVE or outdated dependencies, the best answer is the most
+    recent release/revision in the authoritative origin relevant to a
+    content.  Finding the authoritative origin is a challenge in itclient.
+
+    This function exist until we have some proper provenance entry point on the
+    archive level. And will, hopefully, soon be removed.
+
+    Args
+        swhid: the SWHID of the Content or Directory to find info for
+
+    Returns:
+        {"revision": rev, "release": rev, "origin": ori)
+
+        rev: information about the revision, unset if none found
+        rel: information unset if none found
+        ori: information about the origin, unset if none found
+
+        For unknown content, an empty dict will be returned.
+
+    Raises:
+        requests.HTTPError: if HTTP request fails
+    """
+    if swhid.object_type not in (ObjectType.DIRECTORY, ObjectType.CONTENT):
+        msg = "swhid should be %r or %r as parameter, not: %r"
+        msg %= (ObjectType.DIRECTORY, ObjectType.CONTENT, swhid.object_type)
+        raise ValueError(msg)
+
+    content_or_dir = str(swhid)
+
+    # XXX: If we have a content, the provenance API could search for a rev
+    # or rel more efficiently. However it does not work for Directory and
+    # only cover some of the node, so we need the call the graph anyway.
+
+    # XXX: The graph can also lag behind the archive so it is possible that
+    # we identify a known content without being able to find an origin.
+
+    # Try to find a release first
+    top_id = release = _get_leaf(
+        client,
+        node=content_or_dir,
+        direction="backward",
+        edges="dir:dir,cnt:dir,dir:rev,rev:rel,dir:rel,cnt:rel",
+        return_types="rel",
+    )
+    if release is not None:
+        revision = _get_leaf(
+            client,
+            node=release,
+            edges="rel:rev",
+            return_types="rev",
+        )
+    else:
+        # We did not find a release,
+        # directly search for a revision instead.
+        top_id = revision = _get_leaf(
+            client,
+            node=content_or_dir,
+            direction="backward",
+            edges="dir:dir,cnt:dir,dir:rev",
+            return_types="rev",
+        )
+
+    if top_id is None:
+        # could not find anything, give up
+        return {}
+
+    # now search the associated origin
+    origin = _get_leaf(
+        client,
+        node=top_id,
+        direction="backward",
+        edges="*:snp,*:ori",
+        return_types="ori",
+    )
+
+    info: Dict[str, Dict[str, Any]] = {}
+    if revision is not None:
+        rev_info = client.get(revision, typify=False)
+        rev_info["swhid"] = CoreSWHID.from_string(revision)
+        info["revision"] = rev_info
+    if release is not None:
+        rel_info = client.get(release, typify=False)
+        rel_info["swhid"] = CoreSWHID.from_string(release)
+        info["release"] = rel_info
+    if origin is not None:
+        info["origin"] = {
+            "url": origin,
+        }
+    return info
+
+
 _IN_MEM_NODE = Union[Directory, Content]
 
 
@@ -72,9 +211,9 @@ def add_origin(
         if node in seen:
             continue
         seen.add(node)
-        node_ori = client.get_origin(node.swhid())
-        if node_ori:
-            data[node.swhid()]["origin"] = node_ori
+        info = _get_provenance_info(client, node.swhid())
+        if info:
+            data[node.swhid()].update(info)
             if node.object_type == "directory":
                 for sub_node in node.iter_tree():
                     # XXX swh.model probably need to improve so that we don't
@@ -83,7 +222,7 @@ def add_origin(
                     if sub_node in seen:
                         continue
                     seen.add(sub_node)
-                    data[sub_node.swhid()]["origin"] = node_ori
+                    data[sub_node.swhid()].update(info)
         else:
             if node.object_type == "directory":
                 # add children to the queue.

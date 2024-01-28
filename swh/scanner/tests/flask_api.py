@@ -8,7 +8,7 @@ from flask import Flask, abort, request
 from swh.scanner.exceptions import LargePayloadExc
 from swh.web.client.client import KNOWN_QUERY_LIMIT
 
-from .data import fake_origin, unknown_swhids
+from .data import fake_origin, fake_release, fake_revision, unknown_swhids
 
 
 def create_app(tmp_requests, tmp_accesses):
@@ -42,11 +42,32 @@ def create_app(tmp_requests, tmp_accesses):
 
         return res
 
-    @app.route("/graph/randomwalk/<swhid>/ori/", methods=["GET"])
-    def randomwalk(swhid):
-        if swhid in fake_origin.keys():
-            return fake_origin[swhid]
-        else:
-            abort(404)
+    @app.route("/revision/<swhid>/", methods=["GET"])
+    def dummy_revision(swhid):
+        return {}
+
+    @app.route("/release/<swhid>/", methods=["GET"])
+    def dummy_release(swhid):
+        return {}
+
+    @app.route("/graph/leaves/<swhid>/", methods=["GET"])
+    def find_leaves(swhid):
+        try:
+            target = request.args.get("return_types")
+            if target == "ori":
+                mapping = fake_origin
+            elif target == "rel":
+                mapping = fake_release
+            elif target == "rev":
+                mapping = fake_revision
+            else:
+                raise KeyError('no mapping to fake "%s" request' % target)
+            if swhid in mapping:
+                return mapping[swhid]
+            else:
+                abort(404)
+        except Exception as exc:
+            print(exc)
+            raise
 
     return app

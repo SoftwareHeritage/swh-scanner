@@ -24,7 +24,7 @@ from swh.scanner.data import (
 )
 from swh.web.client.client import WebAPIClient
 
-from .data import fake_origin
+from .data import fake_origin, fake_release, fake_revision
 
 
 def test_merkle_node_data_wrong_args():
@@ -50,14 +50,37 @@ def test_init_merkle_not_supported_node_info(source_tree):
         init_merkle_node_info(source_tree, nodes_data, {"unsupported_info"})
 
 
-def test_add_origin(live_server, source_tree, nodes_data):
+def test_add_origin_with_release(live_server, source_tree, nodes_data):
     api_url = url_for("index", _external=True)
     init_merkle_node_info(source_tree, nodes_data, {"known", "origin"})
     client = WebAPIClient(api_url)
 
     add_origin(source_tree, nodes_data, client)
+    source_tree_id = str(source_tree.swhid())
     for node, attrs in nodes_data.items():
-        assert attrs["origin"] == fake_origin[str(source_tree.swhid())]
+        assert "origin" in attrs
+        assert attrs["origin"].get("url") == fake_origin[source_tree_id]
+        assert "release" in attrs
+        assert str(attrs["release"].get("swhid")) == fake_release[source_tree_id]
+        assert "revision" in attrs
+        assert str(attrs["revision"].get("swhid")) == fake_revision[source_tree_id]
+
+
+def test_add_origin_with_revision_only(live_server, source_tree, nodes_data):
+    api_url = url_for("index", _external=True)
+    init_merkle_node_info(source_tree, nodes_data, {"known", "origin"})
+    client = WebAPIClient(api_url)
+    a_file = source_tree[b"some-binary"]
+
+    add_origin(a_file, nodes_data, client)
+    a_file_id = str(a_file.swhid())
+    print(a_file_id)
+    attrs = nodes_data[a_file.swhid()]
+    assert "origin" in attrs
+    assert attrs["origin"].get("url") == fake_origin[a_file_id]
+    assert "revision" in attrs
+    assert str(attrs["revision"].get("swhid")) == fake_revision[a_file_id]
+    assert attrs.get("release") is None
 
 
 def test_get_directory_data(source_tree, nodes_data):

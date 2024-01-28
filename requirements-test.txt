@@ -6,5 +6,5 @@ pytest-flask
 pytest-mock
 swh.core[testing-core]
 swh.model[testing]
-swh.web.client
 types-pyyaml
+types-requests

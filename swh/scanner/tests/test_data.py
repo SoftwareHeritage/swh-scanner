@@ -16,9 +16,11 @@ from swh.scanner.data import (
     add_origin,
     directory_content,
     get_directory_data,
+    get_ignore_patterns_templates,
     get_vcs_ignore_patterns,
     has_dirs,
     init_merkle_node_info,
+    parse_ignore_patterns_template,
 )
 from swh.web.client.client import WebAPIClient
 
@@ -195,3 +197,22 @@ props="none">
     assert detected_mock.call_count == 3
     assert mock.call_count == 1
     assert res == [b"myfile/with/nested/things", b"Other_File", b"file with spaces"]
+
+
+def test_get_ignore_patterns_templates():
+    templates = get_ignore_patterns_templates()
+    assert len(templates) > 0
+    assert "Rust" in templates
+    rust = templates["Rust"]
+    assert rust.exists()
+
+
+def test_parse_ignore_patterns_template(tmp_path):
+    template_path = tmp_path / "test.gitignore"
+    content = """# Test comment
+    test/
+    *.test
+    """
+    template_path.write_text(content)
+    patterns = parse_ignore_patterns_template(template_path)
+    assert patterns == [b"test/", b"*.test"]

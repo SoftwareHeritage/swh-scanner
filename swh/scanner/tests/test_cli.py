@@ -88,6 +88,47 @@ def default_test_config_path(tmp_path):
 
 
 @pytest.fixture()
+def exclude_templates(tmp_path, mocker):
+    """Monkeypatch get_ignore_patterns_templates to return a list of exclusion
+    templates from temp directory"""
+
+    test_template_path = tmp_path / "Test.gitignore"
+    content = """# Test comment
+    test/
+    *.test
+    """
+    test_template_path.write_text(content)
+
+    yaml_template_path = tmp_path / "Yaml.gitignore"
+    content = """# Yaml ignore test
+    *.yaml
+    *.yml
+    """
+    yaml_template_path.write_text(content)
+
+    tar_template_path = tmp_path / "Tar.gitignore"
+    content = """# Tar ignore test
+    *.tar
+    *.tar.gz
+    *.tgz
+    """
+    tar_template_path.write_text(content)
+
+    templates = {
+        "Test": test_template_path,
+        "Yaml": yaml_template_path,
+        "Tar": tar_template_path,
+    }
+
+    cli_mock = mocker.patch("swh.scanner.cli.get_ignore_patterns_templates")
+    cli_mock.side_effect = [templates]
+    scanner_mock = mocker.patch("swh.scanner.scanner.get_ignore_patterns_templates")
+    scanner_mock.side_effect = [templates]
+
+    return templates
+
+
+@pytest.fixture()
 def cli_runner(monkeypatch, default_test_config_path):
     """Return a Click CliRunner
 
@@ -628,6 +669,80 @@ def test_disable_global_excluded_patterns_arg(cli_runner, live_server, datadir, 
     # Cleanup
     x_file.unlink()
     x_dir.rmdir()
+
+
+def test_exclude_template_arg_fail(cli_runner, live_server, datadir):
+    api_url = url_for("index", _external=True)
+    res = cli_runner.invoke(
+        cli.scanner,
+        [
+            "scan",
+            "--exclude-template",
+            "Test",  # The Test exclusion template does not exists
+            "--output-format",
+            "json",
+            datadir,
+            "-u",
+            api_url,
+        ],
+    )
+    assert res.exit_code > 0
+    assert "Error: Unknown exclusion template 'Test'. Use one of:" in res.output
+
+
+def test_exclude_template_arg(cli_runner, live_server, datadir, exclude_templates):
+    api_url = url_for("index", _external=True)
+    res = cli_runner.invoke(
+        cli.scanner,
+        [
+            "scan",
+            "--exclude-template",
+            "Tar",
+            "--output-format",
+            "json",
+            datadir,
+            "-u",
+            api_url,
+        ],
+    )
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+
+    # *.tgz ignored
+    assert output.keys() == {
+        ".",
+        "global.yml",
+        "global2.yml",
+    }
+
+
+def test_exclude_template_multiple_arg(
+    cli_runner, live_server, datadir, exclude_templates
+):
+    api_url = url_for("index", _external=True)
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        [
+            "scan",
+            "--exclude-template",
+            "Tar",
+            "-t",
+            "Yaml",
+            "--output-format",
+            "json",
+            datadir,
+            "-u",
+            api_url,
+        ],
+    )
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+
+    # *.tgz and *.yml ignored
+    assert output.keys() == {
+        ".",
+    }
 
 
 def test_smoke_login(cli_runner, oidc_fail):

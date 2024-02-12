@@ -12,8 +12,10 @@ from swh.web.client.client import WebAPIClient
 from .data import (
     MerkleNodeInfo,
     add_origin,
+    get_ignore_patterns_templates,
     get_vcs_ignore_patterns,
     init_merkle_node_info,
+    parse_ignore_patterns_template,
 )
 from .output import get_output_class
 from .policy import RandomDirSamplingPriority
@@ -71,6 +73,7 @@ COMMON_EXCLUDE_PATTERNS.extend([b"*/" + p for p in COMMON_EXCLUDE_PATTERNS])
 def scan(
     config: Dict[str, Any],
     root_path: str,
+    exclude_templates: Iterable[str],
     exclude_patterns: Iterable[str],
     out_fmt: str,
     interactive: bool,
@@ -80,12 +83,22 @@ def scan(
 ):
     """Scan a source code project to discover files and directories already
     present in the archive"""
+
     converted_patterns = [pattern.encode() for pattern in exclude_patterns]
+
+    if exclude_templates is not None:
+        templates = get_ignore_patterns_templates()
+        for template in exclude_templates:
+            converted_patterns.extend(
+                parse_ignore_patterns_template(templates[template])
+            )
+
     if not disable_global_patterns:
         converted_patterns.extend(COMMON_EXCLUDE_PATTERNS)
     if not disable_vcs_patterns:
         vcs_ignore_patterns = get_vcs_ignore_patterns()
         converted_patterns.extend(vcs_ignore_patterns)
+
     source_tree = model_of_dir(root_path.encode(), converted_patterns)
 
     nodes_data = MerkleNodeInfo()

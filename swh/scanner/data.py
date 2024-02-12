@@ -5,6 +5,7 @@
 
 from collections import deque
 import logging
+from os import path
 from pathlib import Path
 import subprocess
 from typing import Callable, Dict, List, Optional, Tuple, Union, cast
@@ -289,3 +290,32 @@ def get_vcs_ignore_patterns(cwd: Optional[Path] = None) -> List[bytes]:
         logger.debug("No VCS found in the current working directory")
 
     return ignore_patterns
+
+
+def get_ignore_patterns_templates() -> Dict[str, Path]:
+    """Return a dict where keys are ignore templates names and value a path to the
+    ignore definition file."""
+    here = Path(path.abspath(path.dirname(__file__)))
+    gitignore_path = here / "resources" / "gitignore"
+    assert gitignore_path.exists()
+    skip = [".git", ".github"]
+    templates = {
+        item.stem: item
+        for item in gitignore_path.rglob("*.gitignore")
+        if set(item.parts).isdisjoint(skip)
+    }
+    return templates
+
+
+def parse_ignore_patterns_template(source: Path) -> List[bytes]:
+    """Given a file path to a gitignore template, return an ignore patterns list"""
+    patterns: List[bytes] = []
+    assert source.exists()
+    assert source.is_file()
+    patterns_str = source.read_text()
+    patterns_list = patterns_str.splitlines()
+    for pattern in patterns_list:
+        pattern = pattern.strip()
+        if pattern and pattern.startswith("#") is False:
+            patterns.append(pattern.encode())
+    return patterns

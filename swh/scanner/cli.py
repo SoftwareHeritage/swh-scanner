@@ -7,6 +7,7 @@
 # control
 import logging
 import os
+import textwrap
 from typing import Any, Dict, Optional
 
 import click
@@ -19,6 +20,7 @@ from swh.core.cli import CONTEXT_SETTINGS
 from swh.core.cli import swh as swh_cli_group
 from swh.core.config import SWH_GLOBAL_CONFIG
 
+from .data import get_ignore_patterns_templates
 from .exceptions import DBError
 
 # Config for the "serve" option
@@ -52,6 +54,30 @@ def get_default_config():
 def get_default_config_path():
     # Default Scanner configuration file path
     return DEFAULT_CONFIG_PATH
+
+
+def get_exclude_templates_list_repr(width=0):
+    """Format and return a list of ignore patterns templates
+    for CLI help"""
+    ignore_templates = get_ignore_patterns_templates()
+    ignore_templates_list = sorted(ignore_templates.keys())
+    ignore_templates_list_str = ", ".join(map(str, ignore_templates_list))
+    if width > 0:
+        ignore_templates_list_repr = textwrap.fill(
+            ignore_templates_list_str, width=width
+        )
+        return ignore_templates_list_repr
+    else:
+        return ignore_templates_list_str
+
+
+EXCLUDE_TEMPLATES_HELP = f"""Repeatable option to exclude files and
+directories using an exclusion template
+(e.g., ``Python`` for common exclusion patterns
+in a Python project).
+Valid values are:
+{get_exclude_templates_list_repr(40)}
+"""
 
 
 SCANNER_HELP = """Software Heritage Scanner tools
@@ -185,10 +211,18 @@ def login(ctx, username: str, token: str):
     help="URL for the api request",
 )
 @click.option(
+    "--exclude-template",
+    "-t",
+    "exclude_templates",
+    metavar="EXCLUDE_TEMPLATES",
+    multiple=True,
+    help=EXCLUDE_TEMPLATES_HELP,
+)
+@click.option(
     "--exclude",
     "-x",
     "patterns",
-    metavar="PATTERN",
+    metavar="PATTERNS",
     multiple=True,
     help="Exclude directories using glob patterns \
     (e.g., ``*.git`` to exclude all .git directories)",
@@ -238,6 +272,7 @@ def scan(
     ctx,
     root_path,
     api_url,
+    exclude_templates,
     patterns,
     out_fmt,
     interactive,
@@ -286,6 +321,16 @@ def scan(
     if disable_global_patterns:
         ctx.obj["config"]["scanner"]["exclude"] = []
 
+    if exclude_templates is not None:
+        templates = get_ignore_patterns_templates()
+        for template in exclude_templates:
+            if template not in templates:
+                err_msg = f"Unknown exclusion template '{template}'. Use one of:\n"
+                ctx.fail(
+                    click.style(err_msg, fg="yellow")
+                    + f"{get_exclude_templates_list_repr()}"
+                )
+
     if patterns is not None:
         ctx.obj["config"]["scanner"]["exclude"].extend(patterns)
 
@@ -309,6 +354,7 @@ def scan(
     scanner.scan(
         ctx.obj["config"],
         root_path,
+        exclude_templates,
         patterns,
         out_fmt,
         interactive,

@@ -1,6 +1,6 @@
 aioresponses
 asynctest
-pytest
+pytest >= 8
 pytest-asyncio
 pytest-flask
 pytest-mock

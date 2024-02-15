@@ -27,6 +27,7 @@ repos:
     hooks:
       - id: codespell
         name: Check source code spelling
+        exclude: swh/scanner/resources/
         stages: [commit]
       - id: codespell
         name: Check commit message spelling
@@ -41,4 +42,3 @@ repos:
         pass_filenames: false
         language: system
         types: [python]
-

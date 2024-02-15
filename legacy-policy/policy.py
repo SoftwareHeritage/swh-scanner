@@ -22,7 +22,6 @@ def source_size(source_tree: from_disk.Directory):
 
 
 class Policy(metaclass=abc.ABCMeta):
-
     data: MerkleNodeInfo
     """information about contents and directories of the merkle tree"""
 

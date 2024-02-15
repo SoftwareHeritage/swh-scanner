@@ -77,7 +77,6 @@ def test_randomdir_policy_small_request(
     tmp_accesses,
     mocker,
 ):
-
     # Test with smaller sample sizes to actually trigger the random sampling
     open(tmp_requests, "w").close()
     open(tmp_accesses, "w").close()
@@ -102,7 +101,6 @@ def test_randomdir_policy_info_callback(
     tmp_accesses,
     mocker,
 ):
-
     # Test with smaller sample sizes to actually trigger the random sampling
     open(tmp_requests, "w").close()
     open(tmp_accesses, "w").close()

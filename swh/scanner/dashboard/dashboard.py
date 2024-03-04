@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2021 The Software Heritage developers
+# Copyright (C) 2020-2024 The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -44,44 +44,109 @@ def generate_table_body(
     return [html.Tbody(data)]
 
 
-def run_app(graph_obj: go, source_tree: Directory, nodes_data: MerkleNodeInfo):
-    app = dash.Dash(__name__)
-    fig = go.Figure().add_trace(graph_obj)
+def generate_sunburst_view(graph_obj: go):
+    """Generate the sunburst view from a graph object.
 
+    It's made of a sunburst chart and a details table.
+    Clicking an area of the chart display the details of known files in a table.
+    The table is updated through the global `update_files_table` callback.
+    """
+    fig = go.Figure()
+    fig.add_trace(go.Sunburst(graph_obj))
     fig.update_layout(
-        height=800,
+        minreducedheight=400,
+        height=600,
     )
-
-    table_header = [
-        html.Thead(html.Tr([html.Th("KNOWN"), html.Th("FILE NAME"), html.Th("SWHID")]))
+    return [
+        dbc.Row(
+            [
+                html.H2("Sunburst Chart", className="display-6"),
+                html.P(
+                    "Click a chart area to display details of known files",
+                    className="lead",
+                ),
+                html.Hr(),
+            ]
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        dcc.Graph(figure=fig, id="sunburst_chart"),
+                    ],
+                    width=6,
+                ),
+                dbc.Col(
+                    [
+                        html.H3(id="directory_title"),
+                        dbc.Table(
+                            id="files_table",
+                            hover=True,
+                            responsive=True,
+                            striped=True,
+                        ),
+                    ],
+                    width=6,
+                ),
+            ]
+        ),
     ]
 
-    app.layout = html.Div(
+
+def run_app(
+    graph_obj: go, root_path: str, source_tree: Directory, nodes_data: MerkleNodeInfo
+):
+    external_stylesheets = [dbc.themes.MATERIA]
+    app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+    app.title = "Swh Scanner"
+    app.layout = dbc.Container(
         [
-            html.Div(
+            dbc.Row(
                 [
-                    html.Div(
-                        [
-                            dcc.Graph(id="sunburst_chart", figure=fig),
-                        ],
-                        className="col",
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    [
+                                        html.Img(
+                                            src=dash.get_asset_url("swh-logo.svg"),
+                                            height="48px",
+                                        )
+                                    ],
+                                    width=3,
+                                ),
+                                dbc.Col(
+                                    [html.H1("SWH Scanner", className="display-6")],
+                                    width=9,
+                                ),
+                            ],
+                        ),
+                        width=3,
                     ),
-                    html.Div(
+                    dbc.Col(
                         [
-                            html.H3(id="directory_title"),
-                            dbc.Table(
-                                id="files_table",
-                                hover=True,
-                                responsive=True,
-                                striped=True,
-                            ),
+                            html.H1(f"Results for {root_path}", className="display-6"),
                         ],
-                        className="col",
+                        width=9,
                     ),
                 ],
-                className="row",
+                className="p-4 bg-light",
             ),
-        ]
+            dbc.Row(
+                dbc.Col(
+                    dbc.Tabs(
+                        [
+                            dbc.Tab(
+                                generate_sunburst_view(graph_obj),
+                                label="Sunburst chart",
+                            ),
+                        ]
+                    )
+                ),
+                className="p-4",
+            ),
+        ],
+        fluid=True,
     )
 
     @app.callback(
@@ -92,8 +157,13 @@ def run_app(graph_obj: go, source_tree: Directory, nodes_data: MerkleNodeInfo):
         """
         Callback that takes the input (directory path) from the chart and
         update the `files_table` children with the relative files.
-
         """
+        table_header = [
+            html.Thead(
+                html.Tr([html.Th("KNOWN"), html.Th("FILE NAME"), html.Th("SWHID")])
+            )
+        ]
+
         if click_data is not None:
             full_path = click_data["points"][0]["label"]
             return (
@@ -102,6 +172,6 @@ def run_app(graph_obj: go, source_tree: Directory, nodes_data: MerkleNodeInfo):
                 full_path,
             )
         else:
-            return "", ""
+            return (table_header, "")
 
     app.run_server(debug=True, use_reloader=True)

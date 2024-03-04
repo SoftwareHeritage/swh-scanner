@@ -210,4 +210,4 @@ class InteractiveSunburstOuput(SunburstOuput):
 
     def show(self):
         sunburst_figure = self._make_sunburst()
-        run_app(sunburst_figure, self.source_tree, self.nodes_data)
+        run_app(sunburst_figure, self.root_path, self.source_tree, self.nodes_data)

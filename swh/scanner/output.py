@@ -77,7 +77,7 @@ class BaseOutput(ABC):
 class SummaryOutput(BaseOutput):
     """display a summary of the scan results"""
 
-    def show(self):
+    def compute_summary(self):
         directories_with_known_files = set()
 
         total_files = 0
@@ -117,12 +117,30 @@ class SummaryOutput(BaseOutput):
         kp = known_files * 100 // total_files
         fkp = full_known_directories * 100 // total_directories
         pkp = partially_known_directories * 100 // total_directories
-        print(f"Files:             {total_files:10d}")
-        print(f"            known: {known_files:10d} ({kp:3d}%)")
-        print(f"Directories:       {total_directories:10d}")
-        print(f"      fully-known: {full_known_directories:10d} ({fkp:3d}%)")
-        print(f"  partially-known: {partially_known_directories:10d} ({pkp:3d}%)")
-        print("(see other --output-format for more details)")
+
+        return {
+            "total_files": total_files,
+            "known_files": known_files,
+            "known_files_percent": kp,
+            "total_directories": total_directories,
+            "full_known_directories": full_known_directories,
+            "full_known_directories_percent": fkp,
+            "partially_known_directories": partially_known_directories,
+            "partially_known_directories_percent": pkp,
+        }
+
+    def show(self):
+        summary = self.compute_summary()
+        kp = summary["known_files_percent"]
+        fkp = summary["full_known_directories_percent"]
+        pkp = summary["partially_known_directories_percent"]
+        print(f"Files:             {summary['total_files']:10d}")
+        print(f"            known: {summary['known_files']:10d} ({kp:3d}%)")
+        print(f"directories:       {summary['total_directories']:10d}")
+        print(f"      fully-known: {summary['full_known_directories']:10d} ({fkp:3d}%)")
+        print(
+            f"  partially-known: {summary['partially_known_directories']:10d} ({pkp:3d}%)"
+        )
 
 
 @_register("text")

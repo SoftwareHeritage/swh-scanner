@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2023  The Software Heritage developers
+# Copyright (C) 2020-2024  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -36,6 +36,7 @@ DEFAULT_TEST_CONFIG = {
             "port": 9001,
         },
         "exclude": [],
+        "exclude_templates": [],
     },
 }
 
@@ -820,6 +821,41 @@ def test_exclude_template_multiple_arg(
             datadir,
             "-u",
             api_url,
+        ],
+    )
+    assert res.exit_code == 0
+    output = json.loads(res.output)
+
+    # *.tgz and *.yml ignored
+    assert output.keys() == {
+        ".",
+    }
+
+
+def test_exclude_template_per_project_configuration_file(
+    cli_runner,
+    live_server,
+    datadir,
+    mocker,
+    default_test_config_path,
+    per_project_test_config_path,
+    exclude_templates,
+):
+    api_url = url_for("index", _external=True)
+    project_cfg = {"scanner": {"exclude_templates": ["Tar", "Yaml"]}}
+    per_project_test_config_path.write_text(yaml.safe_dump(project_cfg))
+
+    res = cli_runner.invoke(
+        cli.scanner,
+        [
+            "scan",
+            "--output-format",
+            "json",
+            datadir,
+            "-u",
+            api_url,
+            "--project-config-file",
+            str(per_project_test_config_path),
         ],
     )
     assert res.exit_code == 0

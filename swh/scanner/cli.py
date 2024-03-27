@@ -39,6 +39,7 @@ DEFAULT_SCANNER_CONFIG: Dict[str, Any] = {
             "port": BACKEND_DEFAULT_PORT,
         },
         "exclude": [],
+        "exclude_templates": [],
     }
 }
 
@@ -325,25 +326,7 @@ def scan(
 
     import swh.scanner.scanner as scanner
 
-    # override config with command parameters if provided
-    assert "exclude" in ctx.obj["config"]["scanner"]
-
-    if disable_global_patterns:
-        ctx.obj["config"]["scanner"]["exclude"] = []
-
-    if exclude_templates is not None:
-        templates = get_ignore_patterns_templates()
-        for template in exclude_templates:
-            if template not in templates:
-                err_msg = f"Unknown exclusion template '{template}'. Use one of:\n"
-                ctx.fail(
-                    click.style(err_msg, fg="yellow")
-                    + f"{get_exclude_templates_list_repr()}"
-                )
-
-    if patterns is not None:
-        ctx.obj["config"]["scanner"]["exclude"].extend(patterns)
-
+    # merge global config with per project one if any
     if project_config_file:
         project_cfg_path = Path(project_config_file)
     else:
@@ -356,6 +339,29 @@ def scan(
         # Exclude from scan the per project configuration file if it is within root path
         if str(project_cfg_path.parent) in str(root_path):
             ctx.obj["config"]["scanner"]["exclude"].extend([str(project_cfg_path)])
+
+    # override config with command parameters if provided
+    if disable_global_patterns:
+        ctx.obj["config"]["scanner"]["exclude"] = []
+
+    if exclude_templates is not None:
+        ctx.obj["config"]["scanner"]["exclude_templates"].extend(exclude_templates)
+
+    # check that the exclude templates are valid
+    if "exclude_templates" in ctx.obj["config"]["scanner"]:
+        templates = get_ignore_patterns_templates()
+        for template in ctx.obj["config"]["scanner"]["exclude_templates"]:
+            if template not in templates:
+                err_msg = f"Unknown exclusion template '{template}'. Use one of:\n"
+                ctx.fail(
+                    click.style(err_msg, fg="yellow")
+                    + f"{get_exclude_templates_list_repr()}"
+                )
+
+        exclude_templates = ctx.obj["config"]["scanner"]["exclude_templates"]
+
+    if patterns is not None:
+        ctx.obj["config"]["scanner"]["exclude"].extend(patterns)
 
     patterns = ctx.obj["config"]["scanner"]["exclude"]
 

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {% block head %}
+    <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+    <title>{% block title %}{% endblock title %}</title>
+    {% endblock head %}
+  </head>
+  <body>
+    <header id="header">
+      <div id="logo">
+        <a href="/" title="Software Heritage Scanner dashboard">
+          <img src="{{ url_for('static', filename='img/swh-logo.svg') }}" alt="Software Heritage logo" height=48 width=48>
+        </a>
+        <h1 class="size-5">&nbsp; Software Heritage Scanner</h1>
+      </div>
+      <div id="path">
+        <p>Results for <strong>{{ root_path }}</strong></p>
+      </div>
+      <nav id="menu">
+        <ul>
+          <li><a {% if request.path == url_for('index') %}class="active"{% endif %} href="{{ url_for('index') }}" title="Dashboard">Dashboard</a></li>
+          <li><a {% if request.path == url_for('results') %}class="active"{% endif %} href="{{ url_for('results') }}" title="Results">Results</a></li>
+        </ul>
+      </nav>
+    </header>
+    <main id="main">{% block main %}{% endblock main %}</main>
+    <footer id="footer">
+      <a href="https://docs.softwareheritage.org/devel/swh-scanner/cli.html" target="_blank" title="Software Heritage Scanner documentation">Documentation</a> |
+      <a href="https://gitlab.softwareheritage.org/swh/devel/swh-scanner" target="_blank" title="Software Heritage Scanner source code">Sources</a>
+    </footer>
+    {% block jsbottom %}
+    <script>
+    </script>
+    {% endblock jsbottom %}
+  </body>
+</html>

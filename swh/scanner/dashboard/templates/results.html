@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% macro render_source_tree(root_path, source_tree, nodes_data) %}
+{% if source_tree %}
+<ul>{% for k, v in source_tree.items()|sort(attribute='0') %}
+  <li>
+    {% set fpath = v.data['path'].decode() %}
+    {% set rpath = fpath.split(root_path)[-1] %}
+    {% set known = nodes_data.get(v.swhid())['known'] %}
+    {% set known_data = directory_content(v, nodes_data) if v.object_type == 'directory' else '' %}
+    {% if v.object_type == 'directory' %}
+      {% set known_percent = known_data[1] * 100 // known_data[0] if known_data[0] > 0 else 0 %}
+    {% elif v.object_type == 'content' %}
+      {% set known_percent = 100 if known else 0 %}
+    {% endif %}
+    <details id="{{ v.swhid() }}" class="{{ v.object_type }}" data-name="{{ k.decode() }}" data-swhid="{{ v.swhid() }}" data-type="{{ v.object_type }}" data-fpath="{{ fpath }}" data-rpath="{{ rpath }}" data-known="{{ known|lower }}" data-known-data="{{ known_data[0] }},{{ known_data[1] }}">
+      <summary><span class="pie" name="pie" style="background: conic-gradient(orange {{ known_percent }}%, white 0);"></span>{{ k.decode() }}</summary>
+      {{ render_source_tree(root_path, v, nodes_data) }}
+     </details>
+  </li>{% endfor %}
+</ul>
+{% endif %}
+{% endmacro %}
+
+{% block title %}Results{% endblock %}
+
+{% block main %}
+<div id="results">
+  <aside class="box-shadow">
+    <div id="tree">
+    {{ render_source_tree(root_path, source_tree, nodes_data) }}
+    </div>
+  </aside>
+  <article class="box-shadow">
+    <hgroup>
+      <h2 class="size-3">Results tree</h2>
+      <p name="help" class="size-6">Click on a directory or a file for result details.</p>
+    </hgroup>
+    <div id="selected_path">
+      <h3 name="rpath" class="size-4"></h3>
+      <dl name="definition">
+        <dt>Name</dt>
+        <dd name="name">
+          <a href="#" title="Copy path" name="name_link"></a>
+        </dd>
+        <dt>Type</dt>
+        <dd name="type"></dd>
+        <dt>Known</dt>
+        <dd name="known"></dd>
+        <dt>Swhid</dt>
+        <dd name="swhid">
+          <a href="" title="Search the Software Heritage Archive for this swhid" name="swhid_link" target="_blank"></a>
+        </dd>
+      </dl>
+    </div>
+  </article>
+</div>
+{% endblock main %}
+{% block jsbottom %}
+<script>
+  async function copyToClipboard(text) {
+    if (navigator && navigator.clipboard && navigator.clipboard.writeText)
+      try {
+        await navigator.clipboard.writeText(text)
+        alert(`Copied "${text}" successfully`)
+      } catch {
+        alert("Copy failed: " + err)
+      }
+    else
+      return Promise.reject("The Clipboard API is not available")
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    const tree = document.getElementById("tree")
+    const selected_path = document.getElementById("selected_path")
+    selected_path.style.visibility = "hidden"
+
+    if (!tree || !selected_path) {
+      console.error("Can not find the results tree or selected path in the DOM")
+      return
+    }
+
+    tree.addEventListener("click", function(event) {
+      const tree_selected_path = event.target.closest("details")
+      if (!tree_selected_path) return
+      if (selected_path.style.visibility == "hidden") selected_path.style.visibility = "visible"
+
+      const pie = tree_selected_path.firstElementChild.children.namedItem("pie").cloneNode(true)
+      const rpath = selected_path.children.namedItem("rpath")
+      rpath.textContent = tree_selected_path.dataset.rpath
+      rpath.insertAdjacentElement("afterbegin", pie)
+
+      const definition = selected_path.children.namedItem("definition")
+
+      const name_link = definition.children.namedItem("name").children.namedItem("name_link")
+      name_link.textContent = "🗐 " + tree_selected_path.dataset.name
+      name_link.setAttribute("onclick", `copyToClipboard("${tree_selected_path.dataset.fpath}")`)
+
+      const known_icon = (tree_selected_path.dataset.known === "true") ? "✔" : "✘"
+      const known = definition.children.namedItem("known")
+      known.textContent = known_icon + " " + tree_selected_path.dataset.known
+
+      const search_swhid = "https://archive.softwareheritage.org/browse/search/?q=" + tree_selected_path.dataset.swhid + "&with_visit=true&with_content=true"
+      const swhid_link = definition.children.namedItem("swhid").children.namedItem("swhid_link")
+      swhid_link.href = search_swhid
+      swhid_link.textContent = tree_selected_path.dataset.swhid
+
+      definition.children.namedItem("type").textContent = (tree_selected_path.dataset.type === "directory") ? "🗀  " + tree_selected_path.dataset.type  : tree_selected_path.dataset.type
+    });
+  });
+</script>
+{% endblock jsbottom %}

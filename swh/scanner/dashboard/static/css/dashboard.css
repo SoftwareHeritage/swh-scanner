@@ -1,0 +1,230 @@
+:root {
+  --text-color: #212529;
+  --grey: #999;
+  --grey-light: #c2c9d6;
+  --grey-lighter: #f7f7f7;
+  --primary-color: #e20026;
+  --secondary-color: #fecd1b;
+  --font-family: Helvetica, Arial, sans-serif;
+  --gap: 0.4rem;
+}
+
+body {
+  font-family: var(--font-family);
+  color: var(--text-color);
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 300;
+  color: var(--text-color);
+}
+
+.size-1 {
+  font-size: 4rem;
+}
+
+.size-2 {
+  font-size: 3rem;
+}
+
+.size-3 {
+  font-size: 2.5rem;
+}
+
+.size-4 {
+  font-size: 2rem;
+}
+
+.size-5 {
+  font-size: 1.5rem;
+}
+
+.size-6 {
+  font-size: 1.25rem;
+}
+
+.size-7 {
+  font-size: 1rem;
+}
+
+.size-8 {
+  font-size: 0.75rem;
+}
+
+.size-1, .size-2, size-3, size-4, size-5, size-6, size-7, size-8 {
+  margin: 0;
+  padding:0;
+  padding-bottom: inherit;
+}
+
+p {
+  font-size: 1rem;
+}
+
+.box-shadow {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card {
+  text-align: center;
+  padding: var(--gap);
+  margin: var(--gap);
+  border: solid 1px var(--light-grey);
+  border-radius: calc(var(--gap) * 3) 0 calc(var(--gap) * 3) 0;
+  background: var(--grey-lighter);
+}
+
+.pie {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: conic-gradient(var(--primary-color) 0%, white 0);
+  border-radius: 50%;
+  border: solid 1px grey;
+  margin: 0 var(--gap) 0 0;
+}
+
+header {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  padding: var(--gap);
+  border-bottom: solid var(--gap);
+  border-image: linear-gradient(90deg, var(--primary-color) 0, var(--secondary-color)) 1 1 1 1;
+  background: var(--grey-lighter);
+  min-height: 48px;
+  position: sticky;
+  top: 0;
+}
+
+header > nav > ul {
+  display: inline-block;
+  list-style-type: none;
+  text-align: center;
+  padding: 0;
+  margin: 0;
+  transform:skew(-12deg);
+}
+
+header > nav > ul li {
+  display: inline;
+  text-align: center;
+  padding: 0;
+  margin: var(--gap) 0 0 0;
+  float: left;
+  border-right: 1px solid #eee;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+  text-transform: capitalize;
+  font-weight: bolder;
+}
+
+header > nav > ul li a {
+  color: var(--grey);
+  display: inline-block;
+  padding: var(--gap);
+  margin: var(--gap);
+  line-height: 1.5;
+  text-align: center;
+  text-decoration: None;
+  font-weight: bold;
+}
+
+header > nav > ul li a:hover, a:active {
+  text-decoration: underline var(--secondary-color);
+  text-decoration-thickness: 2px;
+}
+
+header > nav > ul li a.active {
+  text-decoration: underline var(--secondary-color);
+  text-decoration-thickness: 4px;
+}
+
+#logo {
+  display: flex;
+  align-items: center;
+}
+
+#path {
+  margin-top: var(--gap);
+}
+
+footer {
+  background: var(--secondary-color);
+  padding: var(--gap);
+  text-align: center;
+  min-height: 16px;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+}
+
+#results {
+  display: flex;
+  height: calc(100vh - 100px); /* header + footer height */
+}
+
+#results > aside {
+  flex: 1;
+  overflow-y: auto; /* Vertical scrollbar if content overflows */
+  padding: var(--gap);
+}
+
+#results > article {
+  flex: 3;
+  overflow-y: auto;
+  padding: var(--gap) calc(var(--gap) * 3);
+}
+
+#tree {
+  margin-left: -1.3rem;
+}
+
+#tree ul {
+  padding-inline: 1.3rem;
+  list-style: none;
+}
+
+#tree details > summary {
+  cursor: pointer;
+}
+
+#tree details.directory > summary {
+  list-style-type: "🗀 ";
+}
+
+#tree details[open].directory > summary {
+  list-style-type: "🗁 ";
+}
+
+#tree details.content > summary {
+  list-style-type: " ";
+}
+
+#selected_path > dl {
+  display: grid;
+  grid-gap: var(--gap) calc(var(--gap) * 3);
+  grid-template-columns: max-content;
+  border: 1px solid var(--grey-light);
+  padding: calc(var(--gap) * 3);
+}
+
+#selected_path > dl > dt {
+  color: var(--grey);
+}
+
+#selected_path > dl > dd {
+  font-weight: bold;
+  margin: 0;
+  grid-column-start: 2;
+}
+
+#dashboard {
+  padding: var(--gap) calc(var(--gap) * 3);
+}
+
+#dashboard > article {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: var(--gap);
+}

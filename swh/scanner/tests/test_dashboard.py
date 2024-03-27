@@ -1,46 +1,83 @@
-# Copyright (C) 2020  The Software Heritage developers
+# Copyright (C) 2020-2024 The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from dash import html
+from bs4 import BeautifulSoup
+import pytest
 
-from swh.model.swhids import CoreSWHID, ObjectType
-from swh.scanner.dashboard.dashboard import generate_table_body
-from swh.scanner.data import MerkleNodeInfo
+from swh.scanner.dashboard.dashboard import create_app
 
 
-def test_generate_table_body(source_tree):
-    chart_path = b"/bar/barfoo"
-    dir_path = source_tree[b"/bar/barfoo"].data["path"].decode()
-    nodes_data = MerkleNodeInfo()
-    # CoreSWHID of 'another-quote.org'
-    known_cnt_swhid = CoreSWHID(
-        object_type=ObjectType.CONTENT,
-        object_id=b"\x136\x93\xb1%\xba\xd2\xb4\xac1\x855\xb8I\x01\xeb\xb1\xf6\xb68",
+@pytest.fixture
+def summary():
+    return {
+        "total_files": 10,
+        "known_files": 5,
+        "known_files_percent": 50,
+        "total_directories": 2,
+        "full_known_directories": 1,
+        "full_known_directories_percent": 50,
+        "partially_known_directories": 0,
+        "partially_known_directories_percent": 0,
+    }
+
+
+@pytest.fixture
+def app(test_sample_folder, source_tree, nodes_data, summary):
+    yield create_app(
+        root_path=str(test_sample_folder),
+        source_tree=source_tree,
+        nodes_data=nodes_data,
+        summary=summary,
     )
-    nodes_data[known_cnt_swhid] = {"known": True}
 
-    generated_body = generate_table_body(chart_path, source_tree, nodes_data)
 
-    expected_body = [
-        html.Tbody(
-            [
-                html.Tr(
-                    [
-                        html.Td("✔"),
-                        html.Td(
-                            html.A(
-                                children="another-quote.org",
-                                href=f"file://{dir_path}/another-quote.org",
-                            )
-                        ),
-                        html.Td("swh:1:cnt:133693b125bad2b4ac318535b84901ebb1f6b638"),
-                    ]
-                ),
-            ]
-        )
+@pytest.fixture
+def client(app):
+    app.config.update({"TESTING": True})
+    return app.test_client()
+
+
+def test_index(app, client, test_sample_folder):
+    """Test Dashboard index route"""
+    res = client.get("/")
+    assert res.status_code == 200
+
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    scan_path = soup.find(id="path")
+    assert scan_path.strong.text == str(test_sample_folder)
+
+    sections = soup.article.find_all("section")
+    expected = ["50%", "0%", "50%"]
+    assert len(sections) == 3
+    for i, section in enumerate(sections):
+        assert expected[i] in section.text
+
+
+def test_results(app, client, test_sample_folder):
+    """Test Dashboard results route"""
+    res = client.get("/results")
+    assert res.status_code == 200
+
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    scan_path = soup.find(id="path")
+    assert scan_path.strong.text == str(test_sample_folder)
+
+    details = soup.find(id="tree").find_all("details")
+    expected_attributes = [
+        "id",
+        "class",
+        "data-name",
+        "data-swhid",
+        "data-type",
+        "data-fpath",
+        "data-rpath",
+        "data-known",
+        "data-known-data",
     ]
-
-    # workaround: dash_html_component.__eq__ checks for object identity only
-    assert str(generated_body) == str(expected_body)
+    for detail in details:
+        for attr in expected_attributes:
+            assert attr in detail.attrs.keys()

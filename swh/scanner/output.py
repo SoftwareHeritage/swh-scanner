@@ -1,4 +1,4 @@
-# Copyright (C) 2021 The Software Heritage developers
+# Copyright (C) 2021-2024 The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -239,9 +239,10 @@ class SunburstOutput(BaseOutput):
 
 
 @_register("interactive")
-class InteractiveSunburstOutput(SunburstOutput):
-    """display the scan result as an interactive sunburst plot"""
+class InteractiveDashboardOutput(SummaryOutput):
+    """Dashboard to explore the scan results"""
 
     def show(self):
-        sunburst_figure = self._make_sunburst()
-        run_app(sunburst_figure, self.root_path, self.source_tree, self.nodes_data)
+        run_app(
+            self.root_path, self.source_tree, self.nodes_data, self.compute_summary()
+        )

@@ -8,3 +8,5 @@ swh.core[testing-core]
 swh.model[testing]
 types-pyyaml
 types-requests
+bs4
+types-beautifulsoup4

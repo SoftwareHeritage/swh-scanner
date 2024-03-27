@@ -5,173 +5,37 @@
 
 from pathlib import Path
 
-import dash
-from dash import dcc, html
-from dash.dependencies import Input, Output
-import dash_bootstrap_components as dbc
-import plotly.graph_objects as go
+from flask import Flask, render_template
 
 from swh.model.from_disk import Directory
 
-from ..data import MerkleNodeInfo, get_content_from
+from ..data import MerkleNodeInfo, directory_content
 
 
-def generate_table_body(
-    dir_path: bytes, source_tree: Directory, nodes_data: MerkleNodeInfo
+def create_app(
+    root_path: Path, source_tree: Directory, nodes_data: MerkleNodeInfo, summary
 ):
-    """
-    Generate the data_table from the path taken from the chart.
+    app = Flask(__name__)
 
-    For each file builds the html table rows showing the known status, a local link to
-    the file and the relative SoftWare Heritage persistent IDentifier (SWHID).
-    """
-    contents = get_content_from(dir_path, source_tree, nodes_data)
-    data = []
-    for cnt, attr in contents.items():
-        file_path = Path(cnt.decode())
-        file_name = file_path.parts[len(file_path.parts) - 1]
-        full_file_path = Path(Path(dir_path.decode()), file_path)
-        data.append(
-            html.Tr(
-                [
-                    html.Td("✔" if attr["known"] else ""),
-                    html.Td(html.A(file_name, href="file://" + str(full_file_path))),
-                    html.Td(attr["swhid"]),
-                ]
-            )
+    @app.route("/")
+    def index():
+        return render_template("./dashboard.html", root_path=root_path, summary=summary)
+
+    @app.route("/results")
+    def results():
+        return render_template(
+            "./results.html",
+            root_path=root_path,
+            source_tree=source_tree,
+            nodes_data=nodes_data,
+            directory_content=directory_content,
         )
 
-    return [html.Tbody(data)]
-
-
-def generate_sunburst_view(graph_obj: go):
-    """Generate the sunburst view from a graph object.
-
-    It's made of a sunburst chart and a details table.
-    Clicking an area of the chart display the details of known files in a table.
-    The table is updated through the global `update_files_table` callback.
-    """
-    fig = go.Figure()
-    fig.add_trace(go.Sunburst(graph_obj))
-    fig.update_layout(
-        minreducedheight=400,
-        height=600,
-    )
-    return [
-        dbc.Row(
-            [
-                html.H2("Sunburst Chart", className="display-6"),
-                html.P(
-                    "Click a chart area to display details of known files",
-                    className="lead",
-                ),
-                html.Hr(),
-            ]
-        ),
-        dbc.Row(
-            [
-                dbc.Col(
-                    [
-                        dcc.Graph(figure=fig, id="sunburst_chart"),
-                    ],
-                    width=6,
-                ),
-                dbc.Col(
-                    [
-                        html.H3(id="directory_title"),
-                        dbc.Table(
-                            id="files_table",
-                            hover=True,
-                            responsive=True,
-                            striped=True,
-                        ),
-                    ],
-                    width=6,
-                ),
-            ]
-        ),
-    ]
+    return app
 
 
 def run_app(
-    graph_obj: go, root_path: str, source_tree: Directory, nodes_data: MerkleNodeInfo
+    root_path: Path, source_tree: Directory, nodes_data: MerkleNodeInfo, summary
 ):
-    external_stylesheets = [dbc.themes.MATERIA]
-    app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-    app.title = "Swh Scanner"
-    app.layout = dbc.Container(
-        [
-            dbc.Row(
-                [
-                    dbc.Col(
-                        dbc.Row(
-                            [
-                                dbc.Col(
-                                    [
-                                        html.Img(
-                                            src=dash.get_asset_url("swh-logo.svg"),
-                                            height="48px",
-                                        )
-                                    ],
-                                    width=3,
-                                ),
-                                dbc.Col(
-                                    [html.H1("SWH Scanner", className="display-6")],
-                                    width=9,
-                                ),
-                            ],
-                        ),
-                        width=3,
-                    ),
-                    dbc.Col(
-                        [
-                            html.H1(f"Results for {root_path}", className="display-6"),
-                        ],
-                        width=9,
-                    ),
-                ],
-                className="p-4 bg-light",
-            ),
-            dbc.Row(
-                dbc.Col(
-                    dbc.Tabs(
-                        [
-                            dbc.Tab(
-                                generate_sunburst_view(graph_obj),
-                                label="Sunburst chart",
-                            ),
-                        ]
-                    )
-                ),
-                className="p-4",
-            ),
-        ],
-        fluid=True,
-    )
-
-    @app.callback(
-        [Output("files_table", "children"), Output("directory_title", "children")],
-        [Input("sunburst_chart", "clickData")],
-    )
-    def update_files_table(click_data):
-        """
-        Callback that takes the input (directory path) from the chart and
-        update the `files_table` children with the relative files.
-        """
-        table_header = [
-            html.Thead(
-                html.Tr([html.Th("KNOWN"), html.Th("FILE NAME"), html.Th("SWHID")])
-            )
-        ]
-
-        if click_data is not None:
-            full_path = click_data["points"][0]["label"]
-            return (
-                table_header
-                + generate_table_body(full_path.encode(), source_tree, nodes_data),
-                full_path,
-            )
-        else:
-            return (table_header, "")
-
-    app.run_server(debug=True, use_reloader=True)
+    app = create_app(root_path, source_tree, nodes_data, summary)
+    app.run(debug=True)

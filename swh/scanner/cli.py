@@ -301,7 +301,7 @@ def scan(
 
       json: write all collected data on standard output as JSON
 
-      json: write all collected data on standard output as Newline Delimited JSON
+      ndjson: write all collected data on standard output as Newline Delimited JSON
 
       sunburst: produce a dynamic chart as .html file. (in $PWD/chart.html)
 
@@ -373,6 +373,35 @@ def scan(
     if web_api_url == SWH_API_ROOT:
         check_auth(ctx)
 
+    root_path_fmt = click.format_filename(root_path)
+    msg = f"Ready to scan {root_path_fmt}"
+    click.echo(click.style(msg, fg="green"), err=True)
+
+    directory_from_disk_progress = 0
+    policy_discovery_progress = 0
+
+    def progress_callback(context, arg=None):
+        nonlocal directory_from_disk_progress
+        nonlocal policy_discovery_progress
+
+        if context == "Directory.from_disk":
+            assert isinstance(arg, int)
+            directory_from_disk_progress += arg
+            click.echo(
+                f"{directory_from_disk_progress} local objects scanned\r",
+                nl=False,
+                err=True,
+            )
+
+        if context == "Policy.discovery":
+            policy_discovery_progress += 1
+            click.echo(
+                f"{policy_discovery_progress} objects compared with the"
+                f" Software Heritage archive\r",
+                nl=False,
+                err=True,
+            )
+
     extra_info = set(extra_info)
     scanner.scan(
         ctx.obj["config"],
@@ -384,6 +413,7 @@ def scan(
         extra_info,
         disable_global_patterns,
         disable_vcs_patterns,
+        progress_callback=progress_callback,
     )
 
 

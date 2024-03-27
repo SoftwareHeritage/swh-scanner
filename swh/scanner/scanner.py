@@ -3,7 +3,8 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from typing import Any, Dict, Iterable, List
+from functools import partial
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from swh.model.cli import model_of_dir
 from swh.model.from_disk import Directory
@@ -80,6 +81,7 @@ def scan(
     extra_info: set,
     disable_global_patterns: bool,
     disable_vcs_patterns: bool,
+    progress_callback: Optional[Callable[[Any], None]] = None,
 ):
     """Scan a source code project to discover files and directories already
     present in the archive"""
@@ -99,13 +101,28 @@ def scan(
         vcs_ignore_patterns = get_vcs_ignore_patterns()
         converted_patterns.extend(vcs_ignore_patterns)
 
-    source_tree = model_of_dir(root_path.encode(), converted_patterns)
+    dir_update_info = None
+    if progress_callback is not None:
+        dir_update_info = partial(progress_callback, "Directory.from_disk")
+
+    source_tree = model_of_dir(
+        root_path.encode(),
+        converted_patterns,
+        update_info=dir_update_info,
+    )
 
     nodes_data = MerkleNodeInfo()
     extra_info.add("known")
     init_merkle_node_info(source_tree, nodes_data, extra_info)
+    discovery_update_info = None
+    if progress_callback is not None:
+        discovery_update_info = partial(progress_callback, "Policy.discovery")
 
-    policy = RandomDirSamplingPriority(source_tree, nodes_data)
+    policy = RandomDirSamplingPriority(
+        source_tree,
+        nodes_data,
+        update_info=discovery_update_info,
+    )
 
     run(config, policy, source_tree, nodes_data, extra_info)
 

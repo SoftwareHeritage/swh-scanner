@@ -115,7 +115,7 @@ def test_randomdir_policy_info_callback(
     policy = RandomDirSamplingPriority(
         big_source_tree,
         nodes_data,
-        has_info_callback=gather,
+        update_info=gather,
     )
     policy.run(client)
 

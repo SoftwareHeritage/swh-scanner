@@ -119,7 +119,7 @@ class SummaryOuput(BaseOutput):
         pkp = partially_known_directories * 100 // total_directories
         print(f"Files:             {total_files:10d}")
         print(f"            known: {known_files:10d} ({kp:3d}%)")
-        print(f"directories:       {total_directories:10d}")
+        print(f"Directories:       {total_directories:10d}")
         print(f"      fully-known: {full_known_directories:10d} ({fkp:3d}%)")
         print(f"  partially-known: {partially_known_directories:10d} ({pkp:3d}%)")
         print("(see other --output-format for more details)")

@@ -152,7 +152,7 @@ def cli_runner(monkeypatch, default_test_config_path):
     """
     monkeypatch.delenv("SWH_CONFIG_FILENAME", raising=False)
     monkeypatch.setattr(cli, "DEFAULT_CONFIG_PATH", default_test_config_path)
-    return CliRunner()
+    return CliRunner(mix_stderr=False)
 
 
 @pytest.fixture()
@@ -343,7 +343,7 @@ def test_scan_config_with_unexisting_configuration_file_set_by_env_fail(
         ["scan", scan_paths["known"]],
     )
     assert res.exit_code != 0
-    assert res.output.startswith(f"Error: Could not open file '{unexisting_path}'")
+    assert res.stderr.startswith(f"Error: Could not open file '{unexisting_path}'")
 
 
 def test_scan_config_with_default_global_configuration_file_success(
@@ -435,7 +435,7 @@ def test_scan_config_with_option_configuration_file_error(
 
     assert res.exit_code != 0
     assert spy_configopen.call_args is None
-    assert res.output.startswith(f"Error: Could not open file '{unexisting_path}'")
+    assert res.stderr.startswith(f"Error: Could not open file '{unexisting_path}'")
 
 
 def test_scan_api_url_option_success(cli_runner, oidc_fail, m_scanner, scan_paths):
@@ -496,7 +496,7 @@ def test_ignore_vcs_patterns(cli_runner, live_server, datadir, mocker):
         cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
 
     # No filtering gives all results back
     assert output.keys() == {
@@ -513,7 +513,7 @@ def test_ignore_vcs_patterns(cli_runner, live_server, datadir, mocker):
         cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
     # Filtering via VCS works
     assert output.keys() == {
         ".",
@@ -773,7 +773,7 @@ def test_exclude_template_arg_fail(cli_runner, live_server, datadir):
         ],
     )
     assert res.exit_code > 0
-    assert "Error: Unknown exclusion template 'Test'. Use one of:" in res.output
+    assert "Error: Unknown exclusion template 'Test'. Use one of:" in res.stderr
 
 
 def test_exclude_template_arg(cli_runner, live_server, datadir, exclude_templates):

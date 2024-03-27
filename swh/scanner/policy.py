@@ -31,11 +31,11 @@ class Policy(metaclass=abc.ABCMeta):
         self,
         source_tree: from_disk.Directory,
         data: MerkleNodeInfo,
-        has_info_callback: Optional[Callable[[Any], None]] = None,
+        update_info: Optional[Callable[[Any], None]] = None,
     ):
         self.source_tree = source_tree
         self.data = data
-        self._has_info_callback = has_info_callback
+        self._has_info_callback = update_info
 
     @abc.abstractmethod
     def run(self, client: WebAPIClient):

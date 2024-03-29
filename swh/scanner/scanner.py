@@ -4,7 +4,7 @@
 # See top-level LICENSE file for more information
 
 from functools import partial
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from swh.model.cli import model_of_dir
 from swh.model.from_disk import Directory
@@ -74,17 +74,17 @@ COMMON_EXCLUDE_PATTERNS.extend([b"*/" + p for p in COMMON_EXCLUDE_PATTERNS])
 def scan(
     config: Dict[str, Any],
     root_path: str,
-    exclude_templates: Iterable[str],
-    exclude_patterns: Iterable[str],
     out_fmt: str,
     interactive: bool,
     extra_info: set,
-    disable_global_patterns: bool,
-    disable_vcs_patterns: bool,
     progress_callback: Optional[Callable[[Any], None]] = None,
 ):
     """Scan a source code project to discover files and directories already
     present in the archive"""
+    exclude_patterns = config["scanner"]["exclude"]
+    exclude_templates = config["scanner"]["exclude_templates"]
+    disable_global_patterns = config["scanner"]["disable_global_patterns"]
+    disable_vcs_patterns = config["scanner"]["disable_vcs_patterns"]
 
     converted_patterns = [pattern.encode() for pattern in exclude_patterns]
 

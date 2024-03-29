@@ -37,6 +37,8 @@ DEFAULT_TEST_CONFIG = {
         },
         "exclude": [],
         "exclude_templates": [],
+        "disable_global_patterns": False,
+        "disable_vcs_patterns": False,
     },
 }
 

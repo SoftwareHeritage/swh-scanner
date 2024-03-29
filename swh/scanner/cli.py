@@ -40,6 +40,8 @@ DEFAULT_SCANNER_CONFIG: Dict[str, Any] = {
         },
         "exclude": [],
         "exclude_templates": [],
+        "disable_global_patterns": False,
+        "disable_vcs_patterns": False,
     }
 }
 
@@ -342,7 +344,13 @@ def scan(
 
     # override config with command parameters if provided
     if disable_global_patterns:
+        ctx.obj["config"]["scanner"][
+            "disable_global_patterns"
+        ] = disable_global_patterns
         ctx.obj["config"]["scanner"]["exclude"] = []
+
+    if disable_vcs_patterns:
+        ctx.obj["config"]["scanner"]["disable_vcs_patterns"] = disable_vcs_patterns
 
     if exclude_templates is not None:
         ctx.obj["config"]["scanner"]["exclude_templates"].extend(exclude_templates)
@@ -363,20 +371,16 @@ def scan(
     if patterns is not None:
         ctx.obj["config"]["scanner"]["exclude"].extend(patterns)
 
-    patterns = ctx.obj["config"]["scanner"]["exclude"]
-
     assert "url" in ctx.obj["config"]["web-api"]
     if api_url is not None:
         ctx.obj["config"]["web-api"]["url"] = api_url
-
-    web_api_url = ctx.obj["config"]["web-api"]["url"]
 
     if debug_http:
         http_logger = logging.getLogger("swh.web.client.client")
         http_logger.setLevel(logging.DEBUG)
 
     # Check authentication only for production URL
-    if web_api_url == SWH_API_ROOT:
+    if ctx.obj["config"]["web-api"]["url"] == SWH_API_ROOT:
         check_auth(ctx)
 
     root_path_fmt = click.format_filename(root_path)
@@ -412,13 +416,9 @@ def scan(
     scanner.scan(
         ctx.obj["config"],
         root_path,
-        exclude_templates,
-        patterns,
         out_fmt,
         interactive,
         extra_info,
-        disable_global_patterns,
-        disable_vcs_patterns,
         progress_callback=progress_callback,
     )
 

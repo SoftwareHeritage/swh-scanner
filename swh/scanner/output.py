@@ -74,7 +74,7 @@ class BaseOutput(ABC):
 
 
 @_register("summary")
-class SummaryOuput(BaseOutput):
+class SummaryOutput(BaseOutput):
     """display a summary of the scan results"""
 
     def show(self):
@@ -126,7 +126,7 @@ class SummaryOuput(BaseOutput):
 
 
 @_register("text")
-class TextOuput(BaseOutput):
+class TextOutput(BaseOutput):
     """display an exhaustive result of the scan in text form
 
     note: as soon as the scan target something larger than a toy project, the
@@ -168,7 +168,7 @@ class SWHIDEncoder(json.JSONEncoder):
 
 
 @_register("json")
-class JsonOuput(BaseOutput):
+class JsonOutput(BaseOutput):
     """display the scan result in json"""
 
     def data_as_json(self):
@@ -195,7 +195,7 @@ class JsonOuput(BaseOutput):
 
 
 @_register("ndjson")
-class NDJsonTextOuput(JsonOuput):
+class NDJsonTextOutput(JsonOutput):
     """display the scan result in newline-delimited json"""
 
     def show(self):
@@ -203,7 +203,7 @@ class NDJsonTextOuput(JsonOuput):
 
 
 @_register("sunburst")
-class SunburstOuput(BaseOutput):
+class SunburstOutput(BaseOutput):
     """display the scan result as a sunburst plot
 
     note: as soon as the scan target something larger than a toy project, the
@@ -221,7 +221,7 @@ class SunburstOuput(BaseOutput):
 
 
 @_register("interactive")
-class InteractiveSunburstOuput(SunburstOuput):
+class InteractiveSunburstOutput(SunburstOutput):
     """display the scan result as an interactive sunburst plot"""
 
     def show(self):

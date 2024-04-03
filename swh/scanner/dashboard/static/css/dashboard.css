@@ -82,8 +82,17 @@ p {
   height: 10px;
   background: conic-gradient(var(--primary-color) 0%, white 0);
   border-radius: 50%;
-  border: solid 1px grey;
+  border: solid 1px var(--grey);
   margin: 0 var(--gap) 0 0;
+}
+
+.tooltip {
+  display: inline-block;
+  background: black;
+  color: white;
+  padding: calc(var(--gap) / 2);
+  margin: 0 0 0 var(--gap);
+  font-size: 0.75rem;
 }
 
 header {

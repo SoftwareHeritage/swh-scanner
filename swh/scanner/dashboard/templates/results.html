@@ -57,11 +57,18 @@
 {% endblock main %}
 {% block jsbottom %}
 <script>
-  async function copyToClipboard(text) {
+  async function copyToClipboard(text, elt) {
     if (navigator && navigator.clipboard && navigator.clipboard.writeText)
       try {
-        await navigator.clipboard.writeText(text)
-        alert(`Copied "${text}" successfully`)
+        await navigator.clipboard.writeText(text).then(function() {
+          const tooltip_elt = document.createElement("span")
+          tooltip_elt.classList.add("tooltip")
+          tooltip_elt.textContent = "✔ Copied!"
+          elt.insertAdjacentElement("afterend", tooltip_elt)
+          setTimeout(function() {
+            tooltip_elt.remove()
+          }, 1000);
+        })
       } catch {
         alert("Copy failed: " + err)
       }
@@ -93,7 +100,10 @@
 
       const name_link = definition.children.namedItem("name").children.namedItem("name_link")
       name_link.textContent = "🗐 " + tree_selected_path.dataset.name
-      name_link.setAttribute("onclick", `copyToClipboard("${tree_selected_path.dataset.fpath}")`)
+      name_link.onclick = function() {
+        copyToClipboard(tree_selected_path.dataset.fpath, name_link)
+        return false
+      }
 
       const known_icon = (tree_selected_path.dataset.known === "true") ? "✔" : "✘"
       const known = definition.children.namedItem("known")

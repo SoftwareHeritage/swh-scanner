@@ -111,6 +111,9 @@ def scan(
         converted_patterns,
         update_info=dir_update_info,
     )
+    # move to the next line after progress information
+    if progress_callback is not None:
+        progress_callback(None)
 
     nodes_data = MerkleNodeInfo()
     extra_info.add("known")
@@ -126,6 +129,9 @@ def scan(
     )
 
     run(config, policy, source_tree, nodes_data, extra_info)
+    # move to the next line after progress information
+    if progress_callback is not None:
+        progress_callback(None)
 
     if interactive:
         out_fmt = "interactive"

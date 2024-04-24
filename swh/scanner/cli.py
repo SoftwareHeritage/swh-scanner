@@ -397,23 +397,28 @@ def scan(
         nonlocal directory_from_disk_progress
         nonlocal policy_discovery_progress
 
-        if context == "Directory.from_disk":
+        if context is None:
+            # step finished move past the progress line
+            click.echo("", err=True)
+        elif context == "Directory.from_disk":
             assert isinstance(arg, int)
             directory_from_disk_progress += arg
             click.echo(
-                f"{directory_from_disk_progress} local objects scanned\r",
+                f"\r{directory_from_disk_progress} local objects scanned",
                 nl=False,
                 err=True,
             )
-
-        if context == "Policy.discovery":
+        elif context == "Policy.discovery":
             policy_discovery_progress += 1
             click.echo(
-                f"{policy_discovery_progress} objects compared with the"
-                f" Software Heritage archive\r",
+                f"\r{policy_discovery_progress} objects compared with the"
+                f" Software Heritage archive",
                 nl=False,
                 err=True,
             )
+        else:
+            # explicitly ignoring unknown context
+            pass
 
     extra_info = set(extra_info)
     scanner.scan(

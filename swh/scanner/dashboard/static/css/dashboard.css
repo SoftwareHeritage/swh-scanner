@@ -63,6 +63,10 @@ p {
   font-size: 1rem;
 }
 
+.centered {
+  text-align: center;
+}
+
 .box-shadow {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }

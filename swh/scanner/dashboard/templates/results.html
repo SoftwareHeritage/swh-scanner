@@ -1,33 +1,12 @@
 {% extends "base.html" %}
-{% macro render_source_tree(root_path, source_tree, nodes_data) %}
-{% if source_tree %}
-<ul>{% for k, v in source_tree.items()|sort(attribute='0') %}
-  <li>
-    {% set fpath = v.data['path'].decode() %}
-    {% set rpath = fpath.split(root_path)[-1] %}
-    {% set known = nodes_data.get(v.swhid())['known'] %}
-    {% set known_data = directory_content(v, nodes_data) if v.object_type == 'directory' else '' %}
-    {% if v.object_type == 'directory' %}
-      {% set known_percent = known_data[1] * 100 // known_data[0] if known_data[0] > 0 else 0 %}
-    {% elif v.object_type == 'content' %}
-      {% set known_percent = 100 if known else 0 %}
-    {% endif %}
-    <details id="{{ v.swhid() }}" class="{{ v.object_type }}" data-name="{{ k.decode() }}" data-swhid="{{ v.swhid() }}" data-type="{{ v.object_type }}" data-fpath="{{ fpath }}" data-rpath="{{ rpath }}" data-known="{{ known|lower }}" data-known-data="{{ known_data[0] }},{{ known_data[1] }}">
-      <summary><span class="pie" name="pie" style="background: conic-gradient(orange {{ known_percent }}%, white 0);"></span>{{ k.decode() }}</summary>
-      {{ render_source_tree(root_path, v, nodes_data) }}
-     </details>
-  </li>{% endfor %}
-</ul>
-{% endif %}
-{% endmacro %}
+{% import "partials/tree.html" as macros %}
 
 {% block title %}Results{% endblock %}
-
 {% block main %}
 <div id="results">
   <aside class="box-shadow">
     <div id="tree">
-    {{ render_source_tree(root_path, source_tree, nodes_data) }}
+    {{ macros.render_source_tree(root_path, source_tree, nodes_data, directory_content) }}
     </div>
   </aside>
   <article class="box-shadow">
@@ -89,15 +68,31 @@
     tree.addEventListener("click", function(event) {
       const tree_selected_path = event.target.closest("details")
       if (!tree_selected_path) return
-      if (selected_path.style.visibility == "hidden") selected_path.style.visibility = "visible"
 
+      if (tree_selected_path.dataset.type === "directory") {
+        // Progressive tree loading
+        const subtree_path_url = "/api/v1/html-tree/" + tree_selected_path.dataset.rpath
+        subtree_path_url.replace(/\/{2,}/g, '/') // ensure single slash
+        const subtree_dest = tree_selected_path.getElementsByTagName("summary")[0]
+        if (subtree_dest.nextElementSibling === null){
+          fetch(subtree_path_url)
+              .then(response => response.json())
+              .then(data => {
+                subtree_dest.insertAdjacentHTML("afterend", data["html"])
+              })
+        }
+      }
+
+      // Relative path as title with pie indicator
       const pie = tree_selected_path.firstElementChild.children.namedItem("pie").cloneNode(true)
       const rpath = selected_path.children.namedItem("rpath")
       rpath.textContent = tree_selected_path.dataset.rpath
       rpath.insertAdjacentElement("afterbegin", pie)
 
+      // Definition list element
       const definition = selected_path.children.namedItem("definition")
 
+      // Directory name with copy to clipboard link
       const name_link = definition.children.namedItem("name").children.namedItem("name_link")
       name_link.textContent = "🗐 " + tree_selected_path.dataset.name
       name_link.onclick = function() {
@@ -105,16 +100,22 @@
         return false
       }
 
+      // Known
       const known_icon = (tree_selected_path.dataset.known === "true") ? "✔" : "✘"
       const known = definition.children.namedItem("known")
       known.textContent = known_icon + " " + tree_selected_path.dataset.known
 
-      const search_swhid = "https://archive.softwareheritage.org/browse/search/?q=" + tree_selected_path.dataset.swhid + "&with_visit=true&with_content=true"
+      // Swhid with search link to the archive
+      const search_swhid = "https://archive.softwareheritage.org/" + tree_selected_path.dataset.swhid
       const swhid_link = definition.children.namedItem("swhid").children.namedItem("swhid_link")
       swhid_link.href = search_swhid
       swhid_link.textContent = tree_selected_path.dataset.swhid
 
+      // Type
       definition.children.namedItem("type").textContent = (tree_selected_path.dataset.type === "directory") ? "🗀  " + tree_selected_path.dataset.type  : tree_selected_path.dataset.type
+
+      // Display result
+      if (selected_path.style.visibility == "hidden") selected_path.style.visibility = "visible"
     });
   });
 </script>

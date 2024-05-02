@@ -5,7 +5,8 @@
 
 from pathlib import Path
 
-from flask import Flask, render_template
+from flask import Flask, get_template_attribute, jsonify, render_template
+from markupsafe import escape
 
 from swh.model.from_disk import Directory
 
@@ -31,6 +32,28 @@ def create_app(
             directory_content=directory_content,
         )
 
+    @app.route("/api/v1/html-tree/<path:directory_path>")
+    def api_html_tree_get(directory_path=None):
+        """Given a directory path get its HTML tree representation"""
+        if directory_path is None:
+            return jsonify({})
+
+        def get_source_tree(directory_path):
+            """Return the source_tree object of the directory name"""
+            try:
+                return source_tree[directory_path.encode()]
+            except KeyError:
+                return None
+
+        # Get the source tree object for this path
+        st = get_source_tree(directory_path)
+        # Get the `render_source_tree` Jinja macro
+        macro = get_template_attribute("./partials/tree.html", "render_source_tree")
+        # Render the html snippet
+        html = macro(root_path, st, nodes_data, directory_content)
+        res = {"path": escape(directory_path), "html": html}
+        return jsonify(res)
+
     return app
 
 
@@ -38,4 +61,6 @@ def run_app(
     root_path: Path, source_tree: Directory, nodes_data: MerkleNodeInfo, summary
 ):
     app = create_app(root_path, source_tree, nodes_data, summary)
-    app.run(debug=True)
+    debug = False
+
+    app.run(debug=debug)

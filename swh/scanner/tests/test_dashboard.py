@@ -8,6 +8,18 @@ import pytest
 
 from swh.scanner.dashboard.dashboard import create_app
 
+EXPECTED_DATA_ATTRIBUTES = [
+    "id",
+    "class",
+    "data-name",
+    "data-swhid",
+    "data-type",
+    "data-fpath",
+    "data-rpath",
+    "data-known",
+    "data-known-data",
+]
+
 
 @pytest.fixture
 def summary():
@@ -57,7 +69,7 @@ def test_index(app, client, test_sample_folder):
 
 
 def test_results(app, client, test_sample_folder):
-    """Test Dashboard results route"""
+    """Test /results route"""
     res = client.get("/results")
     assert res.status_code == 200
 
@@ -67,17 +79,25 @@ def test_results(app, client, test_sample_folder):
     assert scan_path.strong.text == str(test_sample_folder)
 
     details = soup.find(id="tree").find_all("details")
-    expected_attributes = [
-        "id",
-        "class",
-        "data-name",
-        "data-swhid",
-        "data-type",
-        "data-fpath",
-        "data-rpath",
-        "data-known",
-        "data-known-data",
-    ]
     for detail in details:
-        for attr in expected_attributes:
+        for attr in EXPECTED_DATA_ATTRIBUTES:
+            assert attr in detail.attrs.keys()
+
+
+def test_api_html_tree(app, client, test_sample_folder):
+    """Test /api/v1/html-tree/<path:directory_path> route"""
+    res = client.get("/api/v1/html-tree/foo")
+    assert res.status_code == 200
+
+    expected_json_keys = ["path", "html"]
+    for key in res.json.keys():
+        assert key in expected_json_keys
+
+    soup = BeautifulSoup(res.json["html"], "html.parser")
+    # parent tag is an unordered list
+    assert soup.ul
+    # with details elements
+    details = soup.ul.find_all("details")
+    for detail in details:
+        for attr in EXPECTED_DATA_ATTRIBUTES:
             assert attr in detail.attrs.keys()

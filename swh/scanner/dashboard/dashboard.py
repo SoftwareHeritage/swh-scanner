@@ -4,6 +4,8 @@
 # See top-level LICENSE file for more information
 
 from pathlib import Path
+from typing import Any, Dict
+import webbrowser
 
 from flask import Flask, get_template_attribute, jsonify, render_template
 from markupsafe import escape
@@ -13,10 +15,24 @@ from swh.model.from_disk import Directory
 from ..data import MerkleNodeInfo, directory_content
 
 
+def open_browser_if_graphical():
+    if not isinstance(webbrowser.get(), (webbrowser.GenericBrowser, webbrowser.Elinks)):
+        webbrowser.open_new("http://127.0.0.1:5000/")
+
+
 def create_app(
-    root_path: Path, source_tree: Directory, nodes_data: MerkleNodeInfo, summary
+    config: Dict[str, Any],
+    root_path: Path,
+    source_tree: Directory,
+    nodes_data: MerkleNodeInfo,
+    summary: Dict[str, Any],
 ):
+    flask_config = {
+        "DEBUG": config["debug_http"],
+    }
+
     app = Flask(__name__)
+    app.config.from_mapping(flask_config)
 
     @app.route("/")
     def index():
@@ -58,9 +74,16 @@ def create_app(
 
 
 def run_app(
-    root_path: Path, source_tree: Directory, nodes_data: MerkleNodeInfo, summary
+    config: Dict[str, Any],
+    root_path: Path,
+    source_tree: Directory,
+    nodes_data: MerkleNodeInfo,
+    summary: Dict[str, Any],
 ):
-    app = create_app(root_path, source_tree, nodes_data, summary)
-    debug = False
+    app = create_app(config, root_path, source_tree, nodes_data, summary)
+
+    debug = config["debug_http"] or False
+
+    open_browser_if_graphical()
 
     app.run(debug=debug)

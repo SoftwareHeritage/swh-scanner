@@ -242,7 +242,10 @@ def login(ctx, username: str, token: str):
     help="The output format",
 )
 @click.option(
-    "-i", "--interactive", is_flag=True, help="Show the result in a dashboard"
+    "-i",
+    "--interactive",
+    is_flag=True,
+    help="Launch the default graphical web browser to explore the results in a dashboard.",
 )
 @click.option(
     "-e",
@@ -255,8 +258,8 @@ def login(ctx, username: str, token: str):
 @click.option(
     "--debug-http",
     "debug_http",
-    type=bool,
-    help="show debug information about the http request",
+    is_flag=True,
+    help="Show debug information about the http request",
 )
 @click.option(
     "--disable-global-patterns",
@@ -419,6 +422,7 @@ def scan(
         out_fmt,
         interactive,
         extra_info,
+        debug_http,
         progress_callback=progress_callback,
     )
 

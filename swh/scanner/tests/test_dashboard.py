@@ -38,6 +38,7 @@ def summary():
 @pytest.fixture
 def app(test_sample_folder, source_tree, nodes_data, summary):
     yield create_app(
+        config={"debug_http": False, "no_web_browse": True},
         root_path=str(test_sample_folder),
         source_tree=source_tree,
         nodes_data=nodes_data,

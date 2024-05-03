@@ -8,7 +8,7 @@ from enum import Enum
 import json
 import os
 import sys
-from typing import Any
+from typing import Any, Dict
 
 import ndjson
 
@@ -60,10 +60,12 @@ class BaseOutput(ABC):
         root_path: str,
         nodes_data: MerkleNodeInfo,
         source_tree: Directory,
+        config: Dict[str, Any],
     ):
         self.root_path = root_path
         self.nodes_data = nodes_data
         self.source_tree = source_tree
+        self.config = config
 
     def get_path_name(self, node):
         return "path" if "path" in node.data.keys() else "data"
@@ -244,5 +246,9 @@ class InteractiveDashboardOutput(SummaryOutput):
 
     def show(self):
         run_app(
-            self.root_path, self.source_tree, self.nodes_data, self.compute_summary()
+            self.config,
+            self.root_path,
+            self.source_tree,
+            self.nodes_data,
+            self.compute_summary(),
         )

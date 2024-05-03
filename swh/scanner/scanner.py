@@ -77,6 +77,7 @@ def scan(
     out_fmt: str,
     interactive: bool,
     extra_info: set,
+    debug_http: bool,
     progress_callback: Optional[Callable[[Any], None]] = None,
 ):
     """Scan a source code project to discover files and directories already
@@ -129,4 +130,6 @@ def scan(
     if interactive:
         out_fmt = "interactive"
 
-    get_output_class(out_fmt)(root_path, nodes_data, source_tree).show()
+    config["debug_http"] = debug_http
+
+    get_output_class(out_fmt)(root_path, nodes_data, source_tree, config).show()

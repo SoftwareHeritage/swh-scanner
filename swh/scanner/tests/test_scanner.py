@@ -25,7 +25,7 @@ def test_scanner_result(live_server, source_tree):
     nodes_data = MerkleNodeInfo()
     init_merkle_node_info(source_tree, nodes_data, {"known"})
     policy = RandomDirSamplingPriority(source_tree, nodes_data)
-    run(config, policy, source_tree, nodes_data, {"known"})
+    run(config, policy, source_tree, nodes_data, set())
     for node in source_tree.iter_tree():
         if str(node.swhid()) in unknown_swhids:
             assert nodes_data[node.swhid()]["known"] is False

@@ -42,10 +42,10 @@ class MerkleNodeInfo(dict):
 def init_merkle_node_info(source_tree: Directory, data: MerkleNodeInfo, info: set):
     """Populate the MerkleNodeInfo with the SWHIDs of the given source tree and the
     attributes that will be stored.
+
+    The "known" attribute is always stored as it is always fetched.
     """
-    if not info:
-        raise Exception("Data initialization requires node attributes values.")
-    nodes_info: Dict[str, Optional[str]] = {}
+    nodes_info: Dict[str, Optional[str]] = {"known": None}
     for ainfo in info:
         if ainfo in SUPPORTED_INFO:
             nodes_info[ainfo] = None
@@ -211,8 +211,17 @@ def add_origin(
         if node in seen:
             continue
         seen.add(node)
-        info = _get_provenance_info(client, node.swhid())
-        if info:
+        info = None
+        node_data = data.get(node.swhid())
+        if node_data is not None:
+            known = node_data.get("known")
+            if known or known is None:
+                info = _get_provenance_info(client, node.swhid())
+        if not info and node.object_type == "directory":
+            # add children to the queue.
+            queue.extend(node.values())
+        elif info:
+            # propagate the information to the leafs
             data[node.swhid()].update(info)
             if node.object_type == "directory":
                 for sub_node in node.iter_tree():
@@ -223,10 +232,6 @@ def add_origin(
                         continue
                     seen.add(sub_node)
                     data[sub_node.swhid()].update(info)
-        else:
-            if node.object_type == "directory":
-                # add children to the queue.
-                queue.extend(node.values())
 
 
 def get_directory_data(

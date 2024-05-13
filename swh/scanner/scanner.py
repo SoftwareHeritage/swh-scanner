@@ -47,10 +47,18 @@ def run(
             kwargs["bearer_token"] = auth_token
 
     client = WebAPIClient(api_url=api_url, **kwargs)
-    for info in extra_info:
-        if info == "known":
-            policy.run(client)
-        elif info == "origin":
+
+    # always start with finding what is known. The other option will need this
+    # information anyway. Fetching "known" status is efficicient and relatively
+    # cheap. In addition is "context free"¹ and can fetch in any order. So we
+    # start with this step in all cases.
+    #
+    # [1] the best answer for "known" does not changes depending of the status
+    # of the files and directory around it. This is not free for "oring" for
+    # example.
+    policy.run(client)
+    for info in sorted(extra_info):
+        if info == "origin":
             add_origin(source_tree, nodes_data, client)
         else:
             raise Exception(f"The information '{info}' cannot be retrieved")
@@ -116,7 +124,6 @@ def scan(
         progress_callback(None)
 
     nodes_data = MerkleNodeInfo()
-    extra_info.add("known")
     init_merkle_node_info(source_tree, nodes_data, extra_info)
     discovery_update_info = None
     if progress_callback is not None:

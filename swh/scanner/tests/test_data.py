@@ -77,6 +77,8 @@ def test_add_origin_with_revision_only(live_server, source_tree, nodes_data):
     print(a_file_id)
     attrs = nodes_data[a_file.swhid()]
     assert "origin" in attrs
+    assert attrs["origin"] is not None
+    assert "url" in attrs["origin"]
     assert attrs["origin"].get("url") == fake_origin[a_file_id]
     assert "revision" in attrs
     assert str(attrs["revision"].get("swhid")) == fake_revision[a_file_id]

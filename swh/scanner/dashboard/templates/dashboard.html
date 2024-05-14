@@ -7,24 +7,30 @@
     <p class="size-6">Results summary</p>
   </hgroup>
   <article>
-    <section class="card box-shadow">
-      <h2>Full known directories</h2>
-      <h3 class="size-1">{{ summary["full_known_directories_percent"]}}%</h3>
-      <hr>
-      <p><strong>{{ summary["full_known_directories"] }}</strong> full known directories out of a total of <strong>{{ summary["total_directories"] }}</strong></p>
-    </section>
-    <section class="card box-shadow">
-      <h2>Partially known directories</h2>
-      <h3 class="size-1">{{ summary["partially_known_directories_percent"]}}%</h3>
-      <hr>
-      <p><strong>{{ summary["partially_known_directories"] }}</strong> partially known directories out of a total of <strong>{{ summary["total_directories"] }}</strong></p>
-    </section>
-    <section class="card box-shadow">
-      <h2>Files known</h2>
-      <h3 class="size-1">{{ summary["known_files_percent"]}}%</h3>
-      <hr>
-      <p><strong>{{ summary["known_files"] }}</strong> known files out of a total of <strong>{{ summary["total_files"] }}</strong></p>
+    <a href="{{ url_for('results') }}" title="View results">
+      <section class="card box-shadow">
+        <h2>Full known directories</h2>
+        <h3 class="size-1">{{ summary["full_known_directories_percent"]}}%</h3>
+        <hr>
+        <p><strong>{{ summary["full_known_directories"] }}</strong> full known directories out of a total of <strong>{{ summary["total_directories"] }}</strong></p>
       </section>
+    </a>
+    <a href="{{ url_for('results') }}" title="View results">
+      <section class="card box-shadow">
+        <h2>Partially known directories</h2>
+        <h3 class="size-1">{{ summary["partially_known_directories_percent"]}}%</h3>
+        <hr>
+        <p><strong>{{ summary["partially_known_directories"] }}</strong> partially known directories out of a total of <strong>{{ summary["total_directories"] }}</strong></p>
+      </section>
+    </a>
+    <a href="{{ url_for('results') }}" title="View results">
+      <section class="card box-shadow">
+        <h2>Files known</h2>
+        <h3 class="size-1">{{ summary["known_files_percent"]}}%</h3>
+        <hr>
+        <p><strong>{{ summary["known_files"] }}</strong> known files out of a total of <strong>{{ summary["total_files"] }}</strong></p>
+      </section>
+    </a>
   </article>
 </div>
 {% endblock %}

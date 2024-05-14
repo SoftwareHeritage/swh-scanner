@@ -241,3 +241,13 @@ footer {
   grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: var(--gap);
 }
+
+#dashboard > article a {
+  display: block;
+  text-decoration: None;
+  color: var(--text-color);
+}
+
+#dashboard > article a:hover {
+  background: var(--primary-color);
+}

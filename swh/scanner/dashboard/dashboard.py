@@ -36,7 +36,9 @@ def create_app(
 
     @app.route("/")
     def index():
-        return render_template("./dashboard.html", root_path=root_path, summary=summary)
+        return render_template(
+            "./dashboard.html", root_path=root_path, summary=summary, config=config
+        )
 
     @app.route("/results")
     def results():

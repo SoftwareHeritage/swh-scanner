@@ -236,18 +236,34 @@ footer {
   padding: var(--gap) calc(var(--gap) * 3);
 }
 
-#dashboard > article {
+#dashboard > article#summary {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: var(--gap);
 }
 
-#dashboard > article a {
+#dashboard > article#summary a {
   display: block;
   text-decoration: None;
   color: var(--text-color);
 }
 
-#dashboard > article a:hover {
+#dashboard > article#summary a:hover {
   background: var(--primary-color);
+}
+
+#dashboard > article#config > section > dl {
+  display: grid;
+  grid-gap: var(--gap) calc(var(--gap) * 3);
+  grid-template-columns: 2fr 6fr;
+}
+
+#dashboard > article#config > section > dl > dt {
+  color: var(--grey);
+}
+
+#dashboard > article#config > section > dl > dd {
+  font-weight: bold;
+  margin: 0;
+  grid-column-start: 2;
 }

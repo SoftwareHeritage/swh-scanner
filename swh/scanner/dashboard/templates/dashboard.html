@@ -4,9 +4,9 @@
 <div id="dashboard">
   <hgroup>
     <h2 class="size-3">Dashboard</h2>
-    <p class="size-6">Results summary</p>
+    <h3 class="size-5">Results summary</h3>
   </hgroup>
-  <article>
+  <article id="summary">
     <a href="{{ url_for('results') }}" title="View results">
       <section class="card box-shadow">
         <h2>Full known directories</h2>
@@ -31,6 +31,49 @@
         <p><strong>{{ summary["known_files"] }}</strong> known files out of a total of <strong>{{ summary["total_files"] }}</strong></p>
       </section>
     </a>
+  </article>
+  <article id="config">
+    <section>
+      <h2>Scanner configuration</h2>
+      <dl>
+        <dt>Authentication</dt>
+        <dd>
+        {% if "keycloak_tokens" in config %}
+        Authenticated
+        {% else %}
+        Not authenticated
+        {% endif %}
+        </dd>
+        <dt>Disable global exclusion patterns</dt>
+        <dd>
+          {{ config["scanner"]["disable_global_patterns"] if "scanner" in config and "disable_global_patterns" in config["scanner"] else "Not set" }}
+        </dd>
+        <dt>Disable DVCS exclusion patterns</dt>
+        <dd>
+          {{ config["scanner"]["disable_vcs_patterns"] if "scanner" in config and "disable_vcs_patterns" in config["scanner"] else "Not set" }}
+        </dd>
+        <dt>Exclusion templates</dt>
+        <dd>
+        {{ config["scanner"]["exclude_templates"] if "scanner" in config and "exclude_templates" in config["scanner"] else "Not set" }}
+        </dd>
+        <dt>Exclusion patterns</dt>
+        <dd>
+        {{ config["scanner"]["exclude"] if "scanner" in config and "exclude" in config["scanner"] else "Not set"  }}
+        </dd>
+        <dt>Server port</dt>
+        <dd>
+        {{ config["scanner"]["server"]["port"] if "scanner" in config and "server" in config["scanner"] and "port" in config["scanner"]["server"] else "Not set" }}
+        </dd>
+        <dt>Web API URL</dt>
+        <dd>
+        {{ config["web-api"]["url"] if "web-api" in config and "url" in config["web-api"] else "Not set" }}
+        </dd>
+        <dt>Debug HTTP</dt>
+        <dd>
+        {{ config["debug_http"] if "debug_http" in config else "Not set" }}
+        </dd>
+      </dl>
+    </section>
   </article>
 </div>
 {% endblock %}

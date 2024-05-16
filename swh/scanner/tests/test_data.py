@@ -59,11 +59,9 @@ def test_add_origin_with_release(live_server, source_tree, nodes_data):
     source_tree_id = str(source_tree.swhid())
     for node, attrs in nodes_data.items():
         assert "origin" in attrs
-        assert attrs["origin"].get("url") == fake_origin[source_tree_id]
-        assert "release" in attrs
-        assert str(attrs["release"].get("swhid")) == fake_release[source_tree_id]
-        assert "revision" in attrs
-        assert str(attrs["revision"].get("swhid")) == fake_revision[source_tree_id]
+        assert attrs["origin"] is not None
+        assert attrs["origin"].origin == fake_origin[source_tree_id]
+        assert str(attrs["origin"].anchor) == fake_release[source_tree_id]
 
 
 def test_add_origin_with_revision_only(live_server, source_tree, nodes_data):
@@ -74,15 +72,11 @@ def test_add_origin_with_revision_only(live_server, source_tree, nodes_data):
 
     add_origin(a_file, nodes_data, client)
     a_file_id = str(a_file.swhid())
-    print(a_file_id)
     attrs = nodes_data[a_file.swhid()]
     assert "origin" in attrs
     assert attrs["origin"] is not None
-    assert "url" in attrs["origin"]
-    assert attrs["origin"].get("url") == fake_origin[a_file_id]
-    assert "revision" in attrs
-    assert str(attrs["revision"].get("swhid")) == fake_revision[a_file_id]
-    assert attrs.get("release") is None
+    assert attrs["origin"].origin == fake_origin[a_file_id]
+    assert str(attrs["origin"].anchor) == fake_revision[a_file_id]
 
 
 def test_get_directory_data(source_tree, nodes_data):

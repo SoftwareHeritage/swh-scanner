@@ -14,7 +14,7 @@
 <div id="results">
   <aside class="box-shadow">
     <div id="tree">
-    {{ macros.render_source_tree(root_path, source_tree, nodes_data, directory_content, json) }}
+      {{ macros.render_source_tree(root_path, source_tree, nodes_data, directory_content, json) }}
     </div>
   </aside>
   <article class="box-shadow">
@@ -37,12 +37,14 @@
           <dd name="known"></dd>
           <dt>Swhid</dt>
           <dd name="swhid">
-            <a href="" title="Search the Software Heritage Archive for this swhid" name="swhid_link" target="_blank"></a>
+            <a href="" title="Search the Software Heritage Archive for this swhid" name="swhid_link"
+              target="_blank"></a>
           </dd>
         </dl>
       </section>
       <section name="provenance_btn_section">
-        <a id="provenance_btn" class="button" title="Get provenance information" href="javascript:void(0);">Get provenance</a>
+        <a id="provenance_btn" class="button" title="Get provenance information" href="javascript:void(0);">Get
+          provenance</a>
       </section>
       <section name="origin">
         <h4 class="size-6">Origin</h4>
@@ -97,12 +99,12 @@
   async function copyToClipboard(text, elt) {
     if (navigator && navigator.clipboard && navigator.clipboard.writeText)
       try {
-        await navigator.clipboard.writeText(text).then(function() {
+        await navigator.clipboard.writeText(text).then(function () {
           const tooltip_elt = document.createElement("span")
           tooltip_elt.classList.add("tooltip")
           tooltip_elt.textContent = "✔ Copied!"
           elt.insertAdjacentElement("afterend", tooltip_elt)
-          setTimeout(function() {
+          setTimeout(function () {
             tooltip_elt.remove()
           }, 1000);
         })
@@ -114,7 +116,7 @@
   }
 
   function formatSearchUrl(swhid) {
-      return "https://archive.softwareheritage.org/browse/search/?q=" + swhid + "&with_visit=true&with_content=true"
+    return "https://archive.softwareheritage.org/browse/search/?q=" + swhid + "&with_visit=true&with_content=true"
   }
 
   function show_provenance_button(provenance_button) {
@@ -129,7 +131,7 @@
     }
   }
 
-  function show_error_notification(message){
+  function show_error_notification(message) {
     // Display an error message to the user
     const notification_box = document.getElementById("notification-box")
     const notification_message = document.getElementById("notification-message")
@@ -141,83 +143,84 @@
     })
   }
 
-  function show_origin(selected_path, tree_selected_path) {
-    // Provenance / Origin
+  function show_origin(selected_path, dataset) {
     const origin = selected_path.querySelector("section[name='origin']")
     origin.style.display = "none"
-    if (tree_selected_path.dataset.origin != "{}" && tree_selected_path.dataset.origin != "null"){
-      const origin_data = JSON.parse(tree_selected_path.dataset.origin)
-      // Url
-      const origin_url_link = origin.querySelector("a[name='origin_url_link']")
-      origin_url_link.href = origin_data["url"]
-      origin_url_link.textContent =  origin_data["url"]
-      origin.style.display = "block"
+    if (!dataset.hasOwnProperty("origin")) {
+      return
     }
+    const data = dataset.origin;
+    const origin_url_link = origin.querySelector("a[name='origin_url_link']")
+    origin_url_link.href = data
+    origin_url_link.textContent = data
+    origin.style.display = "block"
   }
 
-  function show_revision(selected_path, tree_selected_path) {
+  function show_revision(selected_path, dataset) {
     // Provenance / Revision
     const revision = selected_path.querySelector("section[name='revision']")
     revision.style.display = "none"
-    if (tree_selected_path.dataset.revision != "{}"){
-      const revision_data = JSON.parse(tree_selected_path.dataset.revision)
-const revision_selectors = {
-        "type": "dd[name='type']",
-        "date": "dd[name='date']",
-        "author": "dd[name='author']",
-        "committer": "dd[name='committer']",
-        "committer_date": "dd[name='committer_date']",
-        "merge": "dd[name='merge']",
-        "swhid": "a[name='search_revision_link']",
-        "message": "dd[name='message']",
-        "url": "a[name='revision_api_link']",
-        "history_url": "a[name='history_api_link']",
-        "directory_url": "a[name='directory_api_link']",
-      }
-
-      for (const [key, value] of Object.entries(revision_selectors)) {
-        if (key == "author") {
-          revision.querySelector(value).textContent = revision_data["author"]["fullname"] + " (" + revision_data["author"]["name"] + ", " + revision_data["author"]["email"] + ")"
-        } else if (key == "committer") {
-          revision.querySelector(value).textContent = revision_data["committer"]["fullname"] + " (" + revision_data["committer"]["name"] + ", " + revision_data["committer"]["email"] + ")"
-        } else if (key == "swhid") {
-          revision.querySelector(value).href = formatSearchUrl(revision_data["swhid"])
-          revision.querySelector(value).textContent = revision_data[key]
-        } else if (key == "url") {
-          revision.querySelector(value).href = revision_data[key]
-        } else if (key == "history_url") {
-          revision.querySelector(value).href = revision_data[key]
-        } else if (key == "directory_url") {
-          revision.querySelector(value).href = revision_data[key]
-        } else {
-          revision.querySelector(value).textContent = revision_data[key]
-        }
-      }
-      // TODO: display synthetic, extra_headers, parents and metadata information
-      revision.style.display = "block"
+    if (!dataset.hasOwnProperty("revision")) {
+      return
     }
+    const revision_data = JSON.parse(dataset.revision)
+    const revision_selectors = {
+      "type": "dd[name='type']",
+      "date": "dd[name='date']",
+      "author": "dd[name='author']",
+      "committer": "dd[name='committer']",
+      "committer_date": "dd[name='committer_date']",
+      "merge": "dd[name='merge']",
+      "id": "a[name='search_revision_link']",
+      "message": "dd[name='message']",
+      "url": "a[name='revision_api_link']",
+      "history_url": "a[name='history_api_link']",
+      "directory_url": "a[name='directory_api_link']",
+    }
+
+    for (const [key, value] of Object.entries(revision_selectors)) {
+      if (key == "author") {
+        revision.querySelector(value).textContent = revision_data["author"]["fullname"] + " (" + revision_data["author"]["name"] + ", " + revision_data["author"]["email"] + ")"
+      } else if (key == "committer") {
+        revision.querySelector(value).textContent = revision_data["committer"]["fullname"] + " (" + revision_data["committer"]["name"] + ", " + revision_data["committer"]["email"] + ")"
+      } else if (key == "id") {
+        revision.querySelector(value).href = formatSearchUrl(revision_data["id"])
+        revision.querySelector(value).textContent = revision_data[key]
+      } else if (key == "url") {
+        revision.querySelector(value).href = revision_data[key]
+      } else if (key == "history_url") {
+        revision.querySelector(value).href = revision_data[key]
+      } else if (key == "directory_url") {
+        revision.querySelector(value).href = revision_data[key]
+      } else {
+        revision.querySelector(value).textContent = revision_data[key]
+      }
+    }
+    // TODO: display synthetic, extra_headers, parents and metadata information
+    revision.style.display = "block"
   }
 
-  function show_release(selected_path, tree_selected_path) {
+  function show_release(selected_path, dataset) {
     // Provenance / Release
     const release = selected_path.querySelector("section[name='release']")
     release.style.display = "none"
-    if (tree_selected_path.dataset.release != "{}"){
-      const release_data = JSON.parse(tree_selected_path.dataset.release)
-      // TODO: display release information
-      release.style.visibility = "block"
+    if (!dataset.hasOwnProperty("release")) {
+      return
     }
+    const release_data = JSON.parse(dataset.release)
+    // TODO: display release information
+    release.style.visibility = "block"
   }
 
   function show_notification_message(title, msg) {
   }
 
-  async function fetchProvenance(selected_path, tree_selected_path) {
+  async function fetchProvenance(selected_path, dataset) {
     // Show the loader
     const loader = document.getElementById("loader")
     loader.style.display = "flex"
     try {
-      const response = await fetch("/api/v1/provenance/" + tree_selected_path.dataset.swhid)
+      const response = await fetch("/api/v1/provenance/" + dataset.swhid)
       if (!response.ok) {
         // Hide the loader
         loader.style.display = "none"
@@ -233,45 +236,46 @@ const revision_selectors = {
       }
 
       const data = await response.json()
+      // TODO show something if no provenance information was found
       // Display provenance information
       if (data.hasOwnProperty("origin")) {
-        tree_selected_path.dataset.origin = JSON.stringify(data["origin"])
-        show_origin(selected_path, tree_selected_path)
+        dataset.origin = JSON.stringify(data["origin"])
+        show_origin(selected_path, dataset)
       }
       if (data.hasOwnProperty("revision")) {
-        tree_selected_path.dataset.revision = JSON.stringify(data["revision"])
-        show_revision(selected_path, tree_selected_path)
+        dataset.revision = JSON.stringify(data["revision"])
+        show_revision(selected_path, dataset)
       }
-      if (data.hasOwnProperty("origin")) {
-        tree_selected_path.dataset.origin = JSON.stringify(data["origin"])
-        show_release(selected_path, tree_selected_path)
+      if (data.hasOwnProperty("release")) {
+        dataset.release = JSON.stringify(data["release"])
+        show_release(selected_path, dataset)
       }
       // Hide the provenance query button
       const provenance_section = selected_path.querySelector("section[name='provenance_btn_section']")
       hide_provenance_button(provenance_section)
       // Hide the loader
       loader.style.display = "none"
-  } catch (error) {
-    if (error.name === "TypeError") {
-      const msg = "Fetch failed or network error: " + error.message
-      show_error_notification(msg)
-      console.error(msg)
-    } else if (error.name === "SyntaxError") {
-      const msg = "Failed to parse JSON:" + error.message
-      show_error_notification(msg)
-      console.error(msg)
-    } else {
-      const msg = "An unexpected error occurred:" + error.message
-      show_error_notification(msg)
-      console.error(msg)
-    }
-    // Hide the loader
-    loader.style.display = "none"
-    throw error;
+    } catch (error) {
+      if (error.name === "TypeError") {
+        const msg = "Fetch failed or network error: " + error.message
+        show_error_notification(msg)
+        console.error(msg)
+      } else if (error.name === "SyntaxError") {
+        const msg = "Failed to parse JSON:" + error.message
+        show_error_notification(msg)
+        console.error(msg)
+      } else {
+        const msg = "An unexpected error occurred:" + error.message
+        show_error_notification(msg)
+        console.error(msg)
+      }
+      // Hide the loader
+      loader.style.display = "none"
+      throw error;
     }
   }
 
-  document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", function () {
     const loader = document.getElementById("loader")
     const tree = document.getElementById("tree")
     const selected_path = document.getElementById("selected_path")
@@ -284,31 +288,32 @@ const revision_selectors = {
       return
     }
 
-    tree.addEventListener("click", function(event) {
+    tree.addEventListener("click", function (event) {
       const tree_selected_path = event.target.closest("details")
+      const dataset = tree_selected_path.dataset;
       if (!tree_selected_path) return
 
-      //show the loader
+      // show the loader
       loader.style.display = "flex"
 
-      if (tree_selected_path.dataset.type === "directory") {
+      if (dataset.type === "directory") {
         // Progressive tree loading
-        const subtree_path_url = "/api/v1/html-tree/" + tree_selected_path.dataset.rpath
+        const subtree_path_url = "/api/v1/html-tree/" + dataset.rpath
         subtree_path_url.replace(/\/{2,}/g, '/') // ensure single slash
         const subtree_dest = tree_selected_path.getElementsByTagName("summary")[0]
-        if (subtree_dest.nextElementSibling === null){
+        if (subtree_dest.nextElementSibling === null) {
           fetch(subtree_path_url)
-              .then(response => response.json())
-              .then(data => {
-                subtree_dest.insertAdjacentHTML("afterend", data["html"])
-              })
+            .then(response => response.json())
+            .then(data => {
+              subtree_dest.insertAdjacentHTML("afterend", data["html"])
+            })
         }
       }
 
       // Relative path as title with pie indicator
       const pie = tree_selected_path.firstElementChild.children.namedItem("pie").cloneNode(true)
       const rpath = selected_path.querySelector("h3[name='rpath']")
-      rpath.textContent = tree_selected_path.dataset.rpath
+      rpath.textContent = dataset.rpath
       rpath.insertAdjacentElement("afterbegin", pie)
 
       // Definition list element
@@ -316,45 +321,45 @@ const revision_selectors = {
 
       // Directory name with copy to clipboard link
       const name_link = definition.children.namedItem("name").children.namedItem("name_link")
-      name_link.textContent = "🗐 " + tree_selected_path.dataset.name
-      name_link.onclick = function() {
-        copyToClipboard(tree_selected_path.dataset.fpath, name_link)
+      name_link.textContent = "🗐 " + dataset.name
+      name_link.onclick = function () {
+        copyToClipboard(dataset.fpath, name_link)
         return false
       }
 
       // Known
-      const known_icon = (tree_selected_path.dataset.known === "true") ? "✔" : "✘"
+      const known_icon = (dataset.known === "true") ? "✔" : "✘"
       const known = definition.children.namedItem("known")
-      known.textContent = known_icon + " " + tree_selected_path.dataset.known
+      known.textContent = known_icon + " " + dataset.known
 
       // Swhid with search link to the archive
-      const search_swhid = "https://archive.softwareheritage.org/" + tree_selected_path.dataset.swhid
+      const search_swhid = "https://archive.softwareheritage.org/" + dataset.swhid
       const swhid_link = definition.children.namedItem("swhid").children.namedItem("swhid_link")
-      swhid_link.href = formatSearchUrl(tree_selected_path.dataset.swhid)
-      swhid_link.textContent = tree_selected_path.dataset.swhid
+      swhid_link.href = formatSearchUrl(dataset.swhid)
+      swhid_link.textContent = dataset.swhid
 
       // Type
-      definition.children.namedItem("type").textContent = (tree_selected_path.dataset.type === "directory") ? "🗀  " + tree_selected_path.dataset.type  : tree_selected_path.dataset.type
+      definition.children.namedItem("type").textContent = (dataset.type === "directory") ? "🗀  " + dataset.type : dataset.type
 
       // Provenance query button
       const provenance_section = selected_path.querySelector("section[name='provenance_btn_section']")
       const provenance_button_elt = provenance_section.children.namedItem("provenance_btn")
-      provenance_button_elt.onclick = function() {
-        fetchProvenance(selected_path, tree_selected_path)
+      provenance_button_elt.onclick = function () {
+        fetchProvenance(selected_path, dataset)
         return false
       }
 
       // Hide the provenance button if element is unknown or if provenance information is already set
-      if (tree_selected_path.dataset.known === "false" || tree_selected_path.dataset.origin != "{}" || tree_selected_path.dataset.revision != "{}" || tree_selected_path.dataset.release != "{}") {
+      if (dataset.known === "false" || dataset.hasOwnProperty("provenance") || dataset.hasOwnProperty("release") || dataset.hasOwnProperty("revision")) {
         hide_provenance_button(provenance_section)
       } else {
         show_provenance_button(provenance_section)
       }
 
       // Display provenance information
-      show_origin(selected_path, tree_selected_path)
-      show_revision(selected_path, tree_selected_path)
-      show_release(selected_path, tree_selected_path)
+      show_origin(selected_path, dataset)
+      show_revision(selected_path, dataset)
+      show_release(selected_path, dataset)
 
       // Display results
       if (selected_path.style.visibility == "hidden") selected_path.style.visibility = "visible"

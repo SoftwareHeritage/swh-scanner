@@ -4,7 +4,7 @@
       {% for k, v in source_tree.items()|sort(attribute='0') %}
         <li>
           {% set fpath = v.data['path'].decode() %}
-          {% set rpath = fpath.split(root_path)[-1] %}
+          {% set rpath = fpath.removeprefix(root_path + '/') %}
           {% set node_data = nodes_data.get(v.swhid()) %}
           {% set known = node_data['known'] %}
           {% set known_data = directory_content(v, nodes_data) if v.object_type == 'directory' else '' %}
@@ -13,15 +13,15 @@
           {% elif v.object_type == 'content' %}
             {% set known_percent = 100 if known else 0 %}
           {% endif %}
-          {% set origin = json.dumps(node_data["origin"]) if "origin" in node_data else {} %}
+          {% set provenance = json.dumps(node_data["provenance"]) if "provenance" in node_data else None %}
           {% if "revision" in node_data and "swhid" in node_data["revision"] %}
             {% do node_data["revision"].update(swhid=node_data["revision"]["swhid"]|string) %}
           {% endif %}
           {% if "release" in node_data and "swhid" in node_data["release"] %}
             {% do node_data["release"].update(swhid=node_data["release"]["swhid"]|string) %}
           {% endif %}
-          {% set revision = json.dumps(node_data["revision"]) if "revision" in node_data else {} %}
-          {% set release = json.dumps(node_data["release"]) if "release" in node_data else {} %}
+          {% set revision = json.dumps(node_data["revision"]) if "revision" in node_data else None %}
+          {% set release = json.dumps(node_data["release"]) if "release" in node_data else None %}
           <details id="{{ v.swhid() }}"
                    class="{{ v.object_type }}"
                    data-name="{{ k.decode() }}"
@@ -31,9 +31,10 @@
                    data-rpath="{{ rpath }}"
                    data-known="{{ known|lower }}"
                    data-known-data="{{ known_data[0] }},{{ known_data[1] }}"
-                   data-origin="{{ origin }}"
-                   data-revision="{{ revision }}"
-                   data-release="{{ release }}">
+                   {% if provenance %}data-provenance="{{ provenance }}"{% endif %}
+                   {% if revision %}data-revision="{{ revision }}"{% endif %}
+                   {% if release %}data-release="{{ release }}"{% endif %}
+                   >
             <summary>
               <span class="pie"
                     name="pie"

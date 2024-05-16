@@ -8,14 +8,14 @@ import logging
 from os import path
 from pathlib import Path
 import subprocess
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
+from typing import Callable, Dict, List, Optional, Tuple, Union, cast
 from xml.etree import ElementTree
 
 import requests
 
 from swh.model.exceptions import ValidationError
 from swh.model.from_disk import Content, Directory
-from swh.model.swhids import CoreSWHID, ObjectType
+from swh.model.swhids import CoreSWHID, ObjectType, QualifiedSWHID
 from swh.web.client.client import WebAPIClient
 
 SUPPORTED_INFO = {"known", "origin"}
@@ -87,8 +87,8 @@ def _get_leaf(
     return value
 
 
-def _get_provenance_info(client, swhid: CoreSWHID) -> Dict[str, Dict[str, Any]]:
-    """find a revision, release and origin containing this content or directory
+def _get_provenance_info(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
+    """find a revision or release and origin containing this content or directory
 
     Revision and Release might not be found, we prioritize finding a
     Release over finding a Revision when possible.
@@ -113,13 +113,14 @@ def _get_provenance_info(client, swhid: CoreSWHID) -> Dict[str, Dict[str, Any]]:
         swhid: the SWHID of the Content or Directory to find info for
 
     Returns:
-        {"revision": rev, "release": rev, "origin": ori)
+        None or QualifiedSWHID for the current Content or Directory.
 
-        rev: information about the revision, unset if none found
-        rel: information unset if none found
-        ori: information about the origin, unset if none found
+        The QualifiedSWHID will have the following attributes set:
+        - swhid: the swhid of the provided content or directory
+        - anchor: swhid of a Release or Revision containing it
+        - origin: the origin containing this Release or Revision
 
-        For unknown content, an empty dict will be returned.
+        If no anchor could be found, this function return None.
 
     Raises:
         requests.HTTPError: if HTTP request fails
@@ -139,58 +140,41 @@ def _get_provenance_info(client, swhid: CoreSWHID) -> Dict[str, Dict[str, Any]]:
     # we identify a known content without being able to find an origin.
 
     # Try to find a release first
-    top_id = release = _get_leaf(
+    anchor = _get_leaf(
         client,
         node=content_or_dir,
         direction="backward",
         edges="dir:dir,cnt:dir,dir:rev,rev:rel,dir:rel,cnt:rel",
         return_types="rel",
     )
-    if release is not None:
-        revision = _get_leaf(
-            client,
-            node=release,
-            edges="rel:rev",
-            return_types="rev",
-        )
-    else:
+    if anchor is None:
         # We did not find a release,
         # directly search for a revision instead.
-        top_id = revision = _get_leaf(
+        anchor = _get_leaf(
             client,
             node=content_or_dir,
             direction="backward",
             edges="dir:dir,cnt:dir,dir:rev",
             return_types="rev",
         )
-
-    if top_id is None:
+    if anchor is None:
         # could not find anything, give up
-        return {}
+        return None
 
     # now search the associated origin
     origin = _get_leaf(
         client,
-        node=top_id,
+        node=anchor,
         direction="backward",
         edges="*:snp,*:ori",
         return_types="ori",
     )
-
-    info: Dict[str, Dict[str, Any]] = {}
-    if revision is not None:
-        rev_info = client.get(revision, typify=False)
-        rev_info["swhid"] = CoreSWHID.from_string(revision)
-        info["revision"] = rev_info
-    if release is not None:
-        rel_info = client.get(release, typify=False)
-        rel_info["swhid"] = CoreSWHID.from_string(release)
-        info["release"] = rel_info
-    if origin is not None:
-        info["origin"] = {
-            "url": origin,
-        }
-    return info
+    return QualifiedSWHID(
+        object_type=swhid.object_type,
+        object_id=swhid.object_id,
+        anchor=CoreSWHID.from_string(anchor),
+        origin=origin,
+    )
 
 
 _IN_MEM_NODE = Union[Directory, Content]
@@ -211,18 +195,18 @@ def add_origin(
         if node in seen:
             continue
         seen.add(node)
-        info = None
+        qualified_swhid = None
         node_data = data.get(node.swhid())
         if node_data is not None:
             known = node_data.get("known")
             if known or known is None:
-                info = _get_provenance_info(client, node.swhid())
-        if not info and node.object_type == "directory":
+                qualified_swhid = _get_provenance_info(client, node.swhid())
+        if qualified_swhid is None and node.object_type == "directory":
             # add children to the queue.
             queue.extend(node.values())
-        elif info:
+        elif qualified_swhid is not None:
+            data[node.swhid()]["origin"] = qualified_swhid
             # propagate the information to the leafs
-            data[node.swhid()].update(info)
             if node.object_type == "directory":
                 for sub_node in node.iter_tree():
                     # XXX swh.model probably need to improve so that we don't
@@ -231,7 +215,7 @@ def add_origin(
                     if sub_node in seen:
                         continue
                     seen.add(sub_node)
-                    data[sub_node.swhid()].update(info)
+                    data[sub_node.swhid()]["origin"] = qualified_swhid
 
 
 def get_directory_data(

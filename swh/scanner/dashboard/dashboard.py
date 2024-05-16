@@ -9,10 +9,11 @@ from typing import Any, Dict
 import webbrowser
 
 from flask import Flask, get_template_attribute, jsonify, render_template
+from flask.json.provider import DefaultJSONProvider
 from markupsafe import escape
 
 from swh.model.from_disk import Directory
-from swh.model.swhids import CoreSWHID
+from swh.model.swhids import CoreSWHID, ObjectType
 
 from ..data import MerkleNodeInfo, _get_provenance_info, directory_content
 
@@ -20,6 +21,15 @@ from ..data import MerkleNodeInfo, _get_provenance_info, directory_content
 def open_browser_if_graphical():
     if not isinstance(webbrowser.get(), (webbrowser.GenericBrowser, webbrowser.Elinks)):
         webbrowser.open_new("http://127.0.0.1:5000/")
+
+
+class CustomJSONProvider(DefaultJSONProvider):
+    @staticmethod
+    def default(obj):
+        if isinstance(obj, CoreSWHID):
+            return str(obj)
+        else:
+            return DefaultJSONProvider.default(obj)
 
 
 def create_app(
@@ -36,6 +46,8 @@ def create_app(
     app = Flask(__name__)
     app.config.from_mapping(flask_config)
     app.jinja_env.add_extension("jinja2.ext.do")
+    app.json_provider_class = CustomJSONProvider
+    app.json = CustomJSONProvider(app)
 
     @app.route("/")
     def index():
@@ -86,13 +98,19 @@ def create_app(
         try:
             client = get_webapi_client(config)
             swhid_o = CoreSWHID.from_string(swhid)
-            info = _get_provenance_info(client, swhid_o)
-            # ensure json data types
-            for entry in info.values():
-                for k, v in entry.items():
-                    if k == "swhid":
-                        # convert swhid object to string
-                        entry[k] = str(v)
+            qualified_swhid = _get_provenance_info(client, swhid_o)
+            if qualified_swhid is None:
+                return jsonify({})
+
+            info = qualified_swhid.qualifiers()
+            anchor = qualified_swhid.anchor
+            if anchor is not None:
+                anchor_type = anchor.object_type
+                if anchor_type == ObjectType.REVISION:
+                    info["revision"] = client.revision(anchor)
+                elif anchor_type == ObjectType.RELEASE:
+                    info["release"] = client.release(anchor)
+
             return jsonify(info)
         except ValueError as e:
             return jsonify({"error": "Failed to decode JSON: {}".format(str(e))}), 500

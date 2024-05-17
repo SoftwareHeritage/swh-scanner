@@ -3,6 +3,7 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import concurrent.futures
 import logging
 from os import path
 from pathlib import Path
@@ -186,6 +187,8 @@ def _get_provenance_info(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
 
 _IN_MEM_NODE = Union[Directory, Content]
 
+MAX_CONCURRENT_PROVENANCE_QUERIES = 5
+
 
 def _get_many_provenance_info(
     client, swhids: Collection[CoreSWHID]
@@ -200,10 +203,17 @@ def _get_many_provenance_info(
     note: We could drop the SWHID part of the pair and only return
     QualifiedSWHID, if they were some easy method for QualifiedSWHID →
     CoreSWHID conversion."""
-    for swhid in swhids:
-        qswhid = _get_provenance_info(client, swhid)
-        if qswhid is not None:
-            yield (swhid, qswhid)
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=MAX_CONCURRENT_PROVENANCE_QUERIES
+    ) as executor:
+        pending = {}
+        for swhid in swhids:
+            f = executor.submit(_get_provenance_info, client, swhid)
+            pending[f] = swhid
+        for future in concurrent.futures.as_completed(list(pending.keys())):
+            qswhid = future.result()
+            if qswhid is not None:
+                yield (pending[future], qswhid)
 
 
 def _no_update_progress(*args, **kwargs):

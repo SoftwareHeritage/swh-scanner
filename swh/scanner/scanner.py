@@ -36,6 +36,9 @@ class Progress:
     def increment(self, count=1):
         pass
 
+    def update(self, current_count, total=None):
+        pass
+
     def __enter__(self):
         return self
 
@@ -98,11 +101,9 @@ def run(
             total=len(nodes_data),
             web_client=client,
         ) as progress:
-
-            def callback(*args, **kwargs):
-                progress.increment()
-
-            add_provenance(source_tree, nodes_data, client, update_info=callback)
+            add_provenance(
+                source_tree, nodes_data, client, update_progress=progress.update
+            )
 
 
 COMMON_EXCLUDE_PATTERNS: List[bytes] = [

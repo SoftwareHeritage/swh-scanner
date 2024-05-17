@@ -8,7 +8,6 @@ from os import path
 from pathlib import Path
 import subprocess
 from typing import (
-    Any,
     Callable,
     Collection,
     Dict,
@@ -207,7 +206,7 @@ def _get_many_provenance_info(
             yield (swhid, qswhid)
 
 
-def _no_update_info(*args, **kwargs):
+def _no_update_progress(*args, **kwargs):
     pass
 
 
@@ -215,13 +214,15 @@ def add_provenance(
     source_tree: Directory,
     data: MerkleNodeInfo,
     client: WebAPIClient,
-    update_info: Optional[Callable[[Any, Any], None]] = _no_update_info,
+    update_progress: Optional[Callable[[int, int], None]] = _no_update_progress,
 ):
     """Store provenance information about software artifacts retrieved from the Software
     Heritage graph service.
     """
-    if update_info is None:
-        update_info = _no_update_info
+    if update_progress is None:
+        update_progress = _no_update_progress
+    all_queries: set[_IN_MEM_NODE] = set()
+    done_queries: set[_IN_MEM_NODE] = set()
     seen: set[_IN_MEM_NODE] = set()
     current_boundary: dict[CoreSWHID, _IN_MEM_NODE] = {}
 
@@ -240,17 +241,17 @@ def add_provenance(
             # that node is unknown, no need to query it, but there might be
             # known set of descendant that need provenance queries.
             initial_walk_queue.update(node.values())
-            update_info(node, None)
-        else:
-            update_info(node, None)
 
     while current_boundary:
         boundary = list(current_boundary.keys())
+        all_queries.update(current_boundary.values())
+        update_progress(len(done_queries), len(all_queries))
         for info in _get_many_provenance_info(client, boundary):
             swhid, qualified_swhid = info
             node = current_boundary.pop(swhid)
+            done_queries.add(node)
+            update_progress(len(done_queries), len(all_queries))
             data[node.swhid()]["provenance"] = qualified_swhid
-            update_info(node, qualified_swhid)
             if node.object_type == FromDiskType.DIRECTORY:
                 node = cast(Directory, node)
                 for sub_node in node.iter_tree():
@@ -258,13 +259,15 @@ def add_provenance(
                         continue
                     seen.add(sub_node)
                     data[sub_node.swhid()]["provenance"] = qualified_swhid
-                    update_info(node, qualified_swhid)
         # for any element of the boundary we could not find a match for. lets
         # use queries its children.
         no_match = list(current_boundary.values())
+        # XXX strictly speaking we could probably have that progress
+        # information sooner, but lets keep things imple for now.
+        done_queries.update(no_match)
+        update_progress(len(done_queries), len(all_queries))
         current_boundary.clear()
         for node in no_match:
-            update_info(node, None)
             if node.object_type == FromDiskType.DIRECTORY:
                 for sub_node in node.values():
                     if sub_node in seen:

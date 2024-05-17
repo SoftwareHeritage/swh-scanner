@@ -405,6 +405,11 @@ def scan(
             self._count += count
             self._display()
 
+        def update(self, current_count, total=None):
+            self._count = current_count
+            self._total = total
+            self._display()
+
         def _display(self):
             """refresh the output"""
             rate_limit = ""

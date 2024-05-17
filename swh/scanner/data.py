@@ -192,13 +192,13 @@ MAX_CONCURRENT_PROVENANCE_QUERIES = 5
 
 def _get_many_provenance_info(
     client, swhids: Collection[CoreSWHID]
-) -> Iterator[Tuple[CoreSWHID, QualifiedSWHID]]:
+) -> Iterator[Tuple[CoreSWHID, Optional[QualifiedSWHID]]]:
     """yield provenance data for multiple swhid
 
     For all SWHID we can find provenance data for, we will yield a (CoreSWHID,
     QualifiedSWHID) pair, (see _get_provenance_info documentation for the
     details on the QualifiedSWHID). SWHID for which we cannot find provenance
-    for will not get anything yield for them.
+    we yield a None value.
 
     note: We could drop the SWHID part of the pair and only return
     QualifiedSWHID, if they were some easy method for QualifiedSWHID →
@@ -212,8 +212,7 @@ def _get_many_provenance_info(
             pending[f] = swhid
         for future in concurrent.futures.as_completed(list(pending.keys())):
             qswhid = future.result()
-            if qswhid is not None:
-                yield (pending[future], qswhid)
+            yield (pending[future], qswhid)
 
 
 def _no_update_progress(*args, **kwargs):
@@ -235,6 +234,7 @@ def add_provenance(
     done_queries: set[_IN_MEM_NODE] = set()
     seen: set[_IN_MEM_NODE] = set()
     current_boundary: dict[CoreSWHID, _IN_MEM_NODE] = {}
+    next_boundary: dict[CoreSWHID, _IN_MEM_NODE] = {}
 
     # search for the initial boundary of "known" set
     initial_walk_queue: set[_IN_MEM_NODE] = {source_tree}
@@ -252,38 +252,33 @@ def add_provenance(
             # known set of descendant that need provenance queries.
             initial_walk_queue.update(node.values())
 
+    all_queries.update(current_boundary.values())
+    update_progress(len(done_queries), len(all_queries))
     while current_boundary:
         boundary = list(current_boundary.keys())
-        all_queries.update(current_boundary.values())
-        update_progress(len(done_queries), len(all_queries))
         for info in _get_many_provenance_info(client, boundary):
             swhid, qualified_swhid = info
             node = current_boundary.pop(swhid)
             done_queries.add(node)
-            update_progress(len(done_queries), len(all_queries))
-            data[node.swhid()]["provenance"] = qualified_swhid
-            if node.object_type == FromDiskType.DIRECTORY:
-                node = cast(Directory, node)
-                for sub_node in node.iter_tree():
-                    if sub_node in seen:
-                        continue
-                    seen.add(sub_node)
-                    data[sub_node.swhid()]["provenance"] = qualified_swhid
-        # for any element of the boundary we could not find a match for. lets
-        # use queries its children.
-        no_match = list(current_boundary.values())
-        # XXX strictly speaking we could probably have that progress
-        # information sooner, but lets keep things imple for now.
-        done_queries.update(no_match)
-        update_progress(len(done_queries), len(all_queries))
-        current_boundary.clear()
-        for node in no_match:
-            if node.object_type == FromDiskType.DIRECTORY:
+            if qualified_swhid is not None:
+                data[node.swhid()]["provenance"] = qualified_swhid
+                if node.object_type == FromDiskType.DIRECTORY:
+                    node = cast(Directory, node)
+                    for sub_node in node.iter_tree():
+                        if sub_node in seen:
+                            continue
+                        seen.add(sub_node)
+                        data[sub_node.swhid()]["provenance"] = qualified_swhid
+            elif node.object_type == FromDiskType.DIRECTORY:
                 for sub_node in node.values():
                     if sub_node in seen:
                         continue
                     seen.add(sub_node)
-                    current_boundary[sub_node.swhid()] = sub_node
+                    all_queries.add(sub_node)
+                    next_boundary[sub_node.swhid()] = sub_node
+            update_progress(len(done_queries), len(all_queries))
+        current_boundary = next_boundary
+        next_boundary = {}
 
 
 def get_directory_data(

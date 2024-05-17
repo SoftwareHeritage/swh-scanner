@@ -53,7 +53,7 @@ def init_merkle_node_info(source_tree: Directory, data: MerkleNodeInfo, info: se
             raise Exception(f"Information {ainfo} is not supported.")
 
     for node in source_tree.iter_tree():
-        data[node.swhid()] = nodes_info.copy()  # type: ignore
+        data[node.swhid()] = nodes_info.copy()
 
 
 def _get_leaf(

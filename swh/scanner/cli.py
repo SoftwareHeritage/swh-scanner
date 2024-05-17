@@ -19,6 +19,7 @@ from swh.core import config
 from swh.core.cli import CONTEXT_SETTINGS
 from swh.core.cli import swh as swh_cli_group
 from swh.core.config import SWH_GLOBAL_CONFIG
+from swh.web.client.client import WebAPIClient
 
 from .data import get_ignore_patterns_templates
 from .exceptions import DBError
@@ -383,9 +384,15 @@ def scan(
     click.echo(click.style(msg, fg="green"), err=True)
 
     class CLIProgress(scanner.Progress):
-        def __init__(self, step: scanner.Progress.Step, total: Optional[int] = None):
+        def __init__(
+            self,
+            step: scanner.Progress.Step,
+            total: Optional[int] = None,
+            web_client: Optional[WebAPIClient] = None,
+        ):
             self._count = 0
             self._total = total
+            self._web_client = web_client
             if step == scanner.Progress.Step.DISK_SCAN:
                 self._text = "local objects scanned"
             elif step == scanner.Progress.Step.KNOWN_DISCOVERY:
@@ -400,10 +407,18 @@ def scan(
 
         def _display(self):
             """refresh the output"""
+            rate_limit = ""
+            rate_limit_delay = getattr(self._web_client, "rate_limit_delay", 0)
+            if rate_limit_delay > 0:
+                requests_per_second = 1 / rate_limit_delay
+                rate_limit = (
+                    f" (rate limited: {requests_per_second:.2f} requests / seconds)"
+                )
             if self._total is None:
-                msg = f"\r{self._count} {self._text}"
+                msg = f"\r{self._count} {self._text}{rate_limit}"
             else:
-                msg = f"\r{self._count}/{self._total} {self._text}"
+                msg = f"\r{self._count}/{self._total} {self._text}{rate_limit}"
+
             click.echo(msg, nl=False, err=True)
 
         def __enter__(self):

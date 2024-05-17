@@ -30,7 +30,7 @@ class Progress:
         KNOWN_DISCOVERY = enum.auto()
         PROVENANCE = enum.auto()
 
-    def __init__(self, step: Step, total: Optional[int] = None):
+    def __init__(self, step: Step, total: Optional[int] = None, **kwargs):
         pass
 
     def increment(self, count=1):
@@ -83,7 +83,9 @@ def run(
     # of the files and directory around it. This is not free for "oring" for
     # example.
     with progress_class(
-        step=Progress.Step.KNOWN_DISCOVERY, total=len(nodes_data)
+        step=Progress.Step.KNOWN_DISCOVERY,
+        total=len(nodes_data),
+        web_client=client,
     ) as progress:
 
         def callback(*args, **kwargs):
@@ -92,7 +94,9 @@ def run(
         policy.run(client, update_info=callback)
     if provenance:
         with progress_class(
-            step=Progress.Step.PROVENANCE, total=len(nodes_data)
+            step=Progress.Step.PROVENANCE,
+            total=len(nodes_data),
+            web_client=client,
         ) as progress:
 
             def callback(*args, **kwargs):

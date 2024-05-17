@@ -8,7 +8,7 @@ import logging
 from os import path
 from pathlib import Path
 import subprocess
-from typing import Callable, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 from xml.etree import ElementTree
 
 import requests
@@ -183,6 +183,7 @@ def add_provenance(
     source_tree: Directory,
     data: MerkleNodeInfo,
     client: WebAPIClient,
+    update_info: Optional[Callable[[Any, Any], None]] = None,
 ):
     """Store provenance information about software artifacts retrieved from the Software
     Heritage graph service.
@@ -203,8 +204,15 @@ def add_provenance(
         if qualified_swhid is None and node.object_type == "directory":
             # add children to the queue.
             queue.extend(node.values())
-        elif qualified_swhid is not None:
+            if update_info is not None:
+                update_info(node, None)
+        elif qualified_swhid is None:
+            if update_info is not None:
+                update_info(node, None)
+        else:
             data[node.swhid()]["provenance"] = qualified_swhid
+            if update_info is not None:
+                update_info(node, qualified_swhid)
             # propagate the information to the leafs
             if node.object_type == "directory":
                 for sub_node in node.iter_tree():
@@ -215,6 +223,8 @@ def add_provenance(
                         continue
                     seen.add(sub_node)
                     data[sub_node.swhid()]["provenance"] = qualified_swhid
+                    if update_info is not None:
+                        update_info(node, qualified_swhid)
 
 
 def get_directory_data(

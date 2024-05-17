@@ -28,6 +28,7 @@ class Progress:
     class Step(enum.Enum):
         DISK_SCAN = enum.auto()
         KNOWN_DISCOVERY = enum.auto()
+        PROVENANCE = enum.auto()
 
     def __init__(self, step: Step, total: Optional[int] = None):
         pass
@@ -90,7 +91,14 @@ def run(
 
         policy.run(client, update_info=callback)
     if provenance:
-        add_provenance(source_tree, nodes_data, client)
+        with progress_class(
+            step=Progress.Step.PROVENANCE, total=len(nodes_data)
+        ) as progress:
+
+            def callback(*args, **kwargs):
+                progress.increment()
+
+            add_provenance(source_tree, nodes_data, client, update_info=callback)
 
 
 COMMON_EXCLUDE_PATTERNS: List[bytes] = [

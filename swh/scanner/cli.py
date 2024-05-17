@@ -390,6 +390,8 @@ def scan(
                 self._text = "local objects scanned"
             elif step == scanner.Progress.Step.KNOWN_DISCOVERY:
                 self._text = "objects compared with the Software Heritage archive"
+            elif step == scanner.Progress.Step.PROVENANCE:
+                self._text = "provenance data fetched"
 
         def increment(self, count=1):
             """move the progress forward and refresh the output"""

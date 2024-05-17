@@ -3,18 +3,28 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from collections import deque
 import logging
 from os import path
 from pathlib import Path
 import subprocess
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Collection,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 from xml.etree import ElementTree
 
 import requests
 
 from swh.model.exceptions import ValidationError
-from swh.model.from_disk import Content, Directory
+from swh.model.from_disk import Content, Directory, FromDiskType
 from swh.model.swhids import CoreSWHID, ObjectType, QualifiedSWHID
 from swh.web.client.client import WebAPIClient
 
@@ -178,52 +188,89 @@ def _get_provenance_info(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
 _IN_MEM_NODE = Union[Directory, Content]
 
 
+def _get_many_provenance_info(
+    client, swhids: Collection[CoreSWHID]
+) -> Iterator[Tuple[CoreSWHID, QualifiedSWHID]]:
+    """yield provenance data for multiple swhid
+
+    For all SWHID we can find provenance data for, we will yield a (CoreSWHID,
+    QualifiedSWHID) pair, (see _get_provenance_info documentation for the
+    details on the QualifiedSWHID). SWHID for which we cannot find provenance
+    for will not get anything yield for them.
+
+    note: We could drop the SWHID part of the pair and only return
+    QualifiedSWHID, if they were some easy method for QualifiedSWHID →
+    CoreSWHID conversion."""
+    for swhid in swhids:
+        qswhid = _get_provenance_info(client, swhid)
+        if qswhid is not None:
+            yield (swhid, qswhid)
+
+
+def _no_update_info(*args, **kwargs):
+    pass
+
+
 def add_provenance(
     source_tree: Directory,
     data: MerkleNodeInfo,
     client: WebAPIClient,
-    update_info: Optional[Callable[[Any, Any], None]] = None,
+    update_info: Optional[Callable[[Any, Any], None]] = _no_update_info,
 ):
     """Store provenance information about software artifacts retrieved from the Software
     Heritage graph service.
     """
+    if update_info is None:
+        update_info = _no_update_info
     seen: set[_IN_MEM_NODE] = set()
-    queue: deque[_IN_MEM_NODE] = deque([source_tree])
-    while queue:
-        node = queue.popleft()
+    current_boundary: dict[CoreSWHID, _IN_MEM_NODE] = {}
+
+    # search for the initial boundary of "known" set
+    initial_walk_queue: set[_IN_MEM_NODE] = {source_tree}
+    while initial_walk_queue:
+        node = initial_walk_queue.pop()
         if node in seen:
             continue
         seen.add(node)
-        qualified_swhid = None
-        node_data = data.get(node.swhid())
-        if node_data is not None:
-            known = node_data.get("known")
-            if known or known is None:
-                qualified_swhid = _get_provenance_info(client, node.swhid())
-        if qualified_swhid is None and node.object_type == "directory":
-            # add children to the queue.
-            queue.extend(node.values())
-            if update_info is not None:
-                update_info(node, None)
-        elif qualified_swhid is None:
-            if update_info is not None:
-                update_info(node, None)
+        known: Optional[bool] = data[node.swhid()]["known"]
+        if known is None or known:
+            # We found a "root" for a known set, we should query it.
+            current_boundary[node.swhid()] = node
+        elif node.object_type == FromDiskType.DIRECTORY:
+            # that node is unknown, no need to query it, but there might be
+            # known set of descendant that need provenance queries.
+            initial_walk_queue.update(node.values())
+            update_info(node, None)
         else:
+            update_info(node, None)
+
+    while current_boundary:
+        boundary = list(current_boundary.keys())
+        for info in _get_many_provenance_info(client, boundary):
+            swhid, qualified_swhid = info
+            node = current_boundary.pop(swhid)
             data[node.swhid()]["provenance"] = qualified_swhid
-            if update_info is not None:
-                update_info(node, qualified_swhid)
-            # propagate the information to the leafs
-            if node.object_type == "directory":
+            update_info(node, qualified_swhid)
+            if node.object_type == FromDiskType.DIRECTORY:
+                node = cast(Directory, node)
                 for sub_node in node.iter_tree():
-                    # XXX swh.model probably need to improve so that we don't
-                    # have to deal with this here.
-                    sub_node = cast(_IN_MEM_NODE, sub_node)
                     if sub_node in seen:
                         continue
                     seen.add(sub_node)
                     data[sub_node.swhid()]["provenance"] = qualified_swhid
-                    if update_info is not None:
-                        update_info(node, qualified_swhid)
+                    update_info(node, qualified_swhid)
+        # for any element of the boundary we could not find a match for. lets
+        # use queries its children.
+        no_match = list(current_boundary.values())
+        current_boundary.clear()
+        for node in no_match:
+            update_info(node, None)
+            if node.object_type == FromDiskType.DIRECTORY:
+                for sub_node in node.values():
+                    if sub_node in seen:
+                        continue
+                    seen.add(sub_node)
+                    current_boundary[sub_node.swhid()] = sub_node
 
 
 def get_directory_data(

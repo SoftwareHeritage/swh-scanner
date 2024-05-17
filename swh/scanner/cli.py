@@ -248,12 +248,10 @@ def login(ctx, username: str, token: str):
     help="Launch the default graphical web browser to explore the results in a dashboard.",
 )
 @click.option(
-    "-e",
-    "--extra-info",
-    "extra_info",
-    multiple=True,
-    type=click.Choice(["origin"]),
-    help="Add selected additional information about known software artifacts.",
+    "--provenance",
+    "provenance",
+    is_flag=True,
+    help="Also fetch provenance data (requires special permission from SWH).",
 )
 @click.option(
     "--debug-http",
@@ -289,7 +287,7 @@ def scan(
     patterns,
     out_fmt,
     interactive,
-    extra_info,
+    provenance,
     debug_http,
     disable_global_patterns,
     disable_vcs_patterns,
@@ -310,12 +308,6 @@ def scan(
       ndjson: write all collected data on standard output as Newline Delimited JSON
 
       sunburst: produce a dynamic chart as .html file. (in $PWD/chart.html)
-
-    Other information about software artifacts could be specified with the -e/
-    --extra-info option:\n
-    \b
-      origin: search the origin url of each source code files/dirs using the in-memory
-      compressed graph.
 
     Exclusion patterns can be set with the repeatable -x/--exclude option:\n
     \b
@@ -420,13 +412,12 @@ def scan(
             # explicitly ignoring unknown context
             pass
 
-    extra_info = set(extra_info)
     scanner.scan(
         ctx.obj["config"],
         root_path,
         out_fmt,
         interactive,
-        extra_info,
+        provenance,
         debug_http,
         progress_callback=progress_callback,
     )

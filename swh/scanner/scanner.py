@@ -49,7 +49,7 @@ def run(
     policy,
     source_tree: Directory,
     nodes_data: MerkleNodeInfo,
-    extra_info: set,
+    provenance: bool,
 ) -> None:
     """Scan a given source code according to the policy given in input."""
     client = get_webapi_client(config)
@@ -63,11 +63,8 @@ def run(
     # of the files and directory around it. This is not free for "oring" for
     # example.
     policy.run(client)
-    for info in sorted(extra_info):
-        if info == "origin":
-            add_origin(source_tree, nodes_data, client)
-        else:
-            raise Exception(f"The information '{info}' cannot be retrieved")
+    if provenance:
+        add_origin(source_tree, nodes_data, client)
 
 
 COMMON_EXCLUDE_PATTERNS: List[bytes] = [
@@ -90,7 +87,7 @@ def scan(
     root_path: str,
     out_fmt: str,
     interactive: bool,
-    extra_info: set,
+    provenance: bool,
     debug_http: bool,
     progress_callback: Optional[Callable[[Any], None]] = None,
 ):
@@ -130,7 +127,7 @@ def scan(
         progress_callback(None)
 
     nodes_data = MerkleNodeInfo()
-    init_merkle_node_info(source_tree, nodes_data, extra_info)
+    init_merkle_node_info(source_tree, nodes_data, provenance)
     discovery_update_info = None
     if progress_callback is not None:
         discovery_update_info = partial(progress_callback, "Policy.discovery")
@@ -141,7 +138,7 @@ def scan(
         update_info=discovery_update_info,
     )
 
-    run(config, policy, source_tree, nodes_data, extra_info)
+    run(config, policy, source_tree, nodes_data, provenance)
     # move to the next line after progress information
     if progress_callback is not None:
         progress_callback(None)

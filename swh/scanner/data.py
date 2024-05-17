@@ -39,19 +39,20 @@ class MerkleNodeInfo(dict):
         super(MerkleNodeInfo, self).__setitem__(key, value)
 
 
-def init_merkle_node_info(source_tree: Directory, data: MerkleNodeInfo, info: set):
-    """Populate the MerkleNodeInfo with the SWHIDs of the given source tree and the
-    attributes that will be stored.
+def init_merkle_node_info(
+    source_tree: Directory, data: MerkleNodeInfo, provenance: bool
+):
+    """Populate the MerkleNodeInfo with the SWHIDs of the given source tree
 
-    The "known" attribute is always stored as it is always fetched.
+    The dictionary value are pre-filed with dictionary holding the
+    information about the nodes.
+
+    The "known" key is always stored as it is always fetched. The "provenance"
+    key is stored if the `provenance` parameter is :const:`True`.
     """
     nodes_info: Dict[str, Optional[str]] = {"known": None}
-    for ainfo in info:
-        if ainfo in SUPPORTED_INFO:
-            nodes_info[ainfo] = None
-        else:
-            raise Exception(f"Information {ainfo} is not supported.")
-
+    if provenance:
+        nodes_info["origin"] = None
     for node in source_tree.iter_tree():
         data[node.swhid()] = nodes_info.copy()
 

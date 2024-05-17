@@ -18,8 +18,6 @@ from swh.model.from_disk import Content, Directory
 from swh.model.swhids import CoreSWHID, ObjectType, QualifiedSWHID
 from swh.web.client.client import WebAPIClient
 
-SUPPORTED_INFO = {"known", "origin"}
-
 logger = logging.getLogger(__name__)
 
 
@@ -52,7 +50,7 @@ def init_merkle_node_info(
     """
     nodes_info: Dict[str, Optional[str]] = {"known": None}
     if provenance:
-        nodes_info["origin"] = None
+        nodes_info["provenance"] = None
     for node in source_tree.iter_tree():
         data[node.swhid()] = nodes_info.copy()
 
@@ -181,12 +179,12 @@ def _get_provenance_info(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
 _IN_MEM_NODE = Union[Directory, Content]
 
 
-def add_origin(
+def add_provenance(
     source_tree: Directory,
     data: MerkleNodeInfo,
     client: WebAPIClient,
 ):
-    """Store origin information about software artifacts retrieved from the Software
+    """Store provenance information about software artifacts retrieved from the Software
     Heritage graph service.
     """
     seen: set[_IN_MEM_NODE] = set()
@@ -206,7 +204,7 @@ def add_origin(
             # add children to the queue.
             queue.extend(node.values())
         elif qualified_swhid is not None:
-            data[node.swhid()]["origin"] = qualified_swhid
+            data[node.swhid()]["provenance"] = qualified_swhid
             # propagate the information to the leafs
             if node.object_type == "directory":
                 for sub_node in node.iter_tree():
@@ -216,7 +214,7 @@ def add_origin(
                     if sub_node in seen:
                         continue
                     seen.add(sub_node)
-                    data[sub_node.swhid()]["origin"] = qualified_swhid
+                    data[sub_node.swhid()]["provenance"] = qualified_swhid
 
 
 def get_directory_data(

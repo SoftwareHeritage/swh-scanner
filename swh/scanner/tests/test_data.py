@@ -13,7 +13,7 @@ import pytest
 from swh.model.exceptions import ValidationError
 from swh.scanner.data import (
     MerkleNodeInfo,
-    add_origin,
+    add_provenance,
     directory_content,
     get_directory_data,
     get_ignore_patterns_templates,
@@ -41,36 +41,36 @@ def test_init_merkle_supported_node_info(source_tree):
     nodes_data = MerkleNodeInfo()
     init_merkle_node_info(source_tree, nodes_data, provenance=True)
     for _, node_attrs in nodes_data.items():
-        assert "known" and "origin" in node_attrs.keys()
+        assert "known" and "provenance" in node_attrs.keys()
 
 
-def test_add_origin_with_release(live_server, source_tree, nodes_data):
+def test_add_provenance_with_release(live_server, source_tree, nodes_data):
     api_url = url_for("index", _external=True)
     init_merkle_node_info(source_tree, nodes_data, provenance=True)
     client = WebAPIClient(api_url)
 
-    add_origin(source_tree, nodes_data, client)
+    add_provenance(source_tree, nodes_data, client)
     source_tree_id = str(source_tree.swhid())
     for node, attrs in nodes_data.items():
-        assert "origin" in attrs
-        assert attrs["origin"] is not None
-        assert attrs["origin"].origin == fake_origin[source_tree_id]
-        assert str(attrs["origin"].anchor) == fake_release[source_tree_id]
+        assert "provenance" in attrs
+        assert attrs["provenance"] is not None
+        assert attrs["provenance"].origin == fake_origin[source_tree_id]
+        assert str(attrs["provenance"].anchor) == fake_release[source_tree_id]
 
 
-def test_add_origin_with_revision_only(live_server, source_tree, nodes_data):
+def test_add_provenance_with_revision(live_server, source_tree, nodes_data):
     api_url = url_for("index", _external=True)
-    init_merkle_node_info(source_tree, nodes_data, {"known", "origin"})
+    init_merkle_node_info(source_tree, nodes_data, {"known", "provenance"})
     client = WebAPIClient(api_url)
     a_file = source_tree[b"some-binary"]
 
-    add_origin(a_file, nodes_data, client)
+    add_provenance(a_file, nodes_data, client)
     a_file_id = str(a_file.swhid())
     attrs = nodes_data[a_file.swhid()]
-    assert "origin" in attrs
-    assert attrs["origin"] is not None
-    assert attrs["origin"].origin == fake_origin[a_file_id]
-    assert str(attrs["origin"].anchor) == fake_revision[a_file_id]
+    assert "provenance" in attrs
+    assert attrs["provenance"] is not None
+    assert attrs["provenance"].origin == fake_origin[a_file_id]
+    assert str(attrs["provenance"].anchor) == fake_revision[a_file_id]
 
 
 def test_get_directory_data(source_tree, nodes_data):

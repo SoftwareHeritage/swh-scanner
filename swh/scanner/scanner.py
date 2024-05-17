@@ -12,7 +12,7 @@ from swh.web.client.client import WebAPIClient
 
 from .data import (
     MerkleNodeInfo,
-    add_origin,
+    add_provenance,
     get_ignore_patterns_templates,
     get_vcs_ignore_patterns,
     init_merkle_node_info,
@@ -64,7 +64,7 @@ def run(
     # example.
     policy.run(client)
     if provenance:
-        add_origin(source_tree, nodes_data, client)
+        add_provenance(source_tree, nodes_data, client)
 
 
 COMMON_EXCLUDE_PATTERNS: List[bytes] = [

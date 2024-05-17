@@ -382,35 +382,25 @@ def scan(
     msg = f"Ready to scan {root_path_fmt}"
     click.echo(click.style(msg, fg="green"), err=True)
 
-    directory_from_disk_progress = 0
-    policy_discovery_progress = 0
+    class CLIProgress(scanner.Progress):
+        def __init__(self, step: scanner.Progress.Step):
+            self._count = 0
+            if step == scanner.Progress.Step.DISK_SCAN:
+                self._text = "local objects scanned"
+            elif step == scanner.Progress.Step.KNOWN_DISCOVERY:
+                self._text = "objects compared with the Software Heritage archive"
 
-    def progress_callback(context, arg=None):
-        nonlocal directory_from_disk_progress
-        nonlocal policy_discovery_progress
+        def increment(self, count=1):
+            """move the progress forward and refresh the output"""
+            self._count += count
+            msg = f"\r{self._count} {self._text}"
+            click.echo(msg, nl=False, err=True)
 
-        if context is None:
-            # step finished move past the progress line
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args, **kwargs):
             click.echo("", err=True)
-        elif context == "Directory.from_disk":
-            assert isinstance(arg, int)
-            directory_from_disk_progress += arg
-            click.echo(
-                f"\r{directory_from_disk_progress} local objects scanned",
-                nl=False,
-                err=True,
-            )
-        elif context == "Policy.discovery":
-            policy_discovery_progress += 1
-            click.echo(
-                f"\r{policy_discovery_progress} objects compared with the"
-                f" Software Heritage archive",
-                nl=False,
-                err=True,
-            )
-        else:
-            # explicitly ignoring unknown context
-            pass
 
     scanner.scan(
         ctx.obj["config"],
@@ -419,7 +409,7 @@ def scan(
         interactive,
         provenance,
         debug_http,
-        progress_callback=progress_callback,
+        progress_class=CLIProgress,
     )
 
 

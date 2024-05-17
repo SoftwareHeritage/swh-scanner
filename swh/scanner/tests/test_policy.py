@@ -109,15 +109,14 @@ def test_randomdir_policy_info_callback(
     # set to gather all the item that got a callback ping
     updated = set()
 
-    def gather(obj):
+    def gather(obj, known):
         updated.add(obj.swhid())
 
     policy = RandomDirSamplingPriority(
         big_source_tree,
         nodes_data,
-        update_info=gather,
     )
-    policy.run(client)
+    policy.run(client, update_info=gather)
 
     assert all(v["known"] is True for k, v in policy.data.items())
     assert updated == set(policy.data.keys())

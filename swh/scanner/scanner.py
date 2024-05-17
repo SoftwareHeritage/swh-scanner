@@ -3,8 +3,8 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-from functools import partial
-from typing import Any, Callable, Dict, List, Optional
+import enum
+from typing import Any, Dict, List, Type
 
 from swh.model.cli import model_of_dir
 from swh.model.from_disk import Directory
@@ -22,9 +22,27 @@ from .output import get_output_class
 from .policy import RandomDirSamplingPriority
 
 
-def get_webapi_client(
-    config: Dict[str, Any],
-):
+class Progress:
+    """default no-op Progress class"""
+
+    class Step(enum.Enum):
+        DISK_SCAN = enum.auto()
+        KNOWN_DISCOVERY = enum.auto()
+
+    def __init__(self, step: Step):
+        pass
+
+    def increment(self, count=1):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        pass
+
+
+def get_webapi_client(config: Dict[str, Any]):
     api_url = config["web-api"]["url"]
     kwargs = {}
     # TODO: Better retrieve realm and client id directly from the oidc client?
@@ -50,6 +68,7 @@ def run(
     source_tree: Directory,
     nodes_data: MerkleNodeInfo,
     provenance: bool,
+    progress_class: Type[Progress] = Progress,
 ) -> None:
     """Scan a given source code according to the policy given in input."""
     client = get_webapi_client(config)
@@ -62,7 +81,12 @@ def run(
     # [1] the best answer for "known" does not changes depending of the status
     # of the files and directory around it. This is not free for "oring" for
     # example.
-    policy.run(client)
+    with progress_class(step=Progress.Step.KNOWN_DISCOVERY) as progress:
+
+        def callback(*args, **kwargs):
+            progress.increment()
+
+        policy.run(client, update_info=callback)
     if provenance:
         add_provenance(source_tree, nodes_data, client)
 
@@ -89,7 +113,7 @@ def scan(
     interactive: bool,
     provenance: bool,
     debug_http: bool,
-    progress_callback: Optional[Callable[[Any], None]] = None,
+    progress_class: Type[Progress],
 ):
     """Scan a source code project to discover files and directories already
     present in the archive"""
@@ -113,35 +137,29 @@ def scan(
         vcs_ignore_patterns = get_vcs_ignore_patterns()
         converted_patterns.extend(vcs_ignore_patterns)
 
-    dir_update_info = None
-    if progress_callback is not None:
-        dir_update_info = partial(progress_callback, "Directory.from_disk")
-
-    source_tree = model_of_dir(
-        root_path.encode(),
-        converted_patterns,
-        update_info=dir_update_info,
-    )
-    # move to the next line after progress information
-    if progress_callback is not None:
-        progress_callback(None)
+    with progress_class(step=Progress.Step.DISK_SCAN) as progress:
+        dir_update_info = progress.increment
+        source_tree = model_of_dir(
+            root_path.encode(),
+            converted_patterns,
+            update_info=dir_update_info,
+        )
 
     nodes_data = MerkleNodeInfo()
     init_merkle_node_info(source_tree, nodes_data, provenance)
-    discovery_update_info = None
-    if progress_callback is not None:
-        discovery_update_info = partial(progress_callback, "Policy.discovery")
 
     policy = RandomDirSamplingPriority(
         source_tree,
         nodes_data,
-        update_info=discovery_update_info,
     )
-
-    run(config, policy, source_tree, nodes_data, provenance)
-    # move to the next line after progress information
-    if progress_callback is not None:
-        progress_callback(None)
+    run(
+        config,
+        policy,
+        source_tree,
+        nodes_data,
+        provenance,
+        progress_class=progress_class,
+    )
 
     if interactive:
         out_fmt = "interactive"

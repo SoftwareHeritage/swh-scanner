@@ -31,21 +31,19 @@ class Policy(metaclass=abc.ABCMeta):
         self,
         source_tree: from_disk.Directory,
         data: MerkleNodeInfo,
-        update_info: Optional[Callable[[Any], None]] = None,
     ):
         self.source_tree = source_tree
         self.data = data
-        self._has_info_callback = update_info
 
     @abc.abstractmethod
-    def run(self, client: WebAPIClient):
+    def run(
+        self, client: WebAPIClient, update_info: Optional[Callable[[Any], None]] = None
+    ):
         """Scan a source code project"""
         raise NotImplementedError("Must implement run method")
 
     def _set_info(self, obj, known):
         self.data[obj.swhid()]["known"] = known
-        if self._has_info_callback is not None:
-            self._has_info_callback(obj)
 
 
 class WebAPIConnection(discovery.ArchiveDiscoveryInterface):
@@ -104,7 +102,9 @@ class RandomDirSamplingPriority(Policy):
     """
 
     @no_type_check
-    def run(self, client: WebAPIClient):
+    def run(
+        self, client: WebAPIClient, update_info: Optional[Callable[[Any], None]] = None
+    ):
         contents, skipped_contents, directories = from_disk.iter_directory(
             self.source_tree
         )
@@ -117,9 +117,18 @@ class RandomDirSamplingPriority(Policy):
         # *actually* be a random directory sampling policy, but any change away
         # from under us in `filter_known_objects` should trigger a test failure.
         connection = WebAPIConnection(contents, skipped_contents, directories, client)
+
+        if update_info is None:
+            callback = self._set_info
+        else:
+
+            def callback(*args, **kwargs):
+                self._set_info(*args, **kwargs)
+                update_info(*args, **kwargs)
+
         get_unknowns = discovery.filter_known_objects(
             connection,
-            update_info_callback=self._set_info,
+            update_info_callback=callback,
         )
         unknowns = set(itertools.chain(*get_unknowns))
 

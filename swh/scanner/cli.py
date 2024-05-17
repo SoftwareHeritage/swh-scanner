@@ -383,8 +383,9 @@ def scan(
     click.echo(click.style(msg, fg="green"), err=True)
 
     class CLIProgress(scanner.Progress):
-        def __init__(self, step: scanner.Progress.Step):
+        def __init__(self, step: scanner.Progress.Step, total: Optional[int] = None):
             self._count = 0
+            self._total = total
             if step == scanner.Progress.Step.DISK_SCAN:
                 self._text = "local objects scanned"
             elif step == scanner.Progress.Step.KNOWN_DISCOVERY:
@@ -393,7 +394,14 @@ def scan(
         def increment(self, count=1):
             """move the progress forward and refresh the output"""
             self._count += count
-            msg = f"\r{self._count} {self._text}"
+            self._display()
+
+        def _display(self):
+            """refresh the output"""
+            if self._total is None:
+                msg = f"\r{self._count} {self._text}"
+            else:
+                msg = f"\r{self._count}/{self._total} {self._text}"
             click.echo(msg, nl=False, err=True)
 
         def __enter__(self):

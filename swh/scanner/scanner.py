@@ -4,7 +4,7 @@
 # See top-level LICENSE file for more information
 
 import enum
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Optional, Type
 
 from swh.model.cli import model_of_dir
 from swh.model.from_disk import Directory
@@ -29,7 +29,7 @@ class Progress:
         DISK_SCAN = enum.auto()
         KNOWN_DISCOVERY = enum.auto()
 
-    def __init__(self, step: Step):
+    def __init__(self, step: Step, total: Optional[int] = None):
         pass
 
     def increment(self, count=1):
@@ -81,7 +81,9 @@ def run(
     # [1] the best answer for "known" does not changes depending of the status
     # of the files and directory around it. This is not free for "oring" for
     # example.
-    with progress_class(step=Progress.Step.KNOWN_DISCOVERY) as progress:
+    with progress_class(
+        step=Progress.Step.KNOWN_DISCOVERY, total=len(nodes_data)
+    ) as progress:
 
         def callback(*args, **kwargs):
             progress.increment()

@@ -228,6 +228,19 @@ def add_provenance(
     """Store provenance information about software artifacts retrieved from the Software
     Heritage graph service.
     """
+    # XXX Note that the current provenance handling highlight some limitation with
+    # the underlying way we handle data in the scanner.
+    #
+    # Right now, we store unique data for each unique SWHID. However the same
+    # SWHID appearing in different context might have different data relevant
+    # to it. For example, the GPL Licence file might be found in multiple
+    # places, and the best provenance for each of this location will likely
+    # varies.
+    #
+    # So we might want to overhaul the way we connect data to be more path
+    # centric (for some of it at least).  It would also help us to put the
+    # "path" qualifier, of QualifiedSWHID to use.
+
     if update_progress is None:
         update_progress = _no_update_progress
     all_queries: set[_IN_MEM_NODE] = set()

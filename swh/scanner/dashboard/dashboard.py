@@ -3,6 +3,7 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import json
 from pathlib import Path
 from typing import Any, Dict
 import webbrowser
@@ -11,8 +12,9 @@ from flask import Flask, get_template_attribute, jsonify, render_template
 from markupsafe import escape
 
 from swh.model.from_disk import Directory
+from swh.model.swhids import CoreSWHID
 
-from ..data import MerkleNodeInfo, directory_content
+from ..data import MerkleNodeInfo, _get_provenance_info, directory_content
 
 
 def open_browser_if_graphical():
@@ -33,6 +35,7 @@ def create_app(
 
     app = Flask(__name__)
     app.config.from_mapping(flask_config)
+    app.jinja_env.add_extension("jinja2.ext.do")
 
     @app.route("/")
     def index():
@@ -48,6 +51,7 @@ def create_app(
             source_tree=source_tree,
             nodes_data=nodes_data,
             directory_content=directory_content,
+            json=json,
         )
 
     @app.route("/api/v1/html-tree/<path:directory_path>")
@@ -68,9 +72,30 @@ def create_app(
         # Get the `render_source_tree` Jinja macro
         macro = get_template_attribute("./partials/tree.html", "render_source_tree")
         # Render the html snippet
-        html = macro(root_path, st, nodes_data, directory_content)
+        html = macro(root_path, st, nodes_data, directory_content, json)
         res = {"path": escape(directory_path), "html": html}
         return jsonify(res)
+
+    @app.route("/api/v1/provenance/<swhid>")
+    def api_provenance_get(swhid: str = ""):
+        """Given a swhid fetch provenance information"""
+        from ..scanner import get_webapi_client
+
+        if not swhid:
+            return jsonify({})
+        try:
+            client = get_webapi_client(config)
+            swhid_o = CoreSWHID.from_string(swhid)
+            info = _get_provenance_info(client, swhid_o)
+            # ensure json data types
+            for entry in info.values():
+                for k, v in entry.items():
+                    if k == "swhid":
+                        # convert swhid object to string
+                        entry[k] = str(v)
+            return jsonify(info)
+        except ValueError as e:
+            return jsonify({"error": "Failed to decode JSON: {}".format(str(e))}), 500
 
     return app
 

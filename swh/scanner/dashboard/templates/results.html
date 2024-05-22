@@ -3,10 +3,18 @@
 
 {% block title %}Results{% endblock %}
 {% block main %}
+<div id="loader" class="loading-overlay">
+  <div class="loading"></div>
+</div>
+<div id="notification-box" class="hidden">
+  <div id="close-button"></div>
+  <div id="notification-message">
+  </div>
+</div>
 <div id="results">
   <aside class="box-shadow">
     <div id="tree">
-    {{ macros.render_source_tree(root_path, source_tree, nodes_data, directory_content) }}
+    {{ macros.render_source_tree(root_path, source_tree, nodes_data, directory_content, json) }}
     </div>
   </aside>
   <article class="box-shadow">
@@ -15,21 +23,71 @@
       <p name="help" class="size-6">Click on a directory or a file for result details.</p>
     </hgroup>
     <div id="selected_path">
-      <h3 name="rpath" class="size-4"></h3>
-      <dl name="definition">
-        <dt>Name</dt>
-        <dd name="name">
-          <a href="#" title="Copy path" name="name_link"></a>
-        </dd>
-        <dt>Type</dt>
-        <dd name="type"></dd>
-        <dt>Known</dt>
-        <dd name="known"></dd>
-        <dt>Swhid</dt>
-        <dd name="swhid">
-          <a href="" title="Search the Software Heritage Archive for this swhid" name="swhid_link" target="_blank"></a>
-        </dd>
-      </dl>
+      <section>
+        <h3 name="rpath" class="size-4"></h3>
+        <h4 class="size-6">Definition</h4>
+        <dl name="definition">
+          <dt>Name</dt>
+          <dd name="name">
+            <a href="#" title="Copy path" name="name_link"></a>
+          </dd>
+          <dt>Type</dt>
+          <dd name="type"></dd>
+          <dt>Known</dt>
+          <dd name="known"></dd>
+          <dt>Swhid</dt>
+          <dd name="swhid">
+            <a href="" title="Search the Software Heritage Archive for this swhid" name="swhid_link" target="_blank"></a>
+          </dd>
+        </dl>
+      </section>
+      <section name="provenance_btn_section">
+        <a id="provenance_btn" class="button" title="Get provenance information" href="javascript:void(0);">Get provenance</a>
+      </section>
+      <section name="origin">
+        <h4 class="size-6">Origin</h4>
+        <dl>
+          <dt>Url</dt>
+          <dd name="origin_url">
+            <a href="" title="Origin url" name="origin_url_link" target="_blank"></a>
+          </dd>
+        </dl>
+      </section>
+      <section name="revision">
+        <h4 class="size-6">Revision</h4>
+        <dl>
+          <dt>Type</dt>
+          <dd name="type"></dd>
+          <dt>Date</dt>
+          <dd name="date"></dd>
+          <dt>Author</dt>
+          <dd name="author"></dd>
+          <dt>Committer</dt>
+          <dd name="committer"></dd>
+          <dt>Committer date</dt>
+          <dd name="committer_date"></dd>
+          <dt>Merge</dt>
+          <dd name="merge"></dd>
+          <dt>Swhid</dt>
+          <dd name="swhid">
+            <a href="" title="Search for revision swhid" name="search_revision_link" target="_blank"></a>
+          </dd>
+          <dt>Revision api</dt>
+          <dd>
+            <a href="" title="Revision api endpoint" name="revision_api_link" target="_blank">Revision</a> |
+            <a href="" title="Revision history api endpoint" name="history_api_link" target="_blank">History</a> |
+            <a href="" title="Revision parents api endpoint" name="directory_api_link" target="_blank">Directory</a>
+          </dd>
+          <dt>Message</dt>
+          <dd name="message"></dd>
+        </dl>
+      </section>
+      <section name="release">
+        <h4 class="size-6">Release</h4>
+        <dl name="release">
+          <dt>Release</dt>
+        </dl>
+      </section>
     </div>
   </article>
 </div>
@@ -55,19 +113,183 @@
       return Promise.reject("The Clipboard API is not available")
   }
 
+  function formatSearchUrl(swhid) {
+      return "https://archive.softwareheritage.org/browse/search/?q=" + swhid + "&with_visit=true&with_content=true"
+  }
+
+  function show_provenance_button(provenance_button) {
+    if (provenance_button.style.display == "none") {
+      provenance_button.style.display = "block"
+    }
+  }
+
+  function hide_provenance_button(provenance_button) {
+    if (provenance_button.style.display != "none") {
+      provenance_button.style.display = "none"
+    }
+  }
+
+  function show_error_notification(message){
+    // Display an error message to the user
+    const notification_box = document.getElementById("notification-box")
+    const notification_message = document.getElementById("notification-message")
+    const close_button = document.getElementById("close-button")
+    notification_box.classList.remove("hidden");
+    notification_message.textContent = message
+    close_button.addEventListener('click', function () {
+      notification_box.classList.add('hidden')
+    })
+  }
+
+  function show_origin(selected_path, tree_selected_path) {
+    // Provenance / Origin
+    const origin = selected_path.querySelector("section[name='origin']")
+    origin.style.display = "none"
+    if (tree_selected_path.dataset.origin != "{}" && tree_selected_path.dataset.origin != "null"){
+      const origin_data = JSON.parse(tree_selected_path.dataset.origin)
+      // Url
+      const origin_url_link = origin.querySelector("a[name='origin_url_link']")
+      origin_url_link.href = origin_data["url"]
+      origin_url_link.textContent =  origin_data["url"]
+      origin.style.display = "block"
+    }
+  }
+
+  function show_revision(selected_path, tree_selected_path) {
+    // Provenance / Revision
+    const revision = selected_path.querySelector("section[name='revision']")
+    revision.style.display = "none"
+    if (tree_selected_path.dataset.revision != "{}"){
+      const revision_data = JSON.parse(tree_selected_path.dataset.revision)
+const revision_selectors = {
+        "type": "dd[name='type']",
+        "date": "dd[name='date']",
+        "author": "dd[name='author']",
+        "committer": "dd[name='committer']",
+        "committer_date": "dd[name='committer_date']",
+        "merge": "dd[name='merge']",
+        "swhid": "a[name='search_revision_link']",
+        "message": "dd[name='message']",
+        "url": "a[name='revision_api_link']",
+        "history_url": "a[name='history_api_link']",
+        "directory_url": "a[name='directory_api_link']",
+      }
+
+      for (const [key, value] of Object.entries(revision_selectors)) {
+        if (key == "author") {
+          revision.querySelector(value).textContent = revision_data["author"]["fullname"] + " (" + revision_data["author"]["name"] + ", " + revision_data["author"]["email"] + ")"
+        } else if (key == "committer") {
+          revision.querySelector(value).textContent = revision_data["committer"]["fullname"] + " (" + revision_data["committer"]["name"] + ", " + revision_data["committer"]["email"] + ")"
+        } else if (key == "swhid") {
+          revision.querySelector(value).href = formatSearchUrl(revision_data["swhid"])
+          revision.querySelector(value).textContent = revision_data[key]
+        } else if (key == "url") {
+          revision.querySelector(value).href = revision_data[key]
+        } else if (key == "history_url") {
+          revision.querySelector(value).href = revision_data[key]
+        } else if (key == "directory_url") {
+          revision.querySelector(value).href = revision_data[key]
+        } else {
+          revision.querySelector(value).textContent = revision_data[key]
+        }
+      }
+      // TODO: display synthetic, extra_headers, parents and metadata information
+      revision.style.display = "block"
+    }
+  }
+
+  function show_release(selected_path, tree_selected_path) {
+    // Provenance / Release
+    const release = selected_path.querySelector("section[name='release']")
+    release.style.display = "none"
+    if (tree_selected_path.dataset.release != "{}"){
+      const release_data = JSON.parse(tree_selected_path.dataset.release)
+      // TODO: display release information
+      release.style.visibility = "block"
+    }
+  }
+
+  function show_notification_message(title, msg) {
+  }
+
+  async function fetchProvenance(selected_path, tree_selected_path) {
+    // Show the loader
+    const loader = document.getElementById("loader")
+    loader.style.display = "flex"
+    try {
+      const response = await fetch("/api/v1/provenance/" + tree_selected_path.dataset.swhid)
+      if (!response.ok) {
+        // Hide the loader
+        loader.style.display = "none"
+        if (response.status === 401) {
+          const msg = "Unauthorized access: Please check your credentials."
+          show_error_notification(msg)
+          throw new Error(msg)
+        } else {
+          const msg = "Network response was not ok: " + response.statusText
+          show_error_notification(msg)
+          throw new Error(msg)
+        }
+      }
+
+      const data = await response.json()
+      // Display provenance information
+      if (data.hasOwnProperty("origin")) {
+        tree_selected_path.dataset.origin = JSON.stringify(data["origin"])
+        show_origin(selected_path, tree_selected_path)
+      }
+      if (data.hasOwnProperty("revision")) {
+        tree_selected_path.dataset.revision = JSON.stringify(data["revision"])
+        show_revision(selected_path, tree_selected_path)
+      }
+      if (data.hasOwnProperty("origin")) {
+        tree_selected_path.dataset.origin = JSON.stringify(data["origin"])
+        show_release(selected_path, tree_selected_path)
+      }
+      // Hide the provenance query button
+      const provenance_section = selected_path.querySelector("section[name='provenance_btn_section']")
+      hide_provenance_button(provenance_section)
+      // Hide the loader
+      loader.style.display = "none"
+  } catch (error) {
+    if (error.name === "TypeError") {
+      const msg = "Fetch failed or network error: " + error.message
+      show_error_notification(msg)
+      console.error(msg)
+    } else if (error.name === "SyntaxError") {
+      const msg = "Failed to parse JSON:" + error.message
+      show_error_notification(msg)
+      console.error(msg)
+    } else {
+      const msg = "An unexpected error occurred:" + error.message
+      show_error_notification(msg)
+      console.error(msg)
+    }
+    // Hide the loader
+    loader.style.display = "none"
+    throw error;
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", function() {
+    const loader = document.getElementById("loader")
     const tree = document.getElementById("tree")
     const selected_path = document.getElementById("selected_path")
     selected_path.style.visibility = "hidden"
 
     if (!tree || !selected_path) {
-      console.error("Can not find the results tree or selected path in the DOM")
+      const msg = "Can not find the results tree or selected path in the DOM"
+      show_error_notification(msg)
+      console.error(msg)
       return
     }
 
     tree.addEventListener("click", function(event) {
       const tree_selected_path = event.target.closest("details")
       if (!tree_selected_path) return
+
+      //show the loader
+      loader.style.display = "flex"
 
       if (tree_selected_path.dataset.type === "directory") {
         // Progressive tree loading
@@ -85,12 +307,12 @@
 
       // Relative path as title with pie indicator
       const pie = tree_selected_path.firstElementChild.children.namedItem("pie").cloneNode(true)
-      const rpath = selected_path.children.namedItem("rpath")
+      const rpath = selected_path.querySelector("h3[name='rpath']")
       rpath.textContent = tree_selected_path.dataset.rpath
       rpath.insertAdjacentElement("afterbegin", pie)
 
       // Definition list element
-      const definition = selected_path.children.namedItem("definition")
+      const definition = selected_path.querySelector("dl[name='definition']")
 
       // Directory name with copy to clipboard link
       const name_link = definition.children.namedItem("name").children.namedItem("name_link")
@@ -108,15 +330,39 @@
       // Swhid with search link to the archive
       const search_swhid = "https://archive.softwareheritage.org/" + tree_selected_path.dataset.swhid
       const swhid_link = definition.children.namedItem("swhid").children.namedItem("swhid_link")
-      swhid_link.href = search_swhid
+      swhid_link.href = formatSearchUrl(tree_selected_path.dataset.swhid)
       swhid_link.textContent = tree_selected_path.dataset.swhid
 
       // Type
       definition.children.namedItem("type").textContent = (tree_selected_path.dataset.type === "directory") ? "🗀  " + tree_selected_path.dataset.type  : tree_selected_path.dataset.type
 
-      // Display result
+      // Provenance query button
+      const provenance_section = selected_path.querySelector("section[name='provenance_btn_section']")
+      const provenance_button_elt = provenance_section.children.namedItem("provenance_btn")
+      provenance_button_elt.onclick = function() {
+        fetchProvenance(selected_path, tree_selected_path)
+        return false
+      }
+
+      // Hide the provenance button if element is unknown or if provenance information is already set
+      if (tree_selected_path.dataset.known === "false" || tree_selected_path.dataset.origin != "{}" || tree_selected_path.dataset.revision != "{}" || tree_selected_path.dataset.release != "{}") {
+        hide_provenance_button(provenance_section)
+      } else {
+        show_provenance_button(provenance_section)
+      }
+
+      // Display provenance information
+      show_origin(selected_path, tree_selected_path)
+      show_revision(selected_path, tree_selected_path)
+      show_release(selected_path, tree_selected_path)
+
+      // Display results
       if (selected_path.style.visibility == "hidden") selected_path.style.visibility = "visible"
+      // Hide the loader
+      loader.style.display = "none"
     });
+    // Hide the loader on first load
+    loader.style.display = "none"
   });
 </script>
 {% endblock jsbottom %}

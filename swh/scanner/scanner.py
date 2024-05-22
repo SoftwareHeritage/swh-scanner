@@ -22,16 +22,10 @@ from .output import get_output_class
 from .policy import RandomDirSamplingPriority
 
 
-def run(
+def get_webapi_client(
     config: Dict[str, Any],
-    policy,
-    source_tree: Directory,
-    nodes_data: MerkleNodeInfo,
-    extra_info: set,
-) -> None:
-    """Scan a given source code according to the policy given in input."""
+):
     api_url = config["web-api"]["url"]
-
     kwargs = {}
     # TODO: Better retrieve realm and client id directly from the oidc client?
     if "keycloak" in config:
@@ -47,6 +41,18 @@ def run(
             kwargs["bearer_token"] = auth_token
 
     client = WebAPIClient(api_url=api_url, **kwargs)
+    return client
+
+
+def run(
+    config: Dict[str, Any],
+    policy,
+    source_tree: Directory,
+    nodes_data: MerkleNodeInfo,
+    extra_info: set,
+) -> None:
+    """Scan a given source code according to the policy given in input."""
+    client = get_webapi_client(config)
 
     # always start with finding what is known. The other option will need this
     # information anyway. Fetching "known" status is efficicient and relatively

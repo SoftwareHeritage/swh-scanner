@@ -1,17 +1,27 @@
-{% macro render_source_tree(root_path, source_tree, nodes_data, directory_content) %}
+{% macro render_source_tree(root_path, source_tree, nodes_data, directory_content, json) %}
   {% if source_tree %}
     <ul>
       {% for k, v in source_tree.items()|sort(attribute='0') %}
         <li>
           {% set fpath = v.data['path'].decode() %}
-          {% set rpath = fpath.split(root_path, maxsplit=1)[-1] %}
-          {% set known = nodes_data.get(v.swhid())['known'] %}
+          {% set rpath = fpath.split(root_path)[-1] %}
+          {% set node_data = nodes_data.get(v.swhid()) %}
+          {% set known = node_data['known'] %}
           {% set known_data = directory_content(v, nodes_data) if v.object_type == 'directory' else '' %}
           {% if v.object_type == 'directory' %}
             {% set known_percent = known_data[1] * 100 // known_data[0] if known_data[0] > 0 else 0 %}
           {% elif v.object_type == 'content' %}
             {% set known_percent = 100 if known else 0 %}
           {% endif %}
+          {% set origin = json.dumps(node_data["origin"]) if "origin" in node_data else {} %}
+          {% if "revision" in node_data and "swhid" in node_data["revision"] %}
+            {% do node_data["revision"].update(swhid=node_data["revision"]["swhid"]|string) %}
+          {% endif %}
+          {% if "release" in node_data and "swhid" in node_data["release"] %}
+            {% do node_data["release"].update(swhid=node_data["release"]["swhid"]|string) %}
+          {% endif %}
+          {% set revision = json.dumps(node_data["revision"]) if "revision" in node_data else {} %}
+          {% set release = json.dumps(node_data["release"]) if "release" in node_data else {} %}
           <details id="{{ v.swhid() }}"
                    class="{{ v.object_type }}"
                    data-name="{{ k.decode() }}"
@@ -20,7 +30,10 @@
                    data-fpath="{{ fpath }}"
                    data-rpath="{{ rpath }}"
                    data-known="{{ known|lower }}"
-                   data-known-data="{{ known_data[0] }},{{ known_data[1] }}">
+                   data-known-data="{{ known_data[0] }},{{ known_data[1] }}"
+                   data-origin="{{ origin }}"
+                   data-revision="{{ revision }}"
+                   data-release="{{ release }}">
             <summary>
               <span class="pie"
                     name="pie"

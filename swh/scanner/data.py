@@ -114,8 +114,7 @@ def _get_provenance_info(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
     Returns:
         None or QualifiedSWHID for the current Content or Directory.
 
-        The QualifiedSWHID will have the following attributes set:
-        - swhid: the swhid of the provided content or directory
+        The QualifiedSWHID will have the following qualifiers set:
         - anchor: swhid of a Release or Revision containing it
         - origin: the origin containing this Release or Revision
 

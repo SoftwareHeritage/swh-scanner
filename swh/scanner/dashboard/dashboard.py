@@ -109,9 +109,21 @@ def create_app(
             if anchor is not None:
                 anchor_type = anchor.object_type
                 if anchor_type == ObjectType.REVISION:
-                    info["revision"] = client.revision(anchor)
+                    data = client.revision(anchor)
+                    # Get the `show_revision` Jinja macro
+                    macro = get_template_attribute(
+                        "./partials/provenance.html", "show_revision"
+                    )
+                    # Render the html snippet
+                    info["revision"] = macro(data)
                 elif anchor_type == ObjectType.RELEASE:
-                    info["release"] = client.release(anchor)
+                    data = client.release(anchor)
+                    # Get the `show_release` Jinja macro
+                    macro = get_template_attribute(
+                        "./partials/provenance.html", "show_release"
+                    )
+                    # Render the html snippet
+                    info["release"] = macro(data)
 
             return jsonify(info)
         except ValueError as e:

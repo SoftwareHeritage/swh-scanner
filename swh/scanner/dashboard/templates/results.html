@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% import "partials/tree.html" as macros %}
+{% import "partials/tree.html" as tree_macros %}
+{% import "partials/provenance.html" as provenance_macros %}
 
 {% block title %}Results{% endblock %}
 {% block main %}
@@ -14,7 +15,7 @@
 <div id="results">
   <aside class="box-shadow">
     <div id="tree">
-      {{ macros.render_source_tree(root_path, source_tree, nodes_data, directory_content, json) }}
+      {{ tree_macros.render_source_tree(root_path, source_tree, nodes_data, directory_content, json) }}
     </div>
   </aside>
   <article class="box-shadow">
@@ -56,39 +57,8 @@
         </dl>
       </section>
       <section name="revision">
-        <h4 class="size-6">Revision</h4>
-        <dl>
-          <dt>Type</dt>
-          <dd name="type"></dd>
-          <dt>Date</dt>
-          <dd name="date"></dd>
-          <dt>Author</dt>
-          <dd name="author"></dd>
-          <dt>Committer</dt>
-          <dd name="committer"></dd>
-          <dt>Committer date</dt>
-          <dd name="committer_date"></dd>
-          <dt>Merge</dt>
-          <dd name="merge"></dd>
-          <dt>Swhid</dt>
-          <dd name="swhid">
-            <a href="" title="Search for revision swhid" name="search_revision_link" target="_blank"></a>
-          </dd>
-          <dt>Revision api</dt>
-          <dd>
-            <a href="" title="Revision api endpoint" name="revision_api_link" target="_blank">Revision</a> |
-            <a href="" title="Revision history api endpoint" name="history_api_link" target="_blank">History</a> |
-            <a href="" title="Revision parents api endpoint" name="directory_api_link" target="_blank">Directory</a>
-          </dd>
-          <dt>Message</dt>
-          <dd name="message"></dd>
-        </dl>
       </section>
       <section name="release">
-        <h4 class="size-6">Release</h4>
-        <dl name="release">
-          <dt>Release</dt>
-        </dl>
       </section>
     </div>
   </article>
@@ -158,58 +128,26 @@
 
   function show_revision(selected_path, dataset) {
     // Provenance / Revision
-    const revision = selected_path.querySelector("section[name='revision']")
-    revision.style.display = "none"
+    const revision = selected_path.querySelector("section[name='revision']");
+    revision.style.display = "none";
     if (!dataset.hasOwnProperty("revision")) {
       return
     }
-    const revision_data = JSON.parse(dataset.revision)
-    const revision_selectors = {
-      "type": "dd[name='type']",
-      "date": "dd[name='date']",
-      "author": "dd[name='author']",
-      "committer": "dd[name='committer']",
-      "committer_date": "dd[name='committer_date']",
-      "merge": "dd[name='merge']",
-      "id": "a[name='search_revision_link']",
-      "message": "dd[name='message']",
-      "url": "a[name='revision_api_link']",
-      "history_url": "a[name='history_api_link']",
-      "directory_url": "a[name='directory_api_link']",
-    }
-
-    for (const [key, value] of Object.entries(revision_selectors)) {
-      if (key == "author") {
-        revision.querySelector(value).textContent = revision_data["author"]["fullname"] + " (" + revision_data["author"]["name"] + ", " + revision_data["author"]["email"] + ")"
-      } else if (key == "committer") {
-        revision.querySelector(value).textContent = revision_data["committer"]["fullname"] + " (" + revision_data["committer"]["name"] + ", " + revision_data["committer"]["email"] + ")"
-      } else if (key == "id") {
-        revision.querySelector(value).href = formatSearchUrl(revision_data["id"])
-        revision.querySelector(value).textContent = revision_data[key]
-      } else if (key == "url") {
-        revision.querySelector(value).href = revision_data[key]
-      } else if (key == "history_url") {
-        revision.querySelector(value).href = revision_data[key]
-      } else if (key == "directory_url") {
-        revision.querySelector(value).href = revision_data[key]
-      } else {
-        revision.querySelector(value).textContent = revision_data[key]
-      }
-    }
+    revision.innerHTML = dataset.revision;
     // TODO: display synthetic, extra_headers, parents and metadata information
-    revision.style.display = "block"
+    revision.style.display = "block";
   }
 
   function show_release(selected_path, dataset) {
     // Provenance / Release
     const release = selected_path.querySelector("section[name='release']")
-    release.style.display = "none"
+    release.style.display = "none";
     if (!dataset.hasOwnProperty("release")) {
       return
     }
-    const release_data = JSON.parse(dataset.release)
-    // TODO: display release information
-    release.style.visibility = "block"
+
+    release.innerHTML = dataset.release;
+    release.style.display = "block"
   }
 
   function show_notification_message(title, msg) {
@@ -239,15 +177,15 @@
       // TODO show something if no provenance information was found
       // Display provenance information
       if (data.hasOwnProperty("origin")) {
-        dataset.origin = JSON.stringify(data["origin"])
+        dataset.origin = data["origin"]
         show_origin(selected_path, dataset)
       }
       if (data.hasOwnProperty("revision")) {
-        dataset.revision = JSON.stringify(data["revision"])
+        dataset.revision = data["revision"]
         show_revision(selected_path, dataset)
       }
       if (data.hasOwnProperty("release")) {
-        dataset.release = JSON.stringify(data["release"])
+        dataset.release = data["release"]
         show_release(selected_path, dataset)
       }
       // Hide the provenance query button

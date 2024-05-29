@@ -243,6 +243,10 @@ header > nav > ul li a.active {
   margin-top: var(--gap);
 }
 
+main {
+  margin-bottom: 32px;  /* Twice the footer */
+}
+
 footer {
   background: var(--secondary-color);
   padding: var(--gap);
@@ -318,6 +322,10 @@ footer {
   font-weight: bold;
   margin: 0;
   grid-column-start: 2;
+}
+
+#selected_path > section > dl > dd[name="message"] {
+  white-space: pre-wrap;
 }
 
 #dashboard {

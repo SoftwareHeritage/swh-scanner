@@ -46,6 +46,9 @@
       <section name="provenance_btn_section">
         <a id="provenance_btn" class="button" title="Get provenance information" href="javascript:void(0);">Get
           provenance</a>
+        </section>
+      <section id="no-provenance">
+        <p name="no-provenance-found">No provenance information was found.</p>
       </section>
       <section name="origin">
         <h4 class="size-6">Origin</h4>
@@ -191,6 +194,10 @@
       // Hide the provenance query button
       const provenance_section = selected_path.querySelector("section[name='provenance_btn_section']")
       hide_provenance_button(provenance_section)
+      if (Object.keys(data).length === 0) {
+        // If data is empty, show that no provenance was found
+        selected_path.querySelector("#no-provenance").style.display = 'block';
+      }
       // Hide the loader
       loader.style.display = "none"
     } catch (error) {
@@ -293,6 +300,8 @@
       } else {
         show_provenance_button(provenance_section)
       }
+
+      selected_path.querySelector("#no-provenance").style.display = "none";
 
       // Display provenance information
       show_origin(selected_path, dataset)

@@ -5,6 +5,7 @@
 
 import json
 from pathlib import Path
+import socket
 from typing import Any, Dict
 import webbrowser
 
@@ -18,9 +19,9 @@ from swh.model.swhids import CoreSWHID, ObjectType
 from ..data import MerkleNodeInfo, _get_provenance_info, directory_content
 
 
-def open_browser_if_graphical():
+def open_browser_if_graphical(port):
     if not isinstance(webbrowser.get(), (webbrowser.GenericBrowser, webbrowser.Elinks)):
-        webbrowser.open_new("http://127.0.0.1:5000/")
+        webbrowser.open_new(f"http://127.0.0.1:{port}/")
 
 
 class CustomJSONProvider(DefaultJSONProvider):
@@ -129,6 +130,22 @@ def run_app(
 
     debug = config["debug_http"] or False
 
-    open_browser_if_graphical()
-
-    app.run(debug=debug)
+    retries = 0
+    while True:
+        retries += 1
+        # Flask allows us to give `0` to get a free port, but we have no way
+        # of getting the allocated port, which we need to open the browser.
+        # So do it ourselves.
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(("localhost", 0))
+        port = sock.getsockname()[1]
+        sock.close()
+        # This will open multiple ones in case of a race, but we have no simple
+        # alternative. This is already enough code.
+        open_browser_if_graphical(port=port)
+        try:
+            app.run(debug=debug, port=port)
+        except socket.error:
+            if retries > 3:
+                raise
+            # This raced against another process after the `socket.close`, retry

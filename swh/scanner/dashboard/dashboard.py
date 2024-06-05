@@ -20,7 +20,8 @@ from ..data import MerkleNodeInfo, _get_provenance_info, directory_content
 
 
 def open_browser_if_graphical(port):
-    if not isinstance(webbrowser.get(), (webbrowser.GenericBrowser, webbrowser.Elinks)):
+    term_browsers = ("www-browser", "links", "elinks", "lynx", "w3m")
+    if webbrowser.get().name not in term_browsers:
         webbrowser.open_new(f"http://127.0.0.1:{port}/")
 
 

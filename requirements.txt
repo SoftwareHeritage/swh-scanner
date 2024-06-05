@@ -3,11 +3,6 @@
 # dependency lines, see https://pip.readthedocs.org/en/1.1/requirements.html
 requests
 ndjson
-plotly
-pandas
-numpy
-dash >= 2
-dash_bootstrap_components
 flask
 dulwich
 importlib-metadata

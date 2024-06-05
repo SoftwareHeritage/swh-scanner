@@ -16,8 +16,7 @@ from swh.model.from_disk import Directory
 from swh.model.swhids import CoreSWHID, ExtendedSWHID, QualifiedSWHID
 
 from .dashboard.dashboard import run_app
-from .data import MerkleNodeInfo, get_directory_data
-from .plot import generate_sunburst, offline_plot
+from .data import MerkleNodeInfo
 
 DEFAULT_OUTPUT = "text"
 OUTPUT_MAP = {}
@@ -220,24 +219,6 @@ class NDJsonTextOutput(JsonOutput):
 
     def show(self):
         print(ndjson.dumps({k: v} for k, v in self.data_as_json().items()), flush=True)
-
-
-@_register("sunburst")
-class SunburstOutput(BaseOutput):
-    """display the scan result as a sunburst plot
-
-    note: as soon as the scan target something larger than a toy project, the
-    usability of this mode is poor."""
-
-    def _make_sunburst(self):
-        directory_data = get_directory_data(
-            self.root_path, self.source_tree, self.nodes_data
-        )
-        return generate_sunburst(directory_data, self.root_path)
-
-    def show(self):
-        sunburst_figure = self._make_sunburst()
-        offline_plot(sunburst_figure)
 
 
 @_register("interactive")

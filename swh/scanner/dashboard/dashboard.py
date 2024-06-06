@@ -54,13 +54,13 @@ def create_app(
     @app.route("/")
     def index():
         return render_template(
-            "./dashboard.html", root_path=root_path, summary=summary, config=config
+            "dashboard.html", root_path=root_path, summary=summary, config=config
         )
 
     @app.route("/results")
     def results():
         return render_template(
-            "./results.html",
+            "results.html",
             root_path=root_path,
             source_tree=source_tree,
             nodes_data=nodes_data,
@@ -84,7 +84,7 @@ def create_app(
         # Get the source tree object for this path
         st = get_source_tree(directory_path)
         # Get the `render_source_tree` Jinja macro
-        macro = get_template_attribute("./partials/tree.html", "render_source_tree")
+        macro = get_template_attribute("partials/tree.html", "render_source_tree")
         # Render the html snippet
         html = macro(root_path, st, nodes_data, directory_content, json)
         res = {"path": escape(directory_path), "html": html}
@@ -112,7 +112,7 @@ def create_app(
                     data = client.revision(anchor)
                     # Get the `show_revision` Jinja macro
                     macro = get_template_attribute(
-                        "./partials/provenance.html", "show_revision"
+                        "partials/provenance.html", "show_revision"
                     )
                     # Render the html snippet
                     info["revision"] = macro(data)
@@ -120,7 +120,7 @@ def create_app(
                     data = client.release(anchor)
                     # Get the `show_release` Jinja macro
                     macro = get_template_attribute(
-                        "./partials/provenance.html", "show_release"
+                        "partials/provenance.html", "show_release"
                     )
                     # Render the html snippet
                     info["release"] = macro(data)

@@ -4,6 +4,7 @@
 # See top-level LICENSE file for more information
 
 import enum
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
 from swh.model.cli import model_of_dir
@@ -149,7 +150,7 @@ def scan(
     if not disable_global_patterns:
         converted_patterns.extend(COMMON_EXCLUDE_PATTERNS)
     if not disable_vcs_patterns:
-        vcs_ignore_patterns = get_vcs_ignore_patterns()
+        vcs_ignore_patterns = get_vcs_ignore_patterns(Path(root_path))
         converted_patterns.extend(vcs_ignore_patterns)
 
     with progress_class(step=Progress.Step.DISK_SCAN) as progress:

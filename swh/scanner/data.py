@@ -469,9 +469,9 @@ VCS_IGNORE_PATTERNS_METHODS: Dict[
 }
 
 
-def vcs_detected(folder_path: str) -> bool:
+def vcs_detected(folder_path: Path) -> bool:
     try:
-        return Path(folder_path).is_dir()
+        return folder_path.is_dir()
     except Exception as e:
         logger.debug("Got an exception while looking for %s: %s", folder_path, e)
         return False
@@ -481,8 +481,11 @@ def get_vcs_ignore_patterns(cwd: Optional[Path] = None) -> List[bytes]:
     """Return a list of all patterns to ignore according to the VCS used for
     the project being scanned, if any."""
     ignore_patterns = []
-
-    for vcs, (folder_path, method) in VCS_IGNORE_PATTERNS_METHODS.items():
+    for vcs, (folder_name, method) in VCS_IGNORE_PATTERNS_METHODS.items():
+        if cwd is not None:
+            folder_path = cwd / folder_name
+        else:
+            folder_path = Path(folder_name)
         if vcs_detected(folder_path):
             logger.debug("Trying to get ignore patterns from '%s'", vcs)
             success, patterns = method(cwd)

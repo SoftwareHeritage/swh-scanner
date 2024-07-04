@@ -38,7 +38,12 @@
             <summary>
               <span class="pie"
                     name="pie"
-                    style="background: conic-gradient(orange {{ known_percent }}%, white 0)"></span>
+                    {% if known_percent == 100 %}
+                    style="background: #00d300">
+                    {% else %}
+                    style="background: conic-gradient(orange {{ known_percent }}%, white 0)">
+                    {% endif %}
+              </span>
               {{ k.decode() }}
             </summary>
           </details>

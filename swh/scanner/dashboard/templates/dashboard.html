@@ -12,7 +12,7 @@
         <h2>Full known directories</h2>
         <h3 class="size-1">{{ summary["full_known_directories_percent"]}}%</h3>
         <hr>
-        <p><strong>{{ summary["full_known_directories"] }}</strong> full known directories out of a total of <strong>{{ summary["total_directories"] }}</strong></p>
+        <p><strong>{{ summary["full_known_directories"]|length }}</strong> full known directories out of a total of <strong>{{ summary["total_directories"] }}</strong></p>
       </section>
     </a>
     <a href="{{ url_for('results') }}" title="View results">
@@ -20,7 +20,7 @@
         <h2>Partially known directories</h2>
         <h3 class="size-1">{{ summary["partially_known_directories_percent"]}}%</h3>
         <hr>
-        <p><strong>{{ summary["partially_known_directories"] }}</strong> partially known directories out of a total of <strong>{{ summary["total_directories"] }}</strong></p>
+        <p><strong>{{ summary["partially_known_directories"]|length }}</strong> partially known directories out of a total of <strong>{{ summary["total_directories"] }}</strong></p>
       </section>
     </a>
     <a href="{{ url_for('results') }}" title="View results">

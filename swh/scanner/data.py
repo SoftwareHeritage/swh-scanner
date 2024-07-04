@@ -294,57 +294,6 @@ def add_provenance(
         next_boundary = {}
 
 
-def get_directory_data(
-    root_path: str,
-    source_tree: Directory,
-    nodes_data: MerkleNodeInfo,
-    directory_data: Dict = {},
-) -> Dict[Path, dict]:
-    """Get content information for each directory inside source_tree.
-
-    Returns:
-     A dictionary with a directory path as key and the relative
-     contents information as values.
-    """
-
-    def _get_directory_data(
-        source_tree: Directory, nodes_data: MerkleNodeInfo, directory_data: Dict
-    ):
-        directories = list(
-            filter(
-                lambda n: n.object_type == "directory",
-                map(lambda n: n[1], source_tree.items()),
-            )
-        )
-        for node in directories:
-            directory_info = directory_content(node, nodes_data)
-            rel_path = Path(node.data["path"].decode()).relative_to(Path(root_path))
-            directory_data[rel_path] = directory_info
-            if has_dirs(node):
-                _get_directory_data(node, nodes_data, directory_data)
-
-    _get_directory_data(source_tree, nodes_data, directory_data)
-    return directory_data
-
-
-def directory_content(node: Directory, nodes_data: MerkleNodeInfo) -> Tuple[int, int]:
-    """Count known contents inside the given directory.
-
-    Returns:
-     A tuple with the total number of contents inside the directory and the number
-     of known contents.
-    """
-    known_cnt = 0
-    node_contents = list(
-        filter(lambda n: n.object_type == "content", map(lambda n: n[1], node.items()))
-    )
-    for sub_node in node_contents:
-        if nodes_data[sub_node.swhid()]["known"]:
-            known_cnt += 1
-
-    return (len(node_contents), known_cnt)
-
-
 def has_dirs(node: Directory) -> bool:
     """Check if the given directory has other directories inside."""
     for _, sub_node in node.items():

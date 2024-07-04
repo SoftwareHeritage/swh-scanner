@@ -1,15 +1,20 @@
-{% macro render_source_tree(root_path, source_tree, nodes_data, directory_content, json) %}
+{% macro render_source_tree(root_path, source_tree, nodes_data, json, summary) %}
   {% if source_tree %}
     <ul>
       {% for k, v in source_tree.items()|sort(attribute='0') %}
         <li>
+
           {% set fpath = v.data['path'].decode() %}
           {% set rpath = fpath.removeprefix(root_path + '/') %}
           {% set node_data = nodes_data.get(v.swhid()) %}
           {% set known = node_data['known'] %}
-          {% set known_data = directory_content(v, nodes_data) if v.object_type == 'directory' else '' %}
+          {% set known_percent = 0 %}
           {% if v.object_type == 'directory' %}
-            {% set known_percent = known_data[1] * 100 // known_data[0] if known_data[0] > 0 else 0 %}
+            {% if v.data['path'] in summary['partially_known_directories'] %}
+              {% set known_percent = 50 %}
+            {% elif v.data['path'] in summary['full_known_directories'] %}
+              {% set known_percent = 100 %}
+            {% endif %}
           {% elif v.object_type == 'content' %}
             {% set known_percent = 100 if known else 0 %}
           {% endif %}
@@ -30,7 +35,6 @@
                    data-fpath="{{ fpath }}"
                    data-rpath="{{ rpath }}"
                    data-known="{{ known|lower }}"
-                   data-known-data="{{ known_data[0] }},{{ known_data[1] }}"
                    {% if provenance %}data-provenance="{{ provenance }}"{% endif %}
                    {% if revision %}data-revision="{{ revision }}"{% endif %}
                    {% if release %}data-release="{{ release }}"{% endif %}

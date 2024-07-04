@@ -4,7 +4,6 @@
 # See top-level LICENSE file for more information
 
 from dataclasses import dataclass
-from pathlib import Path
 import subprocess
 
 from flask import url_for
@@ -14,8 +13,6 @@ from swh.model.exceptions import ValidationError
 from swh.scanner.data import (
     MerkleNodeInfo,
     add_provenance,
-    directory_content,
-    get_directory_data,
     get_ignore_patterns_templates,
     get_vcs_ignore_patterns,
     has_dirs,
@@ -71,20 +68,6 @@ def test_add_provenance_with_revision(live_server, source_tree, nodes_data):
     assert attrs["provenance"] is not None
     assert attrs["provenance"].origin == fake_origin[a_file_id]
     assert str(attrs["provenance"].anchor) == fake_revision[a_file_id]
-
-
-def test_get_directory_data(source_tree, nodes_data):
-    root = Path(source_tree.data["path"].decode())
-    dirs_data = get_directory_data(root, source_tree, nodes_data)
-
-    assert len(dirs_data) == 5
-
-
-def test_directory_content(source_tree, nodes_data):
-    foo_dir = source_tree[b"foo"]
-    foo_content = directory_content(foo_dir, nodes_data)
-    assert foo_content[0] == 3
-    assert foo_content[1] == 3
 
 
 def test_has_dirs(source_tree):

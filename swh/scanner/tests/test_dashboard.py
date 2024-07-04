@@ -17,7 +17,6 @@ EXPECTED_DATA_ATTRIBUTES = [
     "data-fpath",
     "data-rpath",
     "data-known",
-    "data-known-data",
 ]
 
 
@@ -28,9 +27,9 @@ def summary():
         "known_files": 5,
         "known_files_percent": 50,
         "total_directories": 2,
-        "full_known_directories": 1,
+        "full_known_directories": set("fake_directory"),
         "full_known_directories_percent": 50,
-        "partially_known_directories": 0,
+        "partially_known_directories": set(),
         "partially_known_directories_percent": 0,
     }
 

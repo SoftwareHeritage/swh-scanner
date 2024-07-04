@@ -16,7 +16,7 @@ from markupsafe import escape
 from swh.model.from_disk import Directory
 from swh.model.swhids import CoreSWHID, ObjectType
 
-from ..data import MerkleNodeInfo, _get_provenance_info, directory_content
+from ..data import MerkleNodeInfo, _get_provenance_info
 
 
 def open_browser_if_graphical(port):
@@ -64,8 +64,8 @@ def create_app(
             root_path=root_path,
             source_tree=source_tree,
             nodes_data=nodes_data,
-            directory_content=directory_content,
             json=json,
+            summary=summary,
         )
 
     @app.route("/api/v1/html-tree/<path:directory_path>")
@@ -86,7 +86,7 @@ def create_app(
         # Get the `render_source_tree` Jinja macro
         macro = get_template_attribute("partials/tree.html", "render_source_tree")
         # Render the html snippet
-        html = macro(root_path, st, nodes_data, directory_content, json)
+        html = macro(root_path, st, nodes_data, json, summary)
         res = {"path": escape(directory_path), "html": html}
         return jsonify(res)
 

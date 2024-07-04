@@ -15,7 +15,7 @@
 <div id="results">
   <aside class="box-shadow">
     <div id="tree">
-      {{ tree_macros.render_source_tree(root_path, source_tree, nodes_data, directory_content, json) }}
+      {{ tree_macros.render_source_tree(root_path, source_tree, nodes_data, json, summary) }}
     </div>
   </aside>
   <article class="box-shadow">
@@ -46,7 +46,7 @@
       <section name="provenance_btn_section">
         <a id="provenance_btn" class="button" title="Get provenance information" href="javascript:void(0);">Get
           provenance</a>
-        </section>
+      </section>
       <section id="no-provenance">
         <p name="no-provenance-found">No provenance information was found.</p>
       </section>

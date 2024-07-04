@@ -8,7 +8,7 @@ from enum import Enum
 import json
 import os
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, Set
 
 import ndjson
 
@@ -84,8 +84,8 @@ class SummaryOutput(BaseOutput):
         total_files = 0
         total_directories = 0
         known_files = 0
-        full_known_directories = 0
-        partially_known_directories = 0
+        full_known_directories = set()
+        partially_known_directories = set()
 
         contents = []
         directories = []
@@ -106,18 +106,23 @@ class SummaryOutput(BaseOutput):
                 dir_name = os.path.dirname(path)
                 directories_with_known_files.add(dir_name)
 
-        total_directories = len(directories)
         for d in directories:
             if self.nodes_data[d.swhid()]["known"]:
-                full_known_directories += 1
-            else:
-                path = d.data[self.get_path_name(d)]
-                if path in directories_with_known_files:
-                    partially_known_directories += 1
+                path_name = self.get_path_name(d)
+                path = d.data[path_name]
+                full_known_directories.add(path)
 
+        self.compute_partially_known_recursive(
+            directories_with_known_files,
+            partially_known_directories,
+            full_known_directories,
+            self.source_tree,
+        )
+
+        total_directories = len(directories)
         kp = known_files * 100 // total_files
-        fkp = full_known_directories * 100 // total_directories
-        pkp = partially_known_directories * 100 // total_directories
+        fkp = len(full_known_directories) * 100 // total_directories
+        pkp = len(partially_known_directories) * 100 // total_directories
 
         return {
             "total_files": total_files,
@@ -130,6 +135,39 @@ class SummaryOutput(BaseOutput):
             "partially_known_directories_percent": pkp,
         }
 
+    def compute_partially_known_recursive(
+        self,
+        directories_with_known_files: Set[bytes],
+        partially_known_directories: Set[bytes],
+        full_known_directories: Set[bytes],
+        d: Directory,
+    ):
+        """Recursively compute partially known directories."""
+
+        path_name = self.get_path_name(d)
+        path = d.data[path_name]
+        partially_known = False
+
+        if path in full_known_directories:
+            return False
+
+        if path not in full_known_directories and path in directories_with_known_files:
+            partially_known_directories.add(path)
+            partially_known = True
+
+        for entry in d.values():
+            if entry.object_type == "directory":
+                partially_known_child = self.compute_partially_known_recursive(
+                    directories_with_known_files,
+                    partially_known_directories,
+                    full_known_directories,
+                    entry,
+                )
+                if partially_known_child:
+                    partially_known_directories.add(path)
+                partially_known = partially_known or partially_known_child
+        return partially_known
+
     def show(self):
         summary = self.compute_summary()
         kp = summary["known_files_percent"]
@@ -138,9 +176,11 @@ class SummaryOutput(BaseOutput):
         print(f"Files:             {summary['total_files']:10d}")
         print(f"            known: {summary['known_files']:10d} ({kp:3d}%)")
         print(f"directories:       {summary['total_directories']:10d}")
-        print(f"      fully-known: {summary['full_known_directories']:10d} ({fkp:3d}%)")
         print(
-            f"  partially-known: {summary['partially_known_directories']:10d} ({pkp:3d}%)"
+            f"      fully-known: {len(summary['full_known_directories']):10d} ({fkp:3d}%)"
+        )
+        print(
+            f"  partially-known: {len(summary['partially_known_directories']):10d} ({pkp:3d}%)"
         )
 
 

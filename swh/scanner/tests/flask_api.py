@@ -5,6 +5,7 @@
 
 from flask import Flask, abort, request
 
+from swh.model.swhids import CoreSWHID, QualifiedSWHID
 from swh.scanner.exceptions import LargePayloadExc
 from swh.web.client.client import KNOWN_QUERY_LIMIT
 
@@ -14,6 +15,7 @@ from .data import fake_origin, fake_release, fake_revision, unknown_swhids
 def create_app(tmp_requests, tmp_accesses):
     app = Flask(__name__)
     app.config["SERVER_NAME"] = "localhost"
+    app.config["DEBUG"] = True
 
     @app.route("/")
     def index():
@@ -69,5 +71,29 @@ def create_app(tmp_requests, tmp_accesses):
         except Exception as exc:
             print(exc)
             raise
+
+    @app.route("/provenance/whereare/", methods=["GET", "POST"])
+    def whereare():
+        swhids = request.get_json()
+        result = []
+        for source in swhids:
+            anchor = fake_release.get(source)
+            if anchor is None:
+                anchor = fake_revision.get(source)
+            if anchor is None:
+                result.append(None)
+            else:
+                anchor_id = CoreSWHID.from_string(anchor)
+                origin = fake_origin.get(source)
+                swhid = CoreSWHID.from_string(source)
+                provenance = QualifiedSWHID(
+                    object_type=swhid.object_type,
+                    object_id=swhid.object_id,
+                    anchor=anchor_id,
+                    origin=origin,
+                )
+                result.append(str(provenance))
+
+        return result
 
     return app

@@ -8,21 +8,12 @@ import logging
 from os import path
 from pathlib import Path
 import subprocess
-from typing import (
-    Callable,
-    Collection,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import Callable, Dict, Iterator, List, Optional, Tuple, TypeVar, Union, cast
 from xml.etree import ElementTree
 
 import requests
 
+from swh.core.utils import grouper
 from swh.model.exceptions import ValidationError
 from swh.model.from_disk import Content, Directory, FromDiskType
 from swh.model.swhids import CoreSWHID, ObjectType, QualifiedSWHID
@@ -97,7 +88,10 @@ def _get_leaf(
 
 
 def _get_provenance_info(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
-    """find a revision or release and origin containing this content or directory
+    """find a revision or release and origin containing this object
+
+    XXX This function is now only used by the "on demand" query that can be
+    requested from the dashboard. Remove it whenever relevant XXX
 
     Revision and Release might not be found, we prioritize finding a
     Release over finding a Revision when possible.
@@ -185,34 +179,64 @@ def _get_provenance_info(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
     )
 
 
+# We tried 1000, but the API was suffering (504 and 503 return)/
+# Bump again when this get more reliable
+MAX_WHEREARE_BATCH = 100
+
+
+def _call_whereare(client, swhids: List[CoreSWHID]) -> List[Optional[QualifiedSWHID]]:
+    """manually call provenance's `whereare` endpoind
+
+    The WebAPIClient will eventually support this natively. At that point this
+    function should be remove in favor on calling the associated method on
+    WebAPIClient.
+    """
+    query = "provenance/whereare/"
+    args = [str(s) for s in swhids]
+    with client._call(query, http_method="post", json=args) as r:
+        result = r.json()
+
+    to_q = QualifiedSWHID.from_string
+    return [to_q(q) if q is not None else q for q in result]
+
+
 _IN_MEM_NODE = Union[Directory, Content]
 
-MAX_CONCURRENT_PROVENANCE_QUERIES = 5
+# We tried 5, but the API was suffering (504 and 503 return)/
+# Bump again when this get more reliable
+MAX_CONCURRENT_PROVENANCE_QUERIES = 3
+
+Item = TypeVar("Item")
 
 
 def _get_many_provenance_info(
-    client, swhids: Collection[CoreSWHID]
+    client, swhids: List[CoreSWHID]
 ) -> Iterator[Tuple[CoreSWHID, Optional[QualifiedSWHID]]]:
     """yield provenance data for multiple swhid
 
     For all SWHID we can find provenance data for, we will yield a (CoreSWHID,
-    QualifiedSWHID) pair, (see _get_provenance_info documentation for the
+    QualifiedSWHID) pair, (see provenance's API "whereis" documentation for the
     details on the QualifiedSWHID). SWHID for which we cannot find provenance
-    we yield a None value.
+    yield a None value.
 
     note: We could drop the SWHID part of the pair and only return
     QualifiedSWHID, if they were some easy method for QualifiedSWHID →
     CoreSWHID conversion."""
+    # XXX note that this concurrency can be dealt with by
+    # WebAPIClient._call_groups one the WebAPIClient grown function to fetch
+    # provenance.
     with concurrent.futures.ThreadPoolExecutor(
         max_workers=MAX_CONCURRENT_PROVENANCE_QUERIES
     ) as executor:
         pending = {}
-        for swhid in swhids:
-            f = executor.submit(_get_provenance_info, client, swhid)
-            pending[f] = swhid
+        for chunk in grouper(swhids, MAX_WHEREARE_BATCH):
+            chunk = list(chunk)
+            f = executor.submit(_call_whereare, client, chunk)
+            pending[f] = chunk
         for future in concurrent.futures.as_completed(list(pending.keys())):
-            qswhid = future.result()
-            yield (pending[future], qswhid)
+            provenances = future.result()
+            sources = pending[future]
+            yield from zip(sources, provenances)
 
 
 def _no_update_progress(*args, **kwargs):

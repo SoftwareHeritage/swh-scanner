@@ -6,58 +6,26 @@
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
 import logging
-import os
 import textwrap
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import click
-from click.exceptions import FileError
 from importlib_metadata import version
 
-from swh.auth.cli import DEFAULT_CONFIG as DEFAULT_AUTH_CONFIG
 from swh.core import config
 from swh.core.cli import CONTEXT_SETTINGS
 from swh.core.cli import swh as swh_cli_group
-from swh.core.config import SWH_GLOBAL_CONFIG
 from swh.web.client.client import WebAPIClient
 
+from .config import (
+    BACKEND_DEFAULT_PORT,
+    DEFAULT_CONFIG_PATH,
+    SWH_API_ROOT,
+    get_default_config,
+)
 from .data import get_ignore_patterns_templates
 from .exceptions import DBError
-
-# Config for the "serve" option
-BACKEND_DEFAULT_PORT = 5011
-
-DEFAULT_CONFIG_PATH = os.path.join(click.get_app_dir("swh"), SWH_GLOBAL_CONFIG)
-SWH_API_ROOT = "https://archive.softwareheritage.org/api/1/"
-DEFAULT_WEB_API_CONFIG: Dict[str, Any] = {
-    "web-api": {
-        "url": SWH_API_ROOT,
-    }
-}
-DEFAULT_SCANNER_CONFIG: Dict[str, Any] = {
-    "scanner": {
-        "server": {
-            "port": BACKEND_DEFAULT_PORT,
-        },
-        "exclude": [],
-        "exclude_templates": [],
-        "disable_global_patterns": False,
-        "disable_vcs_patterns": False,
-    }
-}
-
-
-def get_default_config():
-    # Default Scanner configuration
-    # Merge AUTH, WEB_API, SCANNER defaults config
-    DEFAULT_CONFIG = config.merge_configs(DEFAULT_AUTH_CONFIG, DEFAULT_WEB_API_CONFIG)
-    cfg = config.merge_configs(DEFAULT_CONFIG, DEFAULT_SCANNER_CONFIG)
-    return cfg
-
-
-def get_default_config_path():
-    # Default Scanner configuration file path
-    return DEFAULT_CONFIG_PATH
+from .setup_wizard import invoke_auth, run_setup, should_run_setup
 
 
 def get_exclude_templates_list_repr(width=0):
@@ -89,21 +57,6 @@ SCANNER_HELP = """Software Heritage Scanner tools
 Scan a source code project to discover files and directories existing in the
 Software Heritage archive.
 """
-
-
-def invoke_auth(ctx, auth, config_file):
-    # Invoke swh.auth.cli.auth command to get an OIDC client
-    # The invoked `auth` command manage the configuration file mechanism
-    # TODO: Do we need / want to pass args for each OIDC params?
-
-    # If `config_file` is set via env or option, raise if the path does not exists
-    if config.config_path(config_file) is None:
-        source = ctx.get_parameter_source("config_file") or None
-        if source and source.name != "DEFAULT":
-            raise FileError(config_file, hint=f"From {source.name}")
-        ctx.invoke(auth)
-    else:
-        ctx.invoke(auth, config_file=config_file)
 
 
 def check_auth(ctx):
@@ -152,9 +105,8 @@ def check_auth(ctx):
 @click.option(
     "-C",
     "--config-file",
-    default=get_default_config_path,
     type=click.Path(dir_okay=False, path_type=str),
-    help=f"Configuration file path. [default:{get_default_config_path()}]",
+    help=f"Configuration file path. [default:{DEFAULT_CONFIG_PATH}]",
     envvar="SWH_CONFIG_FILENAME",
     show_default=False,
 )
@@ -163,22 +115,24 @@ def check_auth(ctx):
     prog_name="swh.scanner",
 )
 @click.pass_context
-def scanner(ctx, config_file: Optional[str]):
-    from swh.auth.cli import auth
-
+def scanner(ctx: click.Context, config_file: Optional[str]):
     ctx.ensure_object(dict)
+    config_file = config_file or DEFAULT_CONFIG_PATH
+    ctx.obj["config_file"] = config_file
 
     # Get Scanner default config
     cfg = get_default_config()
 
-    # Invoke auth CLI command to get an OIDC client
-    # It will load configuration file if any and populate a ctx 'config' object
-    invoke_auth(ctx, auth, config_file)
-    assert ctx.obj["config"]
+    # Let the setup do its own auth and config setup
+    if ctx.invoked_subcommand != "setup" and not should_run_setup():
+        # Invoke auth CLI command to get an OIDC client
+        # It will load configuration file if any and populate a ctx 'config' object
+        invoke_auth(ctx, config_file=config_file)
+        assert ctx.obj["config"]
 
-    # Merge scanner defaults with config object
-    ctx.obj["config"] = config.merge_configs(cfg, ctx.obj["config"])
-    assert ctx.obj["oidc_client"]
+        # Merge scanner defaults with config object
+        ctx.obj["config"] = config.merge_configs(cfg, ctx.obj["config"])
+        assert ctx.obj["oidc_client"]
 
 
 @scanner.command(name="login")
@@ -297,6 +251,9 @@ def scan(
     """Scan a source code project to discover files and directories already
     present in the archive.
 
+    The command can open an interactive dashboard after scanning with the
+    --interactive option.
+
     The command can provide different output using the --output-format option:\n
     \b
       summary: display a general summary of what the scanner found
@@ -307,8 +264,6 @@ def scan(
       json: write all collected data on standard output as JSON
 
       ndjson: write all collected data on standard output as Newline Delimited JSON
-
-      sunburst: produce a dynamic chart as .html file. (in $PWD/chart.html)
 
     Exclusion patterns can be set with the repeatable -x/--exclude option:\n
     \b
@@ -323,6 +278,10 @@ def scan(
     from pathlib import Path
 
     import swh.scanner.scanner as scanner
+
+    if should_run_setup():
+        run_setup(ctx)
+        click.echo("")  # Separate setup and command a little more
 
     # merge global config with per project one if any
     if project_config_file:
@@ -376,6 +335,8 @@ def scan(
         http_logger.setLevel(logging.DEBUG)
 
     # Check authentication only for production URL
+    # TODO why do we do this?
+    # TODO Should we remove the `swh scanner login` command in favor of the setup?
     if ctx.obj["config"]["web-api"]["url"] == SWH_API_ROOT:
         check_auth(ctx)
 
@@ -530,6 +491,20 @@ def serve(ctx, host, port, db_file):
     db = Db(db_file)
     backend.run(host, port, db)
     db.close()
+
+
+@scanner.command("setup")
+@click.pass_context
+def setup_cmd(ctx: click.Context):
+    """Get guided through setting up the scanner
+
+    This interactive command gives a quick explanation of what the scanner is,
+    and guides you through the optional authentication as well as the config
+    options, then gives you a few examples for invocations.
+
+    This setup will run the first time you run the `scan` command, but you
+    may invoke it at anytime using `swh scanner setup`."""
+    run_setup(ctx)
 
 
 def main():

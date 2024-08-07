@@ -17,8 +17,11 @@ import pytest
 import yaml
 
 from swh.auth.keycloak import KeycloakError
-from swh.core import config as config_mod
-from swh.scanner import cli, scanner
+from swh.core import config as core_config_mod
+from swh.scanner import cli
+from swh.scanner import config as scanner_config_mod
+from swh.scanner import scanner
+from swh.scanner.setup_wizard import MARKER_TEXT
 
 from .data import present_swhids
 
@@ -91,6 +94,20 @@ def user_credentials():
     return {"username": "foo", "password": "bar"}
 
 
+@pytest.fixture(autouse=True)
+def no_run_setup(request, mocker):
+    if "setup_test" in request.keywords:
+        return
+    mocker.patch("swh.scanner.cli.should_run_setup", lambda: False)
+
+
+@pytest.fixture(autouse=True)
+def sandbox_config(mocker, tmp_path):
+    """Make sure the scanner doesn't write anything outside of the test"""
+    mocker.patch("swh.scanner.setup_wizard.CACHE_HOME_DIR", tmp_path)
+    mocker.patch("swh.scanner.setup_wizard.MARKER_FILE", tmp_path / "setup_marker")
+
+
 @pytest.fixture()
 def default_test_config_path(tmp_path):
     # Set Swh global config file path to a temp directory
@@ -154,7 +171,11 @@ def cli_runner(monkeypatch, default_test_config_path):
     Set default config path to a temp directory
     """
     monkeypatch.delenv("SWH_CONFIG_FILENAME", raising=False)
-    monkeypatch.setattr(cli, "DEFAULT_CONFIG_PATH", default_test_config_path)
+    monkeypatch.setattr(cli, "DEFAULT_CONFIG_PATH", str(default_test_config_path))
+    monkeypatch.setattr(
+        scanner_config_mod, "DEFAULT_CONFIG_PATH", str(default_test_config_path)
+    )
+    monkeypatch.setattr(cli, "get_default_config", lambda: DEFAULT_TEST_CONFIG)
     return CliRunner(mix_stderr=False)
 
 
@@ -192,12 +213,12 @@ class FakeOidcClient:
         if self.oidc_success:
             return {"access_token": "access-token-test"}
 
-        raise KeycloakError
+        raise KeycloakError("Mock keycloack error")
 
 
 def fake_invoke_auth(oidc_success):
-    def fake_invoke_auth_inner(ctx, auth, config_file):
-        if config_mod.config_path(config_file) is None:
+    def fake_invoke_auth_inner(ctx, config_file, oidc_server_url=None, realm_name=None):
+        if core_config_mod.config_path(config_file) is None:
             source = ctx.get_parameter_source("config_file") or None
             if source and source.name != "DEFAULT":
                 raise FileError(config_file, hint=f"From {source.name}")
@@ -206,7 +227,7 @@ def fake_invoke_auth(oidc_success):
             client_id = DEFAULT_TEST_CONFIG["keycloak"]["client_id"]
             ctx.obj["config"] = DEFAULT_TEST_CONFIG
         else:
-            config = config_mod.read_raw_config(config_file)
+            config = core_config_mod.read_raw_config(config_file)
             realm_name = config["keycloak"]["realm_name"]
             assert realm_name == "realm-test"
             client_id = config["keycloak"]["client_id"]
@@ -221,6 +242,8 @@ def fake_invoke_auth(oidc_success):
 
 @pytest.fixture(scope="function")
 def oidc_success(mocker):
+    oidc_mock = mocker.patch("swh.scanner.setup_wizard.invoke_auth")
+    oidc_mock.side_effect = fake_invoke_auth(oidc_success=True)
     oidc_mock = mocker.patch("swh.scanner.cli.invoke_auth")
     oidc_mock.side_effect = fake_invoke_auth(oidc_success=True)
     yield oidc_mock
@@ -228,6 +251,8 @@ def oidc_success(mocker):
 
 @pytest.fixture(scope="function")
 def oidc_fail(mocker):
+    oidc_mock = mocker.patch("swh.scanner.setup_wizard.invoke_auth")
+    oidc_mock.side_effect = fake_invoke_auth(oidc_success=False)
     oidc_mock = mocker.patch("swh.scanner.cli.invoke_auth")
     oidc_mock.side_effect = fake_invoke_auth(oidc_success=False)
     yield oidc_mock
@@ -278,8 +303,8 @@ def test_scan_config_default_success(
         cli.scanner,
         ["scan", scan_paths["known"]],
     )
-    positional, named = m_scanner.scan.call_args
     assert res.exit_code == 0
+    positional, named = m_scanner.scan.call_args
     assert positional[0] == DEFAULT_TEST_CONFIG
     assert spy_configopen.call_args is None
     oidc_fail.assert_called_once()
@@ -948,3 +973,177 @@ def test_login_option_token_success(mocker, cli_runner, user_credentials, oidc_s
         f"Token verification success for username {user_credentials['username']}"
         in res.output
     )
+
+
+@pytest.mark.setup_test
+def test_setup_short_path(cli_runner, oidc_fail, spy_configopen):
+    res = cli_runner.invoke(
+        cli.scanner,
+        ["setup"],
+        input="n\n\n\nn",
+    )
+
+    assert res.exit_code == 0
+    assert spy_configopen.call_args is None
+
+
+@pytest.mark.setup_test
+def test_setup_long_path(
+    mocker, cli_runner, oidc_fail, spy_configopen, default_test_config_path, tmp_path
+):
+    """Test the setup for all optional prompts"""
+    marker_file = tmp_path / "setup_marker"
+    assert not default_test_config_path.is_file()
+    assert not marker_file.exists()
+
+    mock_getpass = mocker.patch("getpass.getpass")
+    mock_getpass.return_value = "bar"
+
+    # Trap the edits to the config file
+    spy = mocker.patch.object(
+        cli.click, "edit", side_effect=["[", "validyaml:\n    value: yes\n"]
+    )
+    res = cli_runner.invoke(
+        cli.scanner,
+        ["setup"],
+        input="\n\n\n\nfoo\nfoo\nfoo\n\n\n",
+    )
+    assert mock_getpass.called
+    assert mock_getpass.call_count == 3
+
+    # Make sure we've retried the edit
+    assert spy.called
+    assert spy.call_count == 2
+    # That the first call contains help text
+    assert "#HELP" in spy.call_args_list[0][0][0]
+    # That the second call contains whatever the user saved the first time
+    assert spy.call_args_list[1] == call("[", extension=".yml")
+
+    assert (
+        res.stderr
+        == """Authentication failed: Mock keycloack error
+Authentication failed: Mock keycloack error
+Authentication failed: Mock keycloack error
+Authentication failed after 3 tries, skipping
+Configuration file is not valid YAML:
+    expected the node content, but found '<stream end>' while parsing a flow node
+Please correct and retry.
+"""
+    )
+    assert (
+        """Welcome to the Software Heritage scanner, a source code scanner to
+analyze code bases and compare them with source code artifacts archived
+by Software Heritage.
+
+    - The scan is done locally on your machine
+    - Only anonymous fingerprints (hashes) are sent
+    - No private data will be sent anywhere
+    - No false positives
+"""
+        in res.stdout
+    )
+    assert "[?] Authenticate with the archive? [Y/n]:" in res.stdout
+    assert (
+        "[?] Which archive URL do you wish to use? "
+        + "[https://archive.softwareheritage.org/api/1/]: "
+        in res.stdout
+    )
+    assert (
+        "[?] Which auth server do you wish to use? [https://auth.softwareheritage.org/auth/]: "
+        in res.stdout
+    )
+    assert "[?] What OIDC realm do you wish to use? [SoftwareHeritage]: " in res.stdout
+    assert "Retry 1/3" in res.stdout
+    assert "Retry 2/3" in res.stdout
+    assert "Retry 3/3" in res.stdout
+    assert "[?] Configure files to exclude? [Y/n]: " in res.stdout
+    assert "Successfully saved changes to " in res.stdout
+    assert (
+        """You can use the scanner now. Here are some examples:
+
+    Scan the current directory
+    $ swh scanner scan
+
+    Scan a folder and open the interactive dashboard
+    $ swh scanner scan /path/to/folder --interactive
+
+    Scan a folder with JSON output
+    $ swh scanner scan /path/to/folder --output-format json
+
+    See the scanner's help
+    $ swh scanner --help
+
+    Run this setup again
+    $ swh scanner setup
+"""
+        in res.stdout
+    )
+    assert res.exit_code == 0
+    assert spy_configopen.call_args is None
+    assert default_test_config_path.is_file()
+    assert marker_file.read_text() == MARKER_TEXT
+
+
+@pytest.mark.setup_test
+def test_setup_existing_valid_config(
+    mocker,
+    cli_runner,
+    oidc_success,
+    spy_configopen,
+    default_test_config_path: Path,
+    tmp_path,
+):
+    """Test the setup for a valid config"""
+    marker_file = tmp_path / "setup_marker"
+    default_test_config_path.write_text(yaml.safe_dump(EXPECTED_TEST_CONFIG))
+    assert default_test_config_path.is_file()
+    assert not marker_file.exists()
+
+    mock_getpass = mocker.patch("getpass.getpass")
+
+    # Trap the edit to the config file
+    edited_config = "validyaml:\n    value: yes"
+    spy = mocker.patch.object(cli.click, "edit", side_effect=[edited_config])
+    res = cli_runner.invoke(
+        cli.scanner,
+        ["setup"],
+        input="\n\n\n\n\n\n\n",
+    )
+    assert not mock_getpass.called
+
+    # Make sure we've called the edit
+    assert spy.called
+    assert spy.call_count == 1
+    # That the text contains help
+    editor_buffer = spy.call_args_list[0][0][0]
+    assert "#HELP" in editor_buffer
+    # That the text contains the config
+    assert yaml.safe_dump(EXPECTED_TEST_CONFIG) in editor_buffer
+
+    assert res.stderr == ""
+    assert "[?] Authenticate with the archive? [Y/n]:" in res.stdout
+    assert (
+        "[?] Which archive URL do you wish to use? "
+        + "[https://archive.softwareheritage.org/api/1/]: "
+        in res.stdout
+    )
+    assert (
+        "[?] Which auth server do you wish to use? [https://auth.softwareheritage.org/auth/]: "
+        in res.stdout
+    )
+    assert "[?] What OIDC realm do you wish to use? [SoftwareHeritage]: " in res.stdout
+    assert "[?] Configure files to exclude? [Y/n]: " in res.stdout
+    assert "A token was found in " in res.stdout
+    assert (
+        "Would you like to verify the token or "
+        + "generate a new one? (verify, generate) [verify]: "
+        in res.stdout
+    )
+    assert "Token verification success for username foo" in res.stdout
+    assert "Successfully saved changes to " in res.stdout
+    assert res.exit_code == 0
+    assert spy_configopen.called
+    assert spy_configopen.call_count == 1
+    assert default_test_config_path.is_file()
+    assert default_test_config_path.read_text() == edited_config
+    assert marker_file.read_text() == MARKER_TEXT

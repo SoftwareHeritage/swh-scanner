@@ -1,3 +1,5 @@
+.. _swh-scanner-cli:
+
 Command-line interface
 ======================
 

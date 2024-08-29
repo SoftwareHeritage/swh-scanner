@@ -11,8 +11,6 @@ import subprocess
 from typing import Callable, Dict, Iterator, List, Optional, Tuple, TypeVar, Union, cast
 from xml.etree import ElementTree
 
-import requests
-
 from swh.core.utils import grouper
 from swh.model.exceptions import ValidationError
 from swh.model.from_disk import Content, Directory, FromDiskType
@@ -54,37 +52,6 @@ def init_merkle_node_info(
         nodes_info["provenance"] = None
     for node in source_tree.iter_tree():
         data[node.swhid()] = nodes_info.copy()
-
-
-def _get_leaf(
-    client,
-    node: str,
-    return_types: str,
-    direction="forward",
-    edges="*",
-    resolve_origins=True,
-) -> Optional[str]:
-    """internal function used by _get_provenance_info"""
-    query = (
-        f"graph/leaves/{node}/?direction={direction}"
-        f"&edges={edges}"
-        f"&return_types={return_types}"
-        f"&max_matching_nodes=1"
-    )
-    if resolve_origins:
-        query += "&resolve_origins=true"
-    try:
-        with client._call(query, http_method="get") as r:
-            value = r.text.rstrip("\n")
-    except requests.HTTPError as fail:
-        # the graph raise 404 for unknown node so we have catch 404 for now
-        # https://gitlab.softwareheritage.org/swh/devel/swh-graph/-/issues/4763
-        if fail.response.status_code not in (400, 404):
-            raise
-        return None
-    if not value:  # empty result
-        return None
-    return value
 
 
 def _get_provenance_info(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
@@ -131,52 +98,22 @@ def _get_provenance_info(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
         msg = "swhid should be %r or %r as parameter, not: %r"
         msg %= (ObjectType.DIRECTORY, ObjectType.CONTENT, swhid.object_type)
         raise ValueError(msg)
+    return _call_whereis(client, swhid)
 
-    content_or_dir = str(swhid)
 
-    # XXX: If we have a content, the provenance API could search for a rev
-    # or rel more efficiently. However it does not work for Directory and
-    # only cover some of the node, so we need the call the graph anyway.
+def _call_whereis(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
+    """manually call provenance's `whereis` endpoind
 
-    # XXX: The graph can also lag behind the archive so it is possible that
-    # we identify a known content without being able to find an origin.
-
-    # Try to find a release first
-    anchor = _get_leaf(
-        client,
-        node=content_or_dir,
-        direction="backward",
-        edges="dir:dir,cnt:dir,dir:rev,rev:rel,dir:rel,cnt:rel",
-        return_types="rel",
-    )
-    if anchor is None:
-        # We did not find a release,
-        # directly search for a revision instead.
-        anchor = _get_leaf(
-            client,
-            node=content_or_dir,
-            direction="backward",
-            edges="dir:dir,cnt:dir,dir:rev",
-            return_types="rev",
-        )
-    if anchor is None:
-        # could not find anything, give up
+    The WebAPIClient will eventually support this natively. At that point this
+    function should be remove in favor on calling the associated method on
+    WebAPIClient.
+    """
+    query = f"provenance/whereis/{swhid}/"
+    with client._call(query) as r:
+        result = r.json()
+    if result is None:
         return None
-
-    # now search the associated origin
-    origin = _get_leaf(
-        client,
-        node=anchor,
-        direction="backward",
-        edges="*:snp,*:ori",
-        return_types="ori",
-    )
-    return QualifiedSWHID(
-        object_type=swhid.object_type,
-        object_id=swhid.object_id,
-        anchor=CoreSWHID.from_string(anchor),
-        origin=origin,
-    )
+    return QualifiedSWHID.from_string(result)
 
 
 # We tried 1000, but the API was suffering (504 and 503 return)/

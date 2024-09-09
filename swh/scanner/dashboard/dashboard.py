@@ -59,6 +59,15 @@ def create_app(
     app.json_provider_class = CustomJSONProvider
     app.json = CustomJSONProvider(app)
 
+    # the root_path might have been specified with a final slash. This will
+    # confuse the tree fetching code.
+    #
+    # We should prevent emptying the root "/" as is however a valid (even if
+    # weird) option
+    if 1 < len(root_path) and root_path[-1:] == "/":
+        root_path = root_path[0:1] + root_path[1:].rstrip("/")
+    assert len(root_path) <= 1 or root_path[-1:] != "/"
+
     @app.route("/")
     def index():
         return render_template(

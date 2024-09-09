@@ -42,6 +42,7 @@ def app(test_sample_folder, source_tree, nodes_data, summary):
         source_tree=source_tree,
         nodes_data=nodes_data,
         summary=summary,
+        web_client=None,
     )
 
 

@@ -6,7 +6,7 @@
 import json
 from pathlib import Path
 import socket
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import webbrowser
 
 from flask import Flask, get_template_attribute, jsonify, render_template
@@ -15,6 +15,7 @@ from markupsafe import escape
 
 from swh.model.from_disk import Directory
 from swh.model.swhids import CoreSWHID, ObjectType
+from swh.web.client.client import WebAPIClient
 
 from ..data import MerkleNodeInfo, _get_provenance_info
 
@@ -40,10 +41,14 @@ def create_app(
     source_tree: Directory,
     nodes_data: MerkleNodeInfo,
     summary: Dict[str, Any],
+    # some test does not use a webclient, so Optional
+    web_client: Optional[WebAPIClient],
 ):
     flask_config = {
         "DEBUG": config["debug_http"],
     }
+    # temporary to ease diff in MR
+    client = web_client
 
     app = Flask(__name__)
     app.config.from_mapping(flask_config)
@@ -93,12 +98,11 @@ def create_app(
     @app.route("/api/v1/provenance/<swhid>")
     def api_provenance_get(swhid: str = ""):
         """Given a swhid fetch provenance information"""
-        from ..scanner import get_webapi_client
+        assert client is not None
 
         if not swhid:
             return jsonify({})
         try:
-            client = get_webapi_client(config)
             swhid_o = CoreSWHID.from_string(swhid)
             qualified_swhid = _get_provenance_info(client, swhid_o)
             if qualified_swhid is None:
@@ -138,8 +142,9 @@ def run_app(
     source_tree: Directory,
     nodes_data: MerkleNodeInfo,
     summary: Dict[str, Any],
+    web_client: WebAPIClient,
 ):
-    app = create_app(config, root_path, source_tree, nodes_data, summary)
+    app = create_app(config, root_path, source_tree, nodes_data, summary, web_client)
 
     debug = config["debug_http"] or False
 

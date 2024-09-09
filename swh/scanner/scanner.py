@@ -74,7 +74,7 @@ def run(
     nodes_data: MerkleNodeInfo,
     provenance: bool,
     progress_class: Type[Progress] = Progress,
-) -> None:
+) -> WebAPIClient:
     """Scan a given source code according to the policy given in input."""
     client = get_webapi_client(config)
 
@@ -105,6 +105,7 @@ def run(
             add_provenance(
                 source_tree, nodes_data, client, update_progress=progress.update
             )
+    return client
 
 
 COMMON_EXCLUDE_PATTERNS: List[bytes] = [
@@ -168,7 +169,7 @@ def scan(
         source_tree,
         nodes_data,
     )
-    run(
+    web_client = run(
         config,
         policy,
         source_tree,
@@ -182,4 +183,6 @@ def scan(
 
     config["debug_http"] = debug_http
 
-    get_output_class(out_fmt)(root_path, nodes_data, source_tree, config).show()
+    get_output_class(out_fmt)(
+        root_path, nodes_data, source_tree, config, web_client
+    ).show()

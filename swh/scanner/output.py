@@ -14,6 +14,7 @@ import ndjson
 
 from swh.model.from_disk import Directory
 from swh.model.swhids import CoreSWHID, ExtendedSWHID, QualifiedSWHID
+from swh.web.client.client import WebAPIClient
 
 from .dashboard.dashboard import run_app
 from .data import MerkleNodeInfo
@@ -60,11 +61,13 @@ class BaseOutput(ABC):
         nodes_data: MerkleNodeInfo,
         source_tree: Directory,
         config: Dict[str, Any],
+        web_client: WebAPIClient,
     ):
         self.root_path = root_path
         self.nodes_data = nodes_data
         self.source_tree = source_tree
         self.config = config
+        self.web_client = web_client
 
     def get_path_name(self, node):
         return "path" if "path" in node.data.keys() else "data"
@@ -272,4 +275,5 @@ class InteractiveDashboardOutput(SummaryOutput):
             self.source_tree,
             self.nodes_data,
             self.compute_summary(),
+            web_client=self.web_client,
         )

@@ -8,6 +8,7 @@ from pathlib import Path
 import socket
 from typing import Any, Dict, Optional
 import webbrowser
+import functools
 
 from flask import Flask, get_template_attribute, jsonify, render_template
 from flask.json.provider import DefaultJSONProvider
@@ -33,6 +34,9 @@ class CustomJSONProvider(DefaultJSONProvider):
             return str(obj)
         else:
             return DefaultJSONProvider.default(obj)
+
+
+ANCHOR_CACHE_SIZE = 1024
 
 
 def create_app(
@@ -95,6 +99,16 @@ def create_app(
         res = {"path": escape(directory_path), "html": html}
         return jsonify(res)
 
+    @functools.lru_cache(maxsize=ANCHOR_CACHE_SIZE)
+    def revision_info(swhid: CoreSWHID):
+        assert web_client is not None
+        return web_client.revision(swhid)
+
+    @functools.lru_cache(maxsize=ANCHOR_CACHE_SIZE)
+    def release_info(swhid: CoreSWHID):
+        assert web_client is not None
+        return web_client.release(swhid)
+
     @app.route("/api/v1/provenance/<swhid>")
     def api_provenance_get(swhid: str = ""):
         """Given a swhid fetch provenance information"""
@@ -113,7 +127,7 @@ def create_app(
             if anchor is not None:
                 anchor_type = anchor.object_type
                 if anchor_type == ObjectType.REVISION:
-                    data = client.revision(anchor)
+                    data = revision_info(anchor)
                     # Get the `show_revision` Jinja macro
                     macro = get_template_attribute(
                         "partials/provenance.html", "show_revision"
@@ -121,7 +135,7 @@ def create_app(
                     # Render the html snippet
                     info["revision"] = macro(data)
                 elif anchor_type == ObjectType.RELEASE:
-                    data = client.release(anchor)
+                    data = release_info(anchor)
                     # Get the `show_release` Jinja macro
                     macro = get_template_attribute(
                         "partials/provenance.html", "show_release"

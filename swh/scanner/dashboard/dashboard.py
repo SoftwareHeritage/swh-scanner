@@ -4,7 +4,6 @@
 # See top-level LICENSE file for more information
 
 import functools
-from pathlib import Path
 import socket
 from typing import Any, Dict, Optional
 import webbrowser
@@ -43,7 +42,7 @@ ANCHOR_CACHE_SIZE = 1024
 
 def create_app(
     config: Dict[str, Any],
-    root_path: Path,
+    root_path: str,
     source_tree: Directory,
     nodes_data: MerkleNodeInfo,
     summary: Dict[str, Any],
@@ -156,7 +155,7 @@ def create_app(
 
 def run_app(
     config: Dict[str, Any],
-    root_path: Path,
+    root_path: str,
     source_tree: Directory,
     nodes_data: MerkleNodeInfo,
     summary: Dict[str, Any],

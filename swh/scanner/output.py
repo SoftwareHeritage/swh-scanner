@@ -268,7 +268,7 @@ class NDJsonTextOutput(JsonOutput):
 class InteractiveDashboardOutput(SummaryOutput):
     """Dashboard to explore the scan results"""
 
-    def show(self):
+    def show(self) -> None:
         run_app(
             self.config,
             self.root_path,

@@ -18,15 +18,15 @@
           {% elif v.object_type == 'content' %}
             {% set known_percent = 100 if known else 0 %}
           {% endif %}
-          {% set provenance = json.dumps(node_data["provenance"]) if "provenance" in node_data else None %}
+          {% set provenance = json(node_data["provenance"]) if "provenance" in node_data else None %}
           {% if "revision" in node_data and "swhid" in node_data["revision"] %}
             {% do node_data["revision"].update(swhid=node_data["revision"]["swhid"]|string) %}
           {% endif %}
           {% if "release" in node_data and "swhid" in node_data["release"] %}
             {% do node_data["release"].update(swhid=node_data["release"]["swhid"]|string) %}
           {% endif %}
-          {% set revision = json.dumps(node_data["revision"]) if "revision" in node_data else None %}
-          {% set release = json.dumps(node_data["release"]) if "release" in node_data else None %}
+          {% set revision = json(node_data["revision"]) if "revision" in node_data else None %}
+          {% set release = json(node_data["release"]) if "release" in node_data else None %}
           <details id="{{ v.swhid() }}"
                    class="{{ v.object_type }}"
                    data-name="{{ k.decode() }}"

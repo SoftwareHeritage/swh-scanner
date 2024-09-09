@@ -3,19 +3,18 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import json
+import functools
 from pathlib import Path
 import socket
 from typing import Any, Dict, Optional
 import webbrowser
-import functools
 
 from flask import Flask, get_template_attribute, jsonify, render_template
 from flask.json.provider import DefaultJSONProvider
 from markupsafe import escape
 
 from swh.model.from_disk import Directory
-from swh.model.swhids import CoreSWHID, ObjectType
+from swh.model.swhids import CoreSWHID, ObjectType, QualifiedSWHID
 from swh.web.client.client import WebAPIClient
 
 from ..data import MerkleNodeInfo, _get_provenance_info
@@ -32,6 +31,9 @@ class CustomJSONProvider(DefaultJSONProvider):
     def default(obj):
         if isinstance(obj, CoreSWHID):
             return str(obj)
+        elif isinstance(obj, QualifiedSWHID):
+            d = obj.to_dict()
+            return d
         else:
             return DefaultJSONProvider.default(obj)
 
@@ -51,8 +53,6 @@ def create_app(
     flask_config = {
         "DEBUG": config["debug_http"],
     }
-    # temporary to ease diff in MR
-    client = web_client
 
     app = Flask(__name__)
     app.config.from_mapping(flask_config)
@@ -73,7 +73,7 @@ def create_app(
             root_path=root_path,
             source_tree=source_tree,
             nodes_data=nodes_data,
-            json=json,
+            json=app.json.dumps,
             summary=summary,
         )
 
@@ -95,7 +95,7 @@ def create_app(
         # Get the `render_source_tree` Jinja macro
         macro = get_template_attribute("partials/tree.html", "render_source_tree")
         # Render the html snippet
-        html = macro(root_path, st, nodes_data, json, summary)
+        html = macro(root_path, st, nodes_data, app.json.dumps, summary)
         res = {"path": escape(directory_path), "html": html}
         return jsonify(res)
 
@@ -112,13 +112,17 @@ def create_app(
     @app.route("/api/v1/provenance/<swhid>")
     def api_provenance_get(swhid: str = ""):
         """Given a swhid fetch provenance information"""
-        assert client is not None
-
         if not swhid:
             return jsonify({})
         try:
             swhid_o = CoreSWHID.from_string(swhid)
-            qualified_swhid = _get_provenance_info(client, swhid_o)
+            base_data = nodes_data[swhid_o]
+            if "provenance" in base_data:
+                qualified_swhid = base_data["provenance"]
+            else:
+                assert web_client is not None
+                qualified_swhid = _get_provenance_info(web_client, swhid_o)
+                nodes_data[swhid]
             if qualified_swhid is None:
                 return jsonify({})
 

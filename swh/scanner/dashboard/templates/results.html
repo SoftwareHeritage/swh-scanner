@@ -119,13 +119,21 @@
   function show_origin(selected_path, dataset) {
     const origin = selected_path.querySelector("section[name='origin']")
     origin.style.display = "none"
-    if (!dataset.hasOwnProperty("origin")) {
+    let origin_url = null;
+    if (dataset.hasOwnProperty("provenance")) {
+      provenance = JSON.parse(dataset.provenance)
+      if (provenance != null) {
+        origin_url = provenance["origin"]
+      }
+    } if (origin_url === null && dataset.hasOwnProperty("origin")) {
+      origin_url = dataset.origin
+    }
+    if (origin_url === null) {
       return
     }
-    const data = dataset.origin;
     const origin_url_link = origin.querySelector("a[name='origin_url_link']")
-    origin_url_link.href = data
-    origin_url_link.textContent = data
+    origin_url_link.href = origin_url
+    origin_url_link.textContent = origin_url
     origin.style.display = "block"
   }
 
@@ -297,6 +305,7 @@
       // Hide the provenance button if element is unknown or if provenance information is already set
       if (dataset.known === "false" || dataset.hasOwnProperty("provenance") || dataset.hasOwnProperty("release") || dataset.hasOwnProperty("revision")) {
         hide_provenance_button(provenance_section)
+        fetchProvenance(selected_path, dataset)
       } else {
         show_provenance_button(provenance_section)
       }

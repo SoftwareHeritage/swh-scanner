@@ -169,8 +169,10 @@ def run_app(
         # of getting the allocated port, which we need to open the browser.
         # So do it ourselves.
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(("localhost", 0))
-        port = sock.getsockname()[1]
+        port = config["scanner"]["dashboard"]["port"]
+        sock.bind(("localhost", port))
+        if port == 0:
+            port = sock.getsockname()[1]
         sock.close()
         # This will open multiple ones in case of a race, but we have no simple
         # alternative. This is already enough code.

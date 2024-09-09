@@ -23,6 +23,9 @@ DEFAULT_SCANNER_CONFIG: Dict[str, Any] = {
         "server": {
             "port": BACKEND_DEFAULT_PORT,
         },
+        "dashboard": {
+            "port": 0,
+        },
         "exclude": [],
         "exclude_templates": [],
         "disable_global_patterns": False,

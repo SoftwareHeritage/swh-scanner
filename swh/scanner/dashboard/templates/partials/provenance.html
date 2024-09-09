@@ -2,19 +2,19 @@
   {% if data %}
     <h4 class="size-6">Release</h4>
     <dl name="release">
-        <dt>Author</dt>
-        <dd name="email">{{ data["author"]["email"] }}</ddn>
-        <dd>{{ data["author"]["fullname"] }}</dd>
-        <dt>Date</dt>
-        <dd name="date">{{ data["date"].isoformat() }}</dd>
+        <dt>Name</dt>
+        <dd name="name">{{ data["name"] }}</dd>
         <dt>Swhid</dt>
         <dd name="swhid">
             <a href="https://archive.softwareheritage.org/browse/search/?q={{data.id}}&with_visit=true&with_content=true" title="Search for release swhid" name="swhid_release_link", target="_blank">{{ data["id"] }}</a>
         </dd>
-        <dt>Name</dt>
-        <dd name="name">{{ data["name"] }}</dd>
         <dt>Message</dt>
         <dd name="message">{{ data["message"] }}</dd>
+        <dt>Date</dt>
+        <dd name="date">{{ data["date"].isoformat() }}</dd>
+        <dt>Author</dt>
+        <dd name="email">{{ data["author"]["email"] }}</ddn>
+        <dd>{{ data["author"]["fullname"] }}</dd>
     </dl>
   {% endif %}
 {% endmacro %}
@@ -25,6 +25,12 @@
     <dl>
         <dt>Type</dt>
         <dd name="type">{{ data["type"] }}</dd>
+        <dt>Swhid</dt>
+        <dd name="swhid">
+        <a href="https://archive.softwareheritage.org/browse/search/?q={{data.id}}&with_visit=true&with_content=true" title="Search for revision swhid" name="search_revision_link" target="_blank">{{data.id}}</a>
+        </dd>
+        <dt>Message</dt>
+        <dd name="message">{{ data["message"] }}</dd>
         <dt>Date</dt>
         <dd name="date">{{ data["date"] }}</dd>
         <dt>Author</dt>
@@ -37,18 +43,12 @@
         <dd name="committer_date">{{ data["committer_date"] }}</dd>
         <dt>Merge</dt>
         <dd name="merge">{{ data["merge"] }}</dd>
-        <dt>Swhid</dt>
-        <dd name="swhid">
-        <a href="https://archive.softwareheritage.org/browse/search/?q={{data.id}}&with_visit=true&with_content=true" title="Search for revision swhid" name="search_revision_link" target="_blank">{{data.id}}</a>
-        </dd>
         <dt>Revision api</dt>
         <dd>
         <a href="{{ data['url'] }}" title="Revision api endpoint" name="revision_api_link" target="_blank">Revision</a> |
         <a href="{{ data['history_url'] }}" title="Revision history api endpoint" name="history_api_link" target="_blank">History</a> |
         <a href="{{ data['directory_url'] }}" title="Revision parents api endpoint" name="directory_api_link" target="_blank">Directory</a>
         </dd>
-        <dt>Message</dt>
-        <dd name="message">{{ data["message"] }}</dd>
     </dl>
   {% endif %}
 {% endmacro %}

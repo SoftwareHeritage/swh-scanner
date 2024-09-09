@@ -8,13 +8,29 @@
         <dd name="swhid">
             <a href="https://archive.softwareheritage.org/browse/search/?q={{data.id}}&with_visit=true&with_content=true" title="Search for release swhid" name="swhid_release_link", target="_blank">{{ data["id"] }}</a>
         </dd>
-        <dt>Message</dt>
-        <dd name="message">{{ data["message"] }}</dd>
-        <dt>Date</dt>
-        <dd name="date">{{ data["date"].isoformat() }}</dd>
-        <dt>Author</dt>
-        <dd name="email">{{ data["author"]["email"] }}</ddn>
-        <dd>{{ data["author"]["fullname"] }}</dd>
+        {% if data.get("message") %}
+            <dt>Message</dt>
+            <dd name="message">{{ data["message"] }}</dd>
+        {% endif %}
+        {% if data.get("date") %}
+            <dt>Date</dt>
+            <dd name="date">{{ data["date"].isoformat() }}</dd>
+        {% endif %}
+        {% if data.get("author") %}
+            {% set person=data["author"] %}
+            {% if (person.get("email") or person.get("name") or person.get("fullname")) %}
+                <dt>Author</dt>
+                {% if person.get("email") %}
+                    <dd name="email">{{ person["email"] }}</ddn>
+                {% endif %}
+                {% if person.get("name") %}
+                    <dd>{{ person["name"] }}</dd>
+                {% endif %}
+                {% if person.get("fullname") %}
+                    <dd>{{ person["fullname"] }}</dd>
+                {% endif %}
+            {% endif %}
+        {% endif %}
     </dl>
   {% endif %}
 {% endmacro %}
@@ -29,20 +45,52 @@
         <dd name="swhid">
         <a href="https://archive.softwareheritage.org/browse/search/?q={{data.id}}&with_visit=true&with_content=true" title="Search for revision swhid" name="search_revision_link" target="_blank">{{data.id}}</a>
         </dd>
-        <dt>Message</dt>
-        <dd name="message">{{ data["message"] }}</dd>
-        <dt>Date</dt>
-        <dd name="date">{{ data["date"] }}</dd>
-        <dt>Author</dt>
-        {% set author=data["author"] %}
-        <dd name="author">{{ author["fullname"] }} ({{ author["name"] }}, {{ author["email"] }})</dd>
-        {% set committer=data["committer"] %}
-        <dt>Committer</dt>
-        <dd name="committer">{{ committer["fullname"] }} ({{ committer["name"] }}, {{ committer["email"] }})</dd>
-        <dt>Committer date</dt>
-        <dd name="committer_date">{{ data["committer_date"] }}</dd>
-        <dt>Merge</dt>
-        <dd name="merge">{{ data["merge"] }}</dd>
+        {% if data.get("message") %}
+            <dt>Message</dt>
+            <dd name="message">{{ data["message"] }}</dd>
+        {% endif %}
+        {% if data.get("date") %}
+            <dt>Date</dt>
+            <dd name="date">{{ data["date"] }}</dd>
+        {% endif %}
+        {% if data.get("author") %}
+            {% set person=data["committer"] %}
+            {% if person.get("email") or person.get("name") or person.get("fullname") %}
+                <dt>Author</dt>
+                {% if person.get("email") %}
+                    <dd name="email">{{ person["email"] }}</ddn>
+                {% endif %}
+                {% if person.get("name") %}
+                    <dd>{{ person["name"] }}</dd>
+                {% endif %}
+                {% if person.get("fullname") %}
+                    <dd>{{ person["fullname"] }}</dd>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+        {% if data.get("committer") %}
+            {% set person=data["committer"] %}
+            {% if person.get("email") or person.get("name") or person.get("fullname") %}
+                <dt>Committer</dt>
+                {% if person.get("email") %}
+                    <dd name="email">{{ person["email"] }}</ddn>
+                {% endif %}
+                {% if person.get("name") %}
+                    <dd>{{ person["name"] }}</dd>
+                {% endif %}
+                {% if person.get("fullname") %}
+                    <dd>{{ person["fullname"] }}</dd>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+        {% if data.get("committer_date") %}
+            <dt>Committer date</dt>
+            <dd name="committer_date">{{ data["committer_date"] }}</dd>
+        {% endif %}
+        {% if data.get("merge") %}
+            <dt>Merge</dt>
+            <dd name="merge">{{ data["merge"] }}</dd>
+        {% endif %}
         <dt>Revision api</dt>
         <dd>
         <a href="{{ data['url'] }}" title="Revision api endpoint" name="revision_api_link" target="_blank">Revision</a> |

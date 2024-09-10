@@ -4,6 +4,7 @@
 # See top-level LICENSE file for more information
 
 import concurrent.futures
+import json
 import logging
 from os import path
 from pathlib import Path
@@ -110,7 +111,11 @@ def _call_whereis(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
     """
     query = f"provenance/whereis/{swhid}/"
     with client._call(query) as r:
-        result = r.json()
+        raw_json = r.text
+        if raw_json:
+            result = json.loads(raw_json)
+        else:
+            result = None
     if result is None:
         return None
     return QualifiedSWHID.from_string(result)

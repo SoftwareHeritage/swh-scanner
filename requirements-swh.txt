@@ -1,5 +1,5 @@
 # Add here internal Software Heritage dependencies, one per line.
 swh.core >= 0.3
-swh.model >= 6.13.0
+swh.model >= 6.15.0
 swh.auth
-swh.web.client
+swh.web.client >= 0.9.0

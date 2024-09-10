@@ -67,6 +67,7 @@ def get_webapi_client(config: Dict[str, Any]):
 
     retry_status = DEFAULT_RETRY_REASONS | {
         requests.status_codes.codes.GATEWAY_TIMEOUT,
+        requests.status_codes.codes.SERVICE_UNAVAILABLE,
     }
 
     client = WebAPIClient(

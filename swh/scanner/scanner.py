@@ -7,9 +7,11 @@ import enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
+import requests.status_codes
+
 from swh.model.cli import model_of_dir
 from swh.model.from_disk import Directory
-from swh.web.client.client import WebAPIClient
+from swh.web.client.client import DEFAULT_RETRY_REASONS, WebAPIClient
 
 from .data import (
     MerkleNodeInfo,
@@ -63,7 +65,15 @@ def get_webapi_client(config: Dict[str, Any]):
             auth_token = config["keycloak_tokens"][realm_name][client_id]
             kwargs["bearer_token"] = auth_token
 
-    client = WebAPIClient(api_url=api_url, **kwargs)
+    retry_status = DEFAULT_RETRY_REASONS | {
+        requests.status_codes.codes.GATEWAY_TIMEOUT,
+    }
+
+    client = WebAPIClient(
+        api_url=api_url,
+        retry_status=retry_status,
+        **kwargs,
+    )
     return client
 
 

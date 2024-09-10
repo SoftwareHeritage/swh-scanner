@@ -9,7 +9,7 @@
 </div>
 <div id="notification-box" class="hidden">
   <div id="close-button"></div>
-  <div id="notification-message">
+  <div id="notification-message" style="white-space: pre-line;">
   </div>
 </div>
 <div id="results">
@@ -170,21 +170,21 @@
     loader.style.display = "flex"
     try {
       const response = await fetch("/api/v1/provenance/" + dataset.swhid)
-      if (!response.ok) {
+      let data = {}
+      if (response.ok) {
+        data = await response.json()
+      } else {
         // Hide the loader
         loader.style.display = "none"
         if (response.status === 401) {
-          const msg = "Unauthorized access: Please check your credentials."
+          const msg = await response.text()
           show_error_notification(msg)
-          throw new Error(msg)
         } else {
           const msg = "Network response was not ok: " + response.statusText
           show_error_notification(msg)
           throw new Error(msg)
         }
       }
-
-      const data = await response.json()
       // TODO show something if no provenance information was found
       // Display provenance information
       if (data.hasOwnProperty("origin")) {
@@ -218,7 +218,7 @@
         show_error_notification(msg)
         console.error(msg)
       } else {
-        const msg = "An unexpected error occurred:" + error.message
+        const msg = "An unexpected error occurred:" + error.message + "("+ error.name +")"
         show_error_notification(msg)
         console.error(msg)
       }

@@ -12,6 +12,8 @@ import subprocess
 from typing import Callable, Dict, Iterator, List, Optional, Tuple, TypeVar, Union, cast
 from xml.etree import ElementTree
 
+import requests
+
 from swh.core.utils import grouper
 from swh.model.exceptions import ValidationError
 from swh.model.from_disk import Content, Directory, FromDiskType
@@ -53,6 +55,10 @@ def init_merkle_node_info(
         nodes_info["provenance"] = None
     for node in source_tree.iter_tree():
         data[node.swhid()] = nodes_info.copy()
+
+
+class NoProvenanceAPIAccess(RuntimeError):
+    """Raise when the user have not Access to the Provenance API"""
 
 
 def _get_provenance_info(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
@@ -110,12 +116,17 @@ def _call_whereis(client, swhid: CoreSWHID) -> Optional[QualifiedSWHID]:
     WebAPIClient.
     """
     query = f"provenance/whereis/{swhid}/"
-    with client._call(query) as r:
-        raw_json = r.text
-        if raw_json:
-            result = json.loads(raw_json)
-        else:
-            result = None
+    try:
+        with client._call(query) as r:
+            raw_json = r.text
+            if raw_json:
+                result = json.loads(raw_json)
+            else:
+                result = None
+    except requests.HTTPError as exc:
+        r = exc.response
+        if r.status_code == requests.codes.UNAUTHORIZED:
+            raise NoProvenanceAPIAccess(r.text)
     if result is None:
         return None
     return QualifiedSWHID.from_string(result)
@@ -135,8 +146,14 @@ def _call_whereare(client, swhids: List[CoreSWHID]) -> List[Optional[QualifiedSW
     """
     query = "provenance/whereare/"
     args = [str(s) for s in swhids]
-    with client._call(query, http_method="post", json=args) as r:
-        result = r.json()
+    try:
+        with client._call(query, http_method="post", json=args) as r:
+            result = r.json()
+    except requests.HTTPError as exc:
+        r = exc.response
+        if r.status_code == requests.codes.UNAUTHORIZED:
+            raise NoProvenanceAPIAccess(r.text)
+        raise
 
     to_q = QualifiedSWHID.from_string
     return [to_q(q) if q is not None else q for q in result]

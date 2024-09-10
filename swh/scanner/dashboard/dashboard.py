@@ -8,15 +8,16 @@ import socket
 from typing import Any, Dict, Optional
 import webbrowser
 
-from flask import Flask, get_template_attribute, jsonify, render_template
+from flask import Flask, Response, get_template_attribute, jsonify, render_template
 from flask.json.provider import DefaultJSONProvider
 from markupsafe import escape
+import requests
 
 from swh.model.from_disk import Directory
 from swh.model.swhids import CoreSWHID, ObjectType, QualifiedSWHID
 from swh.web.client.client import WebAPIClient
 
-from ..data import MerkleNodeInfo, _get_provenance_info
+from ..data import MerkleNodeInfo, NoProvenanceAPIAccess, _get_provenance_info
 
 
 def open_browser_if_graphical(port):
@@ -38,6 +39,9 @@ class CustomJSONProvider(DefaultJSONProvider):
 
 
 ANCHOR_CACHE_SIZE = 1024
+
+NO_PROVENANCE_MSG = """Your account does not have permission to query the Provenance API
+(Contact the Software Heritage team to get such permission)"""
 
 
 def create_app(
@@ -129,7 +133,13 @@ def create_app(
                 qualified_swhid = base_data["provenance"]
             else:
                 assert web_client is not None
-                qualified_swhid = _get_provenance_info(web_client, swhid_o)
+                try:
+                    qualified_swhid = _get_provenance_info(web_client, swhid_o)
+                except NoProvenanceAPIAccess:
+                    return Response(
+                        NO_PROVENANCE_MSG,
+                        status=requests.codes.UNAUTHORIZED,
+                    )
                 nodes_data[swhid_o]["provenance"] = qualified_swhid
             if qualified_swhid is None:
                 return jsonify({})

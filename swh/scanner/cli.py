@@ -23,7 +23,7 @@ from .config import (
     SWH_API_ROOT,
     get_default_config,
 )
-from .data import get_ignore_patterns_templates
+from .data import NoProvenanceAPIAccess, get_ignore_patterns_templates
 from .exceptions import DBError
 from .setup_wizard import invoke_auth, run_setup, should_run_setup
 
@@ -393,15 +393,23 @@ def scan(
         def __exit__(self, *args, **kwargs):
             click.echo("", err=True)
 
-    scanner.scan(
-        ctx.obj["config"],
-        root_path,
-        out_fmt,
-        interactive,
-        provenance,
-        debug_http,
-        progress_class=CLIProgress,
-    )
+    try:
+        scanner.scan(
+            ctx.obj["config"],
+            root_path,
+            out_fmt,
+            interactive,
+            provenance,
+            debug_http,
+            progress_class=CLIProgress,
+        )
+    except NoProvenanceAPIAccess:
+        msg = (
+            "ERROR: Your account does not have permission to query the Provenance API\n"
+        )
+        msg += "(Contact the Software Heritage team to get such permission)"
+        click.echo(click.style(msg, fg="red"))
+        return 1
 
 
 @scanner.group("db", help="Manage local knowledge base for swh-scanner")

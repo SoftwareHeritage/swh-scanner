@@ -130,7 +130,7 @@ def create_app(
             else:
                 assert web_client is not None
                 qualified_swhid = _get_provenance_info(web_client, swhid_o)
-                nodes_data[swhid]
+                nodes_data[swhid_o]["provenance"] = qualified_swhid
             if qualified_swhid is None:
                 return jsonify({})
 

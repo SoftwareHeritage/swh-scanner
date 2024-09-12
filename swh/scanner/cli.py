@@ -11,6 +11,7 @@ from typing import Optional
 
 import click
 from importlib_metadata import version
+import requests
 
 from swh.core import config
 from swh.core.cli import CONTEXT_SETTINGS
@@ -403,6 +404,21 @@ def scan(
             debug_http,
             progress_class=CLIProgress,
         )
+    except requests.HTTPError as exc:
+        r = exc.response
+        click.secho(
+            "ERROR: Unexpected errors from the Software Heritage Archive:",
+            fg="red",
+        )
+        click.secho(
+            f"ERROR:     {r.url}",
+            fg="red",
+        )
+        click.secho(
+            f"ERROR:     {r.status_code} {r.reason}",
+            fg="red",
+        )
+        return 2
     except NoProvenanceAPIAccess:
         msg = (
             "ERROR: Your account does not have permission to query the Provenance API\n"

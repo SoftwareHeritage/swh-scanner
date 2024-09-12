@@ -4,6 +4,7 @@
 # See top-level LICENSE file for more information
 
 import functools
+import os
 import socket
 from typing import Any, Dict, Optional
 import webbrowser
@@ -68,9 +69,10 @@ def create_app(
     #
     # We should prevent emptying the root "/" as is however a valid (even if
     # weird) option
-    if 1 < len(root_path) and root_path[-1:] == "/":
-        root_path = root_path[0:1] + root_path[1:].rstrip("/")
-    assert len(root_path) <= 1 or root_path[-1:] != "/"
+    root_path = os.path.abspath(root_path)
+    root_path = root_path.rstrip("/")
+    if not root_path:
+        root_path = "/"
 
     @app.route("/")
     def index():

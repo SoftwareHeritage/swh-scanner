@@ -90,14 +90,14 @@ class SummaryOutput(BaseOutput):
         full_known_directories = set()
         partially_known_directories = set()
 
-        contents = []
-        directories = []
+        contents = set()
+        directories = set()
 
         for node in self.source_tree.iter_tree():
             if node.object_type == "content":
-                contents.append(node)
+                contents.add(node)
             elif node.object_type == "directory":
-                directories.append(node)
+                directories.add(node)
             else:
                 assert False, "unreachable"
 

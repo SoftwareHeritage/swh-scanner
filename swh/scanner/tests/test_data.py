@@ -38,7 +38,8 @@ def test_init_merkle_supported_node_info(source_tree):
     nodes_data = MerkleNodeInfo()
     init_merkle_node_info(source_tree, nodes_data, provenance=True)
     for _, node_attrs in nodes_data.items():
-        assert "known" and "provenance" in node_attrs.keys()
+        assert "known" in node_attrs.keys()
+        assert "provenance" in node_attrs.keys()
 
 
 def test_add_provenance_with_release(live_server, source_tree, nodes_data):
@@ -57,7 +58,7 @@ def test_add_provenance_with_release(live_server, source_tree, nodes_data):
 
 def test_add_provenance_with_revision(live_server, source_tree, nodes_data):
     api_url = url_for("index", _external=True)
-    init_merkle_node_info(source_tree, nodes_data, {"known", "provenance"})
+    init_merkle_node_info(source_tree, nodes_data, provenance=True)
     client = WebAPIClient(api_url)
     a_file = source_tree[b"some-binary"]
 

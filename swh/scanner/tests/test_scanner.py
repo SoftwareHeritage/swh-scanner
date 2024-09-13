@@ -23,7 +23,7 @@ def test_scanner_result(live_server, source_tree):
     config = {"web-api": {"url": api_url, "auth-token": None}}
 
     nodes_data = MerkleNodeInfo()
-    init_merkle_node_info(source_tree, nodes_data, {"known"})
+    init_merkle_node_info(source_tree, nodes_data, provenance=False)
     policy = RandomDirSamplingPriority(source_tree, nodes_data)
     run(config, policy, source_tree, nodes_data, set())
     for node in source_tree.iter_tree():

@@ -30,7 +30,7 @@ def _setup_base(source_tree):
     api_url = url_for("index", _external=True)
     client = WebAPIClient(api_url)
     nodes_data = MerkleNodeInfo()
-    init_merkle_node_info(source_tree, nodes_data, {"known"})
+    init_merkle_node_info(source_tree, nodes_data, provenance=False)
 
     return client, nodes_data
 

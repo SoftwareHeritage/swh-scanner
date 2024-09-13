@@ -486,34 +486,6 @@ def test_scan_api_url_option_success(cli_runner, oidc_fail, m_scanner, scan_path
     assert positional[0]["web-api"]["url"] == API_URL
 
 
-def test_smoke_db(cli_runner, oidc_fail):
-    """Scanner db
-    command
-
-        swh scanner db --help
-
-    """
-    res = cli_runner.invoke(cli.scanner, ["db", "--help"])
-
-    assert res.exit_code == 0
-    assert res.output.startswith("Usage: scanner db [OPTIONS] COMMAND [ARGS]")
-
-
-def test_db_option(cli_runner, oidc_fail, swhids_input_file, tmp_path):
-    res = cli_runner.invoke(
-        cli.scanner,
-        [
-            "db",
-            "import",
-            "--input",
-            swhids_input_file,
-            "--output",
-            f"{tmp_path}/test_db.sqlite",
-        ],
-    )
-    assert res.exit_code == 0
-
-
 def test_ignore_vcs_patterns(cli_runner, live_server, datadir, mocker):
     api_url = url_for("index", _external=True)
     mocker.patch("swh.scanner.scanner.COMMON_EXCLUDE_PATTERNS", [])

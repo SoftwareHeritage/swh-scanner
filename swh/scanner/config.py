@@ -7,9 +7,6 @@ from swh.auth.cli import DEFAULT_CONFIG as DEFAULT_AUTH_CONFIG
 from swh.core import config
 from swh.core.config import SWH_GLOBAL_CONFIG
 
-# Config for the "serve" option
-BACKEND_DEFAULT_PORT = 5011
-
 DEFAULT_CONFIG_PATH = os.path.join(click.get_app_dir("swh"), SWH_GLOBAL_CONFIG)
 SWH_API_ROOT = "https://archive.softwareheritage.org/api/1/"
 DEFAULT_WEB_API_CONFIG: Dict[str, Any] = {
@@ -20,9 +17,6 @@ DEFAULT_WEB_API_CONFIG: Dict[str, Any] = {
 # Keep in sync with the wizard
 DEFAULT_SCANNER_CONFIG: Dict[str, Any] = {
     "scanner": {
-        "server": {
-            "port": BACKEND_DEFAULT_PORT,
-        },
         "dashboard": {
             "port": 0,
         },

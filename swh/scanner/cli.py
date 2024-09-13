@@ -18,14 +18,8 @@ from swh.core.cli import CONTEXT_SETTINGS
 from swh.core.cli import swh as swh_cli_group
 from swh.web.client.client import WebAPIClient
 
-from .config import (
-    BACKEND_DEFAULT_PORT,
-    DEFAULT_CONFIG_PATH,
-    SWH_API_ROOT,
-    get_default_config,
-)
+from .config import DEFAULT_CONFIG_PATH, SWH_API_ROOT, get_default_config
 from .data import NoProvenanceAPIAccess, get_ignore_patterns_templates
-from .exceptions import DBError
 from .setup_wizard import invoke_auth, run_setup, should_run_setup
 
 
@@ -442,95 +436,6 @@ def scan(
         msg += "(Contact the Software Heritage team to get such permission)"
         click.echo(click.style(msg, fg="red"))
         return 1
-
-
-@scanner.group("db", help="Manage local knowledge base for swh-scanner")
-@click.pass_context
-def db(ctx):
-    pass
-
-
-@db.command("import")
-@click.option(
-    "-i",
-    "--input",
-    "input_file",
-    metavar="INPUT_FILE",
-    required=True,
-    type=click.File("r"),
-    help="A file containing SWHIDs",
-)
-@click.option(
-    "-o",
-    "--output",
-    "output_file_db",
-    metavar="OUTPUT_DB_FILE",
-    required=True,
-    show_default=True,
-    help="The name of the generated sqlite database",
-)
-@click.option(
-    "-s",
-    "--chunk-size",
-    "chunk_size",
-    default="10000",
-    metavar="SIZE",
-    show_default=True,
-    type=int,
-    help="The chunk size ",
-)
-@click.pass_context
-def import_(ctx, chunk_size, input_file, output_file_db):
-    """Create SQLite database of known SWHIDs from a textual list of SWHIDs"""
-    from .db import Db
-
-    db = Db(output_file_db)
-    cur = db.conn.cursor()
-    try:
-        db.create_from(input_file, chunk_size, cur)
-        db.close()
-    except DBError as e:
-        ctx.fail("Failed to import SWHIDs into database: {0}".format(e))
-
-
-@db.command("serve")
-@click.option(
-    "-h",
-    "--host",
-    metavar="HOST",
-    default="127.0.0.1",
-    show_default=True,
-    help="The host of the API server",
-)
-@click.option(
-    "-p",
-    "--port",
-    metavar="PORT",
-    default=f"{BACKEND_DEFAULT_PORT}",
-    show_default=True,
-    help="The port of the API server",
-)
-@click.option(
-    "-f",
-    "--db-file",
-    "db_file",
-    metavar="DB_FILE",
-    default="SWHID_DB.sqlite",
-    show_default=True,
-    type=click.Path(exists=True),
-    help="An sqlite database file (it can be generated with: 'swh scanner db import')",
-)
-@click.pass_context
-def serve(ctx, host, port, db_file):
-    """Start an API service using the sqlite database generated with the "db import"
-    option."""
-    import swh.scanner.backend as backend
-
-    from .db import Db
-
-    db = Db(db_file)
-    backend.run(host, port, db)
-    db.close()
 
 
 @scanner.command("setup")

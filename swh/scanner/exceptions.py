@@ -18,10 +18,6 @@ class LargePayloadExc(Exception):
     pass
 
 
-class DBError(Exception):
-    pass
-
-
 class APIError(Exception):
     def __str__(self):
         return '"%s"' % self.args

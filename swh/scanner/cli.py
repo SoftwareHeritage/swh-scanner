@@ -192,15 +192,14 @@ def login(ctx, username: str, token: str):
     "out_fmt",
     default="summary",
     show_default=True,
-    type=click.Choice(
-        ["summary", "text", "json", "ndjson", "sunburst"], case_sensitive=False
-    ),
+    type=click.Choice(["summary", "text", "json", "ndjson"], case_sensitive=False),
     help="The output format",
 )
 @click.option(
-    "-i",
-    "--interactive",
+    "--web-ui/--no-web-ui",
+    "interactive",
     is_flag=True,
+    default=True,
     help="Launch the default graphical web browser to explore the results in a dashboard.",
 )
 @click.option(
@@ -264,8 +263,8 @@ def scan(
     """Scan a source code project to discover files and directories already
     present in the archive.
 
-    The command can open an interactive dashboard after scanning with the
-    --interactive option.
+    The command opens by default an interactive dashboard after scanning. Can
+    be disabled by the --no-web-ui flag.
 
     The command can provide different output using the --output-format option:\n
     \b
@@ -287,6 +286,7 @@ def scan(
 
     Version control system ignore files detection for exclusion (e.g. .gitignore,
     .hgignore, svn ignore file) can be disabled using the --disable-vcs-patterns option. \n
+
     """
     from pathlib import Path
 

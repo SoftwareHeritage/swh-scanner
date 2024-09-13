@@ -43,17 +43,17 @@ Running a Scan
 
 To scan your local file in ``PROJECT_PATH``, use::
 
-  swh scanner scan PROJECT_PATH --interactive.
+  swh scanner scan PROJECT_PATH
 
 This will find your local files, query the archive, and provide you with a
 graphical user interface to browse the result.
 
-Note that the ``scan`` command has a ``--provenance`` that retrieves information
-about where the files known to the archive might come from. This option is
-experimental and you need to get in touch with the Software Heritage team to be
-granted permission to the necessary APIs. Alternatively, there is a button
-in the dashboard that will query the provenance for a given selected file
-or directory. This is also experimental and gated to privileged users.
+Note that the ``scan`` command has a ``--provenance`` flag that retrieves
+information about where the files known to the archive might come from. This
+option is experimental and you need to get in touch with the Software Heritage
+team to be granted permission to the necessary APIs. Alternatively, there is a
+button in the dashboard that will query the provenance for a given selected
+file or directory. This is also experimental and gated to privileged users.
 
 Further Configuration
 ---------------------

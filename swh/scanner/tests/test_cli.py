@@ -521,7 +521,8 @@ def test_ignore_vcs_patterns(cli_runner, live_server, datadir, mocker):
     vcs_mock.side_effect = [[]]
 
     res = cli_runner.invoke(
-        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+        cli.scanner,
+        ["scan", "--no-web-ui", "--output-format", "json", datadir, "-u", api_url],
     )
     assert res.exit_code == 0
     output = json.loads(res.stdout)
@@ -538,7 +539,8 @@ def test_ignore_vcs_patterns(cli_runner, live_server, datadir, mocker):
     vcs_mock.side_effect = [[b"global.yml", b"sample-folder-policy.tgz"]]
 
     res = cli_runner.invoke(
-        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+        cli.scanner,
+        ["scan", "--no-web-ui", "--output-format", "json", datadir, "-u", api_url],
     )
     assert res.exit_code == 0
     output = json.loads(res.stdout)
@@ -560,6 +562,7 @@ def test_disable_ignore_vcs_patterns(cli_runner, live_server, datadir, mocker):
         cli.scanner,
         [
             "scan",
+            "--no-web-ui",
             "--output-format",
             "json",
             datadir,
@@ -581,6 +584,7 @@ def test_disable_ignore_vcs_patterns(cli_runner, live_server, datadir, mocker):
         cli.scanner,
         [
             "scan",
+            "--no-web-ui",
             "--disable-vcs-patterns",
             "--output-format",
             "json",
@@ -606,7 +610,8 @@ def test_global_excluded_patterns(cli_runner, live_server, datadir, mocker):
     api_url = url_for("index", _external=True)
 
     res = cli_runner.invoke(
-        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+        cli.scanner,
+        ["scan", "--no-web-ui", "--output-format", "json", datadir, "-u", api_url],
     )
     assert res.exit_code == 0
     output = json.loads(res.output)
@@ -623,7 +628,8 @@ def test_global_excluded_patterns(cli_runner, live_server, datadir, mocker):
     mocker.patch("swh.scanner.scanner.COMMON_EXCLUDE_PATTERNS", [b"sample*"])
 
     res = cli_runner.invoke(
-        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+        cli.scanner,
+        ["scan", "--no-web-ui", "--output-format", "json", datadir, "-u", api_url],
     )
     assert res.exit_code == 0
     output = json.loads(res.output)
@@ -644,7 +650,8 @@ def test_global_excluded_patterns_from_default_config_file(
     api_url = url_for("index", _external=True)
 
     res = cli_runner.invoke(
-        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+        cli.scanner,
+        ["scan", "--no-web-ui", "--output-format", "json", datadir, "-u", api_url],
     )
     assert res.exit_code == 0
     output = json.loads(res.output)
@@ -664,7 +671,8 @@ def test_global_excluded_patterns_from_default_config_file(
     default_test_config_path.write_text(yaml.safe_dump(cfg))
 
     res = cli_runner.invoke(
-        cli.scanner, ["scan", "--output-format", "json", datadir, "-u", api_url]
+        cli.scanner,
+        ["scan", "--no-web-ui", "--output-format", "json", datadir, "-u", api_url],
     )
 
     assert res.exit_code == 0
@@ -690,6 +698,7 @@ def test_disable_global_excluded_patterns_arg(
         cli.scanner,
         [
             "scan",
+            "--no-web-ui",
             "--disable-global-patterns",
             "--output-format",
             "json",
@@ -729,6 +738,7 @@ def test_excluded_per_project_configuration_file_option(
         cli.scanner,
         [
             "scan",
+            "--no-web-ui",
             "--output-format",
             "json",
             datadir,
@@ -767,6 +777,7 @@ def test_excluded_per_project_configuration_file_default_path(
         cli.scanner,
         [
             "scan",
+            "--no-web-ui",
             "--output-format",
             "json",
             str(tmp_data),
@@ -791,6 +802,7 @@ def test_exclude_template_arg_fail(cli_runner, live_server, datadir):
         cli.scanner,
         [
             "scan",
+            "--no-web-ui",
             "--exclude-template",
             "Test",  # The Test exclusion template does not exists
             "--output-format",
@@ -810,6 +822,7 @@ def test_exclude_template_arg(cli_runner, live_server, datadir, exclude_template
         cli.scanner,
         [
             "scan",
+            "--no-web-ui",
             "--exclude-template",
             "Tar",
             "--output-format",
@@ -839,6 +852,7 @@ def test_exclude_template_multiple_arg(
         cli.scanner,
         [
             "scan",
+            "--no-web-ui",
             "--exclude-template",
             "Tar",
             "-t",
@@ -876,6 +890,7 @@ def test_exclude_template_per_project_configuration_file(
         cli.scanner,
         [
             "scan",
+            "--no-web-ui",
             "--output-format",
             "json",
             datadir,

@@ -189,11 +189,12 @@ def scan(
         progress_class=progress_class,
     )
 
-    if interactive:
-        out_fmt = "interactive"
-
-    config["debug_http"] = debug_http
-
     get_output_class(out_fmt)(
         root_path, nodes_data, source_tree, config, web_client
     ).show()
+
+    config["debug_http"] = debug_http
+    if interactive:
+        get_output_class("interactive")(
+            root_path, nodes_data, source_tree, config, web_client
+        ).show()

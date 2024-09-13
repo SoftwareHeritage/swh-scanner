@@ -1,16 +1,20 @@
-# Copyright (C) 2020-2021  The Software Heritage developers
+# Copyright (C) 2020-2024  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+from io import TextIOWrapper
 import os
 from pathlib import Path
 import shutil
 import sys
+from typing import List
 
+from flask.app import App
 import pytest
 
 from swh.model.cli import model_of_dir
+from swh.model.from_disk import Directory
 from swh.scanner.data import MerkleNodeInfo
 from swh.web.client.client import KNOWN_QUERY_LIMIT
 
@@ -19,7 +23,7 @@ from .flask_api import create_app
 
 
 @pytest.fixture(scope="function")
-def test_sample_folder(datadir, tmp_path):
+def test_sample_folder(datadir, tmp_path) -> Path:
     """Location of the "data" folder"""
     archive_path = Path(os.path.join(datadir, "sample-folder.tgz"))
     assert archive_path.exists()
@@ -30,7 +34,7 @@ def test_sample_folder(datadir, tmp_path):
 
 
 @pytest.fixture(scope="function")
-def test_sample_folder_policy(datadir, tmp_path):
+def test_sample_folder_policy(datadir, tmp_path) -> Path:
     """Location of the sample source code project to test the scanner policies"""
     archive_path = Path(os.path.join(datadir, "sample-folder-policy.tgz"))
     assert archive_path.exists()
@@ -41,7 +45,7 @@ def test_sample_folder_policy(datadir, tmp_path):
 
 
 @pytest.fixture(scope="function")
-def source_tree(test_sample_folder):
+def source_tree(test_sample_folder) -> Directory:
     """Generate a model.from_disk.Directory object from the test sample
     folder
     """
@@ -49,7 +53,7 @@ def source_tree(test_sample_folder):
 
 
 @pytest.fixture(scope="function")
-def big_source_tree(tmp_path):
+def big_source_tree(tmp_path) -> Directory:
     """Generate a model.from_disk.Directory from a "big" temporary directory
     (more than 1000 nodes)
     """
@@ -68,7 +72,7 @@ def big_source_tree(tmp_path):
 
 
 @pytest.fixture(scope="function")
-def source_tree_policy(test_sample_folder_policy):
+def source_tree_policy(test_sample_folder_policy) -> Directory:
     """Generate a model.from_disk.Directory object from the test sample
     folder
     """
@@ -76,7 +80,7 @@ def source_tree_policy(test_sample_folder_policy):
 
 
 @pytest.fixture(scope="function")
-def source_tree_dirs(source_tree):
+def source_tree_dirs(source_tree) -> List[Path]:
     """Returns a list of all directories contained inside the test sample
     folder
     """
@@ -94,7 +98,7 @@ def source_tree_dirs(source_tree):
 
 
 @pytest.fixture(scope="function")
-def nodes_data(source_tree):
+def nodes_data(source_tree: Directory) -> MerkleNodeInfo:
     """mock known status of file/dirs in test_sample_folder"""
     nodes_data = MerkleNodeInfo()
     for node in source_tree.iter_tree():
@@ -103,7 +107,7 @@ def nodes_data(source_tree):
 
 
 @pytest.fixture
-def test_swhids_sample(tmp_path):
+def test_swhids_sample(tmp_path: str) -> TextIOWrapper:
     """Create and return the opened "swhids_sample" file,
     filled with present swhids present in data.py
     """
@@ -117,14 +121,14 @@ def test_swhids_sample(tmp_path):
 
 
 @pytest.fixture(scope="session")
-def tmp_requests(tmpdir_factory):
+def tmp_requests(tmpdir_factory) -> Path:
     """Logs each SWHID per line in every request made to the `known` endpoint"""
     requests_file = tmpdir_factory.mktemp("data").join("requests.json")
     return requests_file
 
 
 @pytest.fixture(scope="session")
-def tmp_accesses(tmpdir_factory):
+def tmp_accesses(tmpdir_factory) -> Path:
     """Logs each request made to the `known` endpoint, writing the number
     of SWHIDs queried, one per line."""
     requests_file = tmpdir_factory.mktemp("data").join("accesses.json")
@@ -132,7 +136,7 @@ def tmp_accesses(tmpdir_factory):
 
 
 @pytest.fixture(scope="session")
-def app(tmp_requests, tmp_accesses):
+def app(tmp_requests, tmp_accesses) -> App:
     """Flask backend API (used by live_server)."""
     app = create_app(tmp_requests, tmp_accesses)
     return app

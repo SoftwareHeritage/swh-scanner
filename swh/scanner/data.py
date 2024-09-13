@@ -1,4 +1,4 @@
-# Copyright (C) 2021 The Software Heritage developers
+# Copyright (C) 2021-2024 The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -41,7 +41,7 @@ class MerkleNodeInfo(dict):
 
 def init_merkle_node_info(
     source_tree: Directory, data: MerkleNodeInfo, provenance: bool
-):
+) -> None:
     """Populate the MerkleNodeInfo with the SWHIDs of the given source tree
 
     The dictionary value are pre-filed with dictionary holding the
@@ -55,6 +55,7 @@ def init_merkle_node_info(
         nodes_info["provenance"] = None
     for node in source_tree.iter_tree():
         data[node.swhid()] = nodes_info.copy()
+    return None
 
 
 class NoProvenanceAPIAccess(RuntimeError):

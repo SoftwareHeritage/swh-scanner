@@ -1,4 +1,4 @@
-# Copyright (C) 2021 The Software Heritage developers
+# Copyright (C) 2021-2024 The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -8,8 +8,10 @@ import subprocess
 
 from flask import url_for
 import pytest
+from pytest_flask.live_server import LiveServer
 
 from swh.model.exceptions import ValidationError
+from swh.model.from_disk import Directory
 from swh.scanner.data import (
     MerkleNodeInfo,
     add_provenance,
@@ -24,7 +26,7 @@ from swh.web.client.client import WebAPIClient
 from .data import fake_origin, fake_release, fake_revision
 
 
-def test_merkle_node_data_wrong_args():
+def test_merkle_node_data_wrong_args() -> None:
     nodes_data = MerkleNodeInfo()
 
     with pytest.raises(ValidationError):
@@ -34,7 +36,7 @@ def test_merkle_node_data_wrong_args():
         nodes_data["swh:1:dir:17d207da3804cc60a77cba58e76c3b2f767cb112"] = "wrong value"
 
 
-def test_init_merkle_supported_node_info(source_tree):
+def test_init_merkle_supported_node_info(source_tree: Directory) -> None:
     nodes_data = MerkleNodeInfo()
     init_merkle_node_info(source_tree, nodes_data, provenance=True)
     for _, node_attrs in nodes_data.items():
@@ -42,7 +44,9 @@ def test_init_merkle_supported_node_info(source_tree):
         assert "provenance" in node_attrs.keys()
 
 
-def test_add_provenance_with_release(live_server, source_tree, nodes_data):
+def test_add_provenance_with_release(
+    live_server: LiveServer, source_tree: Directory, nodes_data: MerkleNodeInfo
+) -> None:
     api_url = url_for("index", _external=True)
     init_merkle_node_info(source_tree, nodes_data, provenance=True)
     client = WebAPIClient(api_url)
@@ -56,7 +60,9 @@ def test_add_provenance_with_release(live_server, source_tree, nodes_data):
         assert str(attrs["provenance"].anchor) == fake_release[source_tree_id]
 
 
-def test_add_provenance_with_revision(live_server, source_tree, nodes_data):
+def test_add_provenance_with_revision(
+    live_server: LiveServer, source_tree: Directory, nodes_data: MerkleNodeInfo
+) -> None:
     api_url = url_for("index", _external=True)
     init_merkle_node_info(source_tree, nodes_data, provenance=True)
     client = WebAPIClient(api_url)
@@ -71,7 +77,7 @@ def test_add_provenance_with_revision(live_server, source_tree, nodes_data):
     assert str(attrs["provenance"].anchor) == fake_revision[a_file_id]
 
 
-def test_has_dirs(source_tree):
+def test_has_dirs(source_tree: Directory) -> None:
     assert has_dirs(source_tree)
 
 
@@ -82,14 +88,14 @@ class DummyCommandResult:
     stdout: bytes
 
 
-def test_get_vcs_ignore_patterns_no_vcs(mocker):
+def test_get_vcs_ignore_patterns_no_vcs(mocker) -> None:
     mock = mocker.patch("swh.scanner.data.vcs_detected")
     mock.return_value = False
     assert get_vcs_ignore_patterns() == []
     assert mock.call_count == 3
 
 
-def test_get_vcs_ignore_patterns_vcs_error(mocker):
+def test_get_vcs_ignore_patterns_vcs_error(mocker) -> None:
     detected_mock = mocker.patch("swh.scanner.data.vcs_detected")
     detected_mock.return_value = True
     mock = mocker.patch("swh.scanner.data._call_vcs")
@@ -103,7 +109,7 @@ def test_get_vcs_ignore_patterns_vcs_error(mocker):
     assert mock.call_count == 3
 
 
-def test_get_vcs_ignore_patterns_git(mocker):
+def test_get_vcs_ignore_patterns_git(mocker) -> None:
     detected_mock = mocker.patch("swh.scanner.data.vcs_detected")
     detected_mock.side_effect = [
         True,
@@ -118,7 +124,7 @@ def test_get_vcs_ignore_patterns_git(mocker):
     assert res == [b"Some_Folder", b"file with spaces"]
 
 
-def test_get_vcs_ignore_patterns_hg(mocker):
+def test_get_vcs_ignore_patterns_hg(mocker) -> None:
     # Mercurial answers
     detected_mock = mocker.patch("swh.scanner.data.vcs_detected")
     detected_mock.side_effect = [
@@ -135,7 +141,7 @@ def test_get_vcs_ignore_patterns_hg(mocker):
     assert res == [b"myfile", b"Other_File", b"file with spaces"]
 
 
-def test_get_vcs_ignore_patterns_svn(mocker):
+def test_get_vcs_ignore_patterns_svn(mocker) -> None:
     # SVN answers
     detected_mock = mocker.patch("swh.scanner.data.vcs_detected")
     detected_mock.side_effect = [
@@ -146,7 +152,7 @@ def test_get_vcs_ignore_patterns_svn(mocker):
     mock = mocker.patch("swh.scanner.data._call_vcs")
     mock.side_effect = [
         DummyCommandResult(
-            """<?xml version="1.0" encoding="UTF-8"?>
+            b"""<?xml version="1.0" encoding="UTF-8"?>
 <status>
 <target
 path=".">
@@ -196,7 +202,7 @@ props="none">
     assert res == [b"myfile/with/nested/things", b"Other_File", b"file with spaces"]
 
 
-def test_get_ignore_patterns_templates():
+def test_get_ignore_patterns_templates() -> None:
     templates = get_ignore_patterns_templates()
     assert len(templates) > 0
     assert "Rust" in templates
@@ -204,7 +210,7 @@ def test_get_ignore_patterns_templates():
     assert rust.exists()
 
 
-def test_parse_ignore_patterns_template(tmp_path):
+def test_parse_ignore_patterns_template(tmp_path) -> None:
     template_path = tmp_path / "test.gitignore"
     content = """# Test comment
     test/

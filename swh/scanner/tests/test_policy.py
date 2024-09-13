@@ -1,32 +1,36 @@
-# Copyright (C) 2021 The Software Heritage developers
+# Copyright (C) 2021-2024 The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+from pathlib import Path
+from typing import List, Tuple
 
 from flask import url_for
+from pytest_flask.live_server import LiveServer
 
+from swh.model.from_disk import Directory
 from swh.model.swhids import CoreSWHID, ObjectType
 from swh.scanner.data import MerkleNodeInfo, init_merkle_node_info
 from swh.scanner.policy import RandomDirSamplingPriority
 from swh.web.client.client import WebAPIClient
 
 
-def get_backend_swhids_order(tmp_requests):
+def get_backend_swhids_order(tmp_requests) -> List[str]:
     with open(tmp_requests, "r") as f:
         backend_swhids_order = f.readlines()
 
     return [x.strip() for x in backend_swhids_order]
 
 
-def get_backend_known_requests(tmp_accesses):
+def get_backend_known_requests(tmp_accesses) -> List[int]:
     with open(tmp_accesses, "r") as f:
         calls = f.readlines()
 
     return [int(call.strip()) for call in calls]
 
 
-def _setup_base(source_tree):
+def _setup_base(source_tree: Directory) -> Tuple[WebAPIClient, MerkleNodeInfo]:
     api_url = url_for("index", _external=True)
     client = WebAPIClient(api_url)
     nodes_data = MerkleNodeInfo()
@@ -36,17 +40,16 @@ def _setup_base(source_tree):
 
 
 def test_randomdir_policy(
-    live_server,
-    big_source_tree,
-    tmp_requests,
-    tmp_accesses,
+    live_server: LiveServer,
+    big_source_tree: Directory,
+    tmp_requests: Path,
+    tmp_accesses: Path,
     mocker,
 ):
     # This is harder to test with exact assertions due to the random nature
     # of our sampling algorithm and everything else that can be random.
     # Setting random.seed has failed to produce stable results.
     # TODO figure out why?
-
     open(tmp_requests, "w").close()
     open(tmp_accesses, "w").close()
 
@@ -71,10 +74,10 @@ def test_randomdir_policy(
 
 
 def test_randomdir_policy_small_request(
-    live_server,
-    big_source_tree,
-    tmp_requests,
-    tmp_accesses,
+    live_server: LiveServer,
+    big_source_tree: Directory,
+    tmp_requests: Path,
+    tmp_accesses: Path,
     mocker,
 ):
     # Test with smaller sample sizes to actually trigger the random sampling
@@ -95,10 +98,10 @@ def test_randomdir_policy_small_request(
 
 
 def test_randomdir_policy_info_callback(
-    live_server,
-    big_source_tree,
-    tmp_requests,
-    tmp_accesses,
+    live_server: LiveServer,
+    big_source_tree: Directory,
+    tmp_requests: Path,
+    tmp_accesses: Path,
     mocker,
 ):
     # Test with smaller sample sizes to actually trigger the random sampling

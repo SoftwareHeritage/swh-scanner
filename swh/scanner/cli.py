@@ -234,6 +234,16 @@ def login(ctx, username: str, token: str):
     help="Project Configuration file path.",
     show_default=False,
 )
+@click.option(
+    "--provenance-concurrency",
+    default=5,
+    help="Number of concurrent connections to the web API.",
+)
+@click.option(
+    "--provenance-batch-size",
+    default=100,
+    help="Batch size when querying the provenance API.",
+)
 @click.pass_context
 def scan(
     ctx,
@@ -248,6 +258,8 @@ def scan(
     disable_global_patterns,
     disable_vcs_patterns,
     project_config_file: Optional[str],
+    provenance_concurrency,
+    provenance_batch_size,
 ):
     """Scan a source code project to discover files and directories already
     present in the archive.
@@ -278,6 +290,7 @@ def scan(
     """
     from pathlib import Path
 
+    import swh.scanner.data as data
     import swh.scanner.scanner as scanner
 
     if should_run_setup():
@@ -393,6 +406,9 @@ def scan(
 
         def __exit__(self, *args, **kwargs):
             click.echo("", err=True)
+
+    data.MAX_WHEREARE_BATCH = provenance_batch_size
+    data.MAX_CONCURRENT_PROVENANCE_QUERIES = provenance_concurrency
 
     try:
         scanner.scan(

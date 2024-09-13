@@ -161,9 +161,7 @@ def _call_whereare(client, swhids: List[CoreSWHID]) -> List[Optional[QualifiedSW
 
 _IN_MEM_NODE = Union[Directory, Content]
 
-# We tried 5, but the API was suffering (504 and 503 return)/
-# Bump again when this get more reliable
-MAX_CONCURRENT_PROVENANCE_QUERIES = 3
+MAX_CONCURRENT_PROVENANCE_QUERIES = 5
 
 Item = TypeVar("Item")
 

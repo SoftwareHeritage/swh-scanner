@@ -1,7 +1,4 @@
-aioresponses
-asynctest
 pytest >= 8.1
-pytest-asyncio
 pytest-flask
 pytest-mock
 swh.core[testing-core]

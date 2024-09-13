@@ -4,5 +4,4 @@
 requests
 ndjson
 flask
-dulwich
 importlib-metadata

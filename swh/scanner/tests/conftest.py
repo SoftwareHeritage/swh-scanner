@@ -3,48 +3,19 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-import asyncio
 import os
 from pathlib import Path
 import shutil
 import sys
 
-import aiohttp
-from aioresponses import aioresponses
 import pytest
 
 from swh.model.cli import model_of_dir
 from swh.scanner.data import MerkleNodeInfo
 from swh.web.client.client import KNOWN_QUERY_LIMIT
-from swh.web.client.tests.conftest import web_api_mock
 
 from .data import present_swhids
 from .flask_api import create_app
-
-web_api_mock
-
-
-@pytest.fixture
-def mock_aioresponse():
-    with aioresponses() as m:
-        yield m
-
-
-@pytest.fixture
-def event_loop():
-    """Fixture that generate an asyncio event loop."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    loop.close()
-
-
-@pytest.fixture
-async def aiosession():
-    """Fixture that generate an aiohttp Client Session."""
-    session = aiohttp.ClientSession()
-    yield session
-    session.detach()
 
 
 @pytest.fixture(scope="function")

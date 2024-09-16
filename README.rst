@@ -76,7 +76,8 @@ file used by all Software Heritage tools, located by default at
 
 The configuration file location is subject to the `XDG Base Directory
 <https://wiki.archlinux.org/index.php/XDG_Base_Directory>`_ specification as
-well as explicitly overridden on the :ref:`command line <swh-scanner-cli>` via the
+well as explicitly overridden on the `command line
+<https://docs.softwareheritage.org/devel/swh-scanner/cli.html>`_ via the
 ``-C/--config-file`` flag.
 
 The following sub-sections and fields can be used within the ``swh > scanner``

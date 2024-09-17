@@ -6,6 +6,7 @@
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
 import logging
+import os
 import textwrap
 from typing import Optional
 
@@ -290,6 +291,8 @@ def scan(
     if should_run_setup():
         run_setup(ctx)
         click.echo("")  # Separate setup and command a little more
+
+    root_path = os.path.abspath(root_path)
 
     # merge global config with per project one if any
     if project_config_file:

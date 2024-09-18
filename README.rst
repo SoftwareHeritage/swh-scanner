@@ -15,6 +15,26 @@ To install the Software Heritage scanner, run::
 
   pip install swh-scanner
 
+Note that it will install `swh-scanner` and its dependencies in the current
+`virtualenv`_ (if any). If you just want to install the scanner as a standalone
+tool, you may want to use an installation tool like `pipx`_ or `uv`_:
+
+.. code-block:: console
+
+   $ uv tool install --with swh-scanner swh-core
+
+or
+
+.. code-block:: console
+
+   $ pipx install --include-deps swh-scanner
+
+
+.. _`virtualenv`: https://virtualenv.pypa.io/
+.. _`uv`: https://docs.astral.sh/uv/
+.. _`pipx`: https://pipx.pypa.io/
+
+
 Registering to the Software Heritage Archive
 --------------------------------------------
 
@@ -25,17 +45,22 @@ users will likely result in very slow operation.
 First, visit https://archive.softwareheritage.org/oidc/login/ and create
 a new user by clicking on ``Register``.
 
-Then use this newly created account to authenticate within the Scanner.::
-
-  swh scanner login
 
 Configuring your scan
 ---------------------
 
 The scanner will guide you through your initial configuration through the
-``setup`` command::
+``setup`` command, including setting up your authentication token::
 
   swh scanner setup
+
+
+.. warning:: the Provenance API is not yet open; you need to ask for special
+             permissions to access and use it (see below). You may `contact
+             us`_ to ask for such permissions.
+
+
+.. _`contact us`: https://www.softwareheritage.org/contact/
 
 
 Running a Scan
@@ -58,7 +83,8 @@ file or directory. This is also experimental and gated to privileged users.
 Further Configuration
 ---------------------
 
-The scanner will add up configuration options from three places, in order of precedence:
+The scanner will add up configuration options from three places, in order of
+precedence:
 
 - The command line
 - The project config file

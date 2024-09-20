@@ -286,11 +286,11 @@ by Software Heritage.
     )
     click.echo(
         """
-    Scan the current directory
+    Scan the current directory and open the interactive dashboard
     $ swh scanner scan
 
-    Scan a folder and open the interactive dashboard
-    $ swh scanner scan /path/to/folder --interactive
+    Scan a folder without opening the interactive dashboard
+    $ swh scanner scan /path/to/folder --no-web-ui
 
     Scan a folder with JSON output
     $ swh scanner scan /path/to/folder --output-format json

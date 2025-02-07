@@ -77,7 +77,7 @@ def check_auth(ctx):
         try:
             oidc_client.refresh_token(refresh_token=auth_token)["access_token"]
             # TODO: Display more OIDC information (username, realm, client_id)?
-            msg = f'Authenticated to "{ oidc_client.server_url }".'
+            msg = f'Authenticated to "{oidc_client.server_url}".'
             click.echo(click.style(msg, fg="green"))
         except KeycloakError as ke:
             msg = "Error while verifying your authentication configuration."
@@ -151,7 +151,11 @@ def login(ctx, username: str, token: str):
     """
     from swh.auth.cli import auth_config
 
-    ctx.forward(auth_config)
+    if should_run_setup():
+        run_setup(ctx)
+        click.echo("")  # Separate setup and command a little more
+    else:
+        ctx.forward(auth_config)
 
 
 @scanner.command(name="scan")

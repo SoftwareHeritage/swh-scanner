@@ -482,7 +482,7 @@ def test_scan_api_url_option_success(cli_runner, oidc_fail, m_scanner, scan_path
     positional, named = m_scanner.scan.call_args
 
     assert res.exit_code == 0
-    assert m_scanner.scan.called_once()
+    m_scanner.scan.assert_called_once()
     assert positional[0]["web-api"]["url"] == API_URL
 
 

@@ -176,7 +176,7 @@ def cli_runner(monkeypatch, default_test_config_path):
         scanner_config_mod, "DEFAULT_CONFIG_PATH", str(default_test_config_path)
     )
     monkeypatch.setattr(cli, "get_default_config", lambda: DEFAULT_TEST_CONFIG)
-    return CliRunner(mix_stderr=False)
+    return CliRunner()
 
 
 @pytest.fixture()
@@ -269,7 +269,7 @@ def test_smoke(cli_runner, oidc_fail):
     res = cli_runner.invoke(cli.scanner)
     res_h = cli_runner.invoke(cli.scanner, ["--help"])
 
-    assert res.exit_code == 0
+    assert res.exit_code == 2
     assert res_h.exit_code == 0
     assert res.output.startswith("Usage: scanner [OPTIONS] COMMAND [ARGS]")
     assert res.output == res_h.output
@@ -371,7 +371,7 @@ def test_scan_config_with_unexisting_configuration_file_set_by_env_fail(
         ["scan", scan_paths["known"]],
     )
     assert res.exit_code != 0
-    assert res.stderr.startswith(f"Error: Could not open file '{unexisting_path}'")
+    assert res.output.startswith(f"Error: Could not open file '{unexisting_path}'")
 
 
 def test_scan_config_with_default_global_configuration_file_success(
@@ -463,7 +463,7 @@ def test_scan_config_with_option_configuration_file_error(
 
     assert res.exit_code != 0
     assert spy_configopen.call_args is None
-    assert res.stderr.startswith(f"Error: Could not open file '{unexisting_path}'")
+    assert res.output.startswith(f"Error: Could not open file '{unexisting_path}'")
 
 
 def test_scan_api_url_option_success(cli_runner, oidc_fail, m_scanner, scan_paths):
@@ -543,7 +543,7 @@ def test_disable_ignore_vcs_patterns(cli_runner, live_server, datadir, mocker):
         ],
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
 
     # Filtering via VCS works
     assert output.keys() == {
@@ -566,7 +566,7 @@ def test_disable_ignore_vcs_patterns(cli_runner, live_server, datadir, mocker):
         ],
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
 
     # Disable vcs patterns gives all results back
     assert output.keys() == {
@@ -586,7 +586,7 @@ def test_global_excluded_patterns(cli_runner, live_server, datadir, mocker):
         ["scan", "--no-web-ui", "--output-format", "json", datadir, "-u", api_url],
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
 
     # No filtering gives all results back
     assert output.keys() == {
@@ -604,7 +604,7 @@ def test_global_excluded_patterns(cli_runner, live_server, datadir, mocker):
         ["scan", "--no-web-ui", "--output-format", "json", datadir, "-u", api_url],
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
     # Filtering via common exclude patterns works
     assert output.keys() == {
         ".",
@@ -626,7 +626,7 @@ def test_global_excluded_patterns_from_default_config_file(
         ["scan", "--no-web-ui", "--output-format", "json", datadir, "-u", api_url],
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
 
     # No filtering gives all results back
     assert output.keys() == {
@@ -648,7 +648,7 @@ def test_global_excluded_patterns_from_default_config_file(
     )
 
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
     # Filtering via common exclude patterns works
     assert output.keys() == {".", "global2.yml", "sample-folder.tgz"}
 
@@ -680,7 +680,7 @@ def test_disable_global_excluded_patterns_arg(
         ],
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
 
     # No filtering gives all results back + the non ignored ones
     assert output.keys() == {
@@ -721,7 +721,7 @@ def test_excluded_per_project_configuration_file_option(
         ],
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
 
     # The .tgz files has been excluded from project configuration file
     assert output.keys() == {
@@ -758,7 +758,7 @@ def test_excluded_per_project_configuration_file_default_path(
         ],
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
 
     # The .tgz files has been excluded from project configuration file
     assert output.keys() == {
@@ -785,7 +785,7 @@ def test_exclude_template_arg_fail(cli_runner, live_server, datadir):
         ],
     )
     assert res.exit_code > 0
-    assert "Error: Unknown exclusion template 'Test'. Use one of:" in res.stderr
+    assert "Error: Unknown exclusion template 'Test'. Use one of:" in res.output
 
 
 def test_exclude_template_arg(cli_runner, live_server, datadir, exclude_templates):
@@ -805,7 +805,7 @@ def test_exclude_template_arg(cli_runner, live_server, datadir, exclude_template
         ],
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
 
     # *.tgz ignored
     assert output.keys() == {
@@ -837,7 +837,7 @@ def test_exclude_template_multiple_arg(
         ],
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
 
     # *.tgz and *.yml ignored
     assert output.keys() == {
@@ -873,7 +873,7 @@ def test_exclude_template_per_project_configuration_file(
         ],
     )
     assert res.exit_code == 0
-    output = json.loads(res.output)
+    output = json.loads(res.stdout)
 
     # *.tgz and *.yml ignored
     assert output.keys() == {

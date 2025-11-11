@@ -5,6 +5,27 @@ Software Heritage - Code Scanner
 Source code scanner to analyze code bases and compare them with source code
 artifacts archived by Software Heritage.
 
+
+Bibliography
+------------
+
+In addition to accompanying technical documentation, ``swh-scanner`` is also
+described in the following scientific paper. If you use ``swh-scanner`` for
+your research work, please acknowledge it by citing:
+
+.. note::
+
+  Daniele Serafini, Stefano Zacchiroli.  `Efficient Prior Publication
+  Identification for Open Source Code
+  <https://dl.acm.org/doi/10.1145/3555051.3555068>`_.  In proceedings of
+  `OpenSym 2022 <https://opensym.org/os2022/>`_: The 18th International
+  Symposium on Open Collaboration.
+  Article No.: 12, Pages 1-8. ACM, 2022.
+
+  Links: `preprint <https://arxiv.org/pdf/2207.11057>`__,
+  `bibtex <https://dblp.uni-trier.de/rec/conf/wikis/SerafiniZ22.bib?param=1>`__.
+
+
 Getting Started
 ===============
 

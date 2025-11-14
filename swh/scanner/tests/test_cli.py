@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2024  The Software Heritage developers
+# Copyright (C) 2020-2025  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -98,7 +98,7 @@ def user_credentials():
 def no_run_setup(request, mocker):
     if "setup_test" in request.keywords:
         return
-    mocker.patch("swh.scanner.cli.should_run_setup", lambda: False)
+    mocker.patch("swh.scanner.setup_wizard.should_run_setup", lambda: False)
 
 
 @pytest.fixture(autouse=True)
@@ -244,16 +244,12 @@ def fake_invoke_auth(oidc_success):
 def oidc_success(mocker):
     oidc_mock = mocker.patch("swh.scanner.setup_wizard.invoke_auth")
     oidc_mock.side_effect = fake_invoke_auth(oidc_success=True)
-    oidc_mock = mocker.patch("swh.scanner.cli.invoke_auth")
-    oidc_mock.side_effect = fake_invoke_auth(oidc_success=True)
     yield oidc_mock
 
 
 @pytest.fixture(scope="function")
 def oidc_fail(mocker):
     oidc_mock = mocker.patch("swh.scanner.setup_wizard.invoke_auth")
-    oidc_mock.side_effect = fake_invoke_auth(oidc_success=False)
-    oidc_mock = mocker.patch("swh.scanner.cli.invoke_auth")
     oidc_mock.side_effect = fake_invoke_auth(oidc_success=False)
     yield oidc_mock
 

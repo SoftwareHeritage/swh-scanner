@@ -1,32 +1,35 @@
-# Copyright (C) 2020  The Software Heritage developers
+# Copyright (C) 2020-2025  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
 # WARNING: do not import unnecessary things here to keep cli startup time under
 # control
+
+from __future__ import annotations
+
 import logging
 import os
 import textwrap
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import click
 from importlib_metadata import version
-import requests
 
-from swh.core import config
 from swh.core.cli import CONTEXT_SETTINGS
 from swh.core.cli import swh as swh_cli_group
-from swh.web.client.client import WebAPIClient
 
 from .config import DEFAULT_CONFIG_PATH, SWH_API_ROOT, get_default_config
 from .data import NoProvenanceAPIAccess, get_ignore_patterns_templates
-from .setup_wizard import invoke_auth, run_setup, should_run_setup
+
+if TYPE_CHECKING:
+    from swh.web.client.client import WebAPIClient
 
 
 def get_exclude_templates_list_repr(width=0):
     """Format and return a list of ignore patterns templates
     for CLI help"""
+
     ignore_templates = get_ignore_patterns_templates()
     ignore_templates_list = sorted(ignore_templates.keys())
     ignore_templates_list_str = ", ".join(map(str, ignore_templates_list))
@@ -112,6 +115,10 @@ def check_auth(ctx):
 )
 @click.pass_context
 def scanner(ctx: click.Context, config_file: Optional[str]):
+    from swh.core import config
+
+    from .setup_wizard import invoke_auth, should_run_setup
+
     ctx.ensure_object(dict)
     config_file = config_file or DEFAULT_CONFIG_PATH
     ctx.obj["config_file"] = config_file
@@ -150,6 +157,8 @@ def login(ctx, username: str, token: str):
     Helps in verifying authentication credentials
     """
     from swh.auth.cli import auth_config
+
+    from .setup_wizard import run_setup, should_run_setup
 
     if should_run_setup():
         run_setup(ctx)
@@ -289,8 +298,13 @@ def scan(
     """
     from pathlib import Path
 
+    import requests
+
+    from swh.core import config
     import swh.scanner.data as data
     import swh.scanner.scanner as scanner
+
+    from .setup_wizard import run_setup, should_run_setup
 
     if should_run_setup():
         run_setup(ctx)
@@ -456,6 +470,8 @@ def setup_cmd(ctx: click.Context):
 
     This setup will run the first time you run the `scan` command, but you
     may invoke it at anytime using `swh scanner setup`."""
+    from .setup_wizard import run_setup
+
     run_setup(ctx)
 
 
